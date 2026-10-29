@@ -6,4 +6,5 @@ export const navLinks: NavLink[] = [
   { label: 'Fitur', href: '/#fitur' },
   { label: 'Simulasi & tentang', href: '/simulasi' },
   { label: 'Lacak & lapor', href: '/lacak' },
+  { label: 'Masuk', href: '/login' },
 ]

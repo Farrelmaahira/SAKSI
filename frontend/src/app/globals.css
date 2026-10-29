@@ -235,23 +235,22 @@
   justify-content: space-between;
   left: 0;
   margin: 0 auto;
-  max-width: 168rem;
-  padding: 0 2rem;
+  max-width: 182rem;
+  padding: 0 1.4rem;
   position: absolute;
   right: 0;
   top: 2rem;
   z-index: 20;
 }
-
 @media (min-width: 768px) {
   .navbar {
-    padding: 0 4rem;
+    padding: 0 2.8rem;
   }
 }
 
 @media (min-width: 1024px) {
   .navbar {
-    padding: 0 8rem;
+    padding: 0 5.6rem;
     top: 3rem;
   }
 }
@@ -272,9 +271,13 @@
 
 .navbar-caption {
   display: none;
-  font-size: 1.6rem;
+  font-size: 1.8rem;
   font-weight: 350;
+  left: 50%;
   opacity: 0.8;
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
 
 .navbar-right {
@@ -288,7 +291,10 @@
 }
 
 @media (min-width: 1024px) {
-  .navbar-caption,
+  .navbar-caption {
+    display: block;
+  }
+
   .navbar-right .pill {
     display: inline-flex;
   }
@@ -380,6 +386,7 @@
 .menu.is-open nav a:nth-child(3) { animation-delay: 0.47s; }
 .menu.is-open nav a:nth-child(4) { animation-delay: 0.53s; }
 .menu.is-open nav a:nth-child(5) { animation-delay: 0.59s; }
+.menu.is-open nav a:nth-child(6) { animation-delay: 0.65s; }
 
 @keyframes menu-in {
   from {
@@ -502,6 +509,7 @@
   .menu-art {
     grid-column: 1;
     grid-row: 1 / span 2;
+    align-self: end;
   }
 
   .menu-art img {
@@ -544,7 +552,7 @@
   justify-content: flex-end;
   min-height: 100svh;
   overflow: hidden;
-  padding: 12rem 0 4rem;
+  padding: 8rem 0 7rem;
   position: relative;
 }
 
@@ -566,6 +574,23 @@
   inset: 0;
   opacity: 0.12;
   position: absolute;
+}
+
+.hero .container {
+  max-width: 182rem;
+  padding: 0 1.4rem;
+}
+
+@media (min-width: 768px) {
+  .hero .container {
+    padding: 0 2.8rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero .container {
+    padding: 0 5.6rem;
+  }
 }
 
 .hero-grid {
@@ -665,7 +690,7 @@
 
 @media (min-width: 1024px) {
   .hero {
-    padding: 14rem 0 6rem;
+    padding: 10rem 0 11rem;
   }
 
   .hero-grid {
@@ -1044,11 +1069,21 @@
   }
 }
 
-/* Features carousel */
+/* Features carousel & Pinned Scroll */
 .features {
   background: var(--white);
   overflow: hidden;
-  padding: 12rem 0;
+  padding: 10rem 0;
+  position: relative;
+}
+
+.features-inner {
+  width: 100%;
+}
+
+.feature-track-viewport {
+  overflow: hidden;
+  width: 100%;
 }
 
 .features-head {
@@ -1205,25 +1240,47 @@
   }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 992px) {
   .features {
-    padding: 18rem 0;
+    height: 100vh;
+    min-height: 70rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .features-inner {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
   }
 
   .features-head {
-    margin-bottom: 10rem;
+    margin-bottom: 5rem;
+  }
+
+  .feature-track-viewport {
+    overflow: hidden;
+    width: 100%;
   }
 
   .feature-track {
-    column-gap: 3rem;
-    /* Keep the first card aligned with the capped content column on wide screens. */
+    column-gap: 3.6rem;
+    overflow-x: visible;
+    scroll-snap-type: none;
+    width: max-content;
+    will-change: transform;
     --edge: max(8rem, calc((100vw - 168rem) / 2 + 8rem));
     padding: 0 var(--edge);
-    scroll-padding: 0 var(--edge);
   }
 
   .feature-card {
-    flex-basis: 52rem;
+    flex: 0 0 52rem;
+    max-width: 52rem;
   }
 
   .feature-card:last-child {
@@ -1232,20 +1289,20 @@
 
   .feature-img {
     border-radius: 2rem;
-    height: 42rem;
-    padding: 6rem;
+    height: 40rem;
+    padding: 5rem;
   }
 
   .feature-card h3 {
-    font-size: 4rem;
-    margin-bottom: 2rem;
-    padding: 0 2rem;
+    font-size: 3.8rem;
+    margin-bottom: 1.8rem;
+    padding: 0 1rem;
   }
 
   .feature-card p {
-    font-size: 2rem;
-    line-height: 1.5;
-    padding: 0 2rem;
+    font-size: 1.9rem;
+    line-height: 1.45;
+    padding: 0 1rem;
   }
 }
 
@@ -1273,10 +1330,6 @@
   top: 7rem;
 }
 
-.folder:last-child {
-  margin-bottom: 0;
-}
-
 .folder-1 { --folder: var(--blue); --folder-ink: var(--white); }
 .folder-2 { --folder: var(--soft); --folder-ink: var(--ink); }
 .folder-3 { --folder: var(--deep); --folder-ink: var(--white); }
@@ -1299,6 +1352,7 @@
   padding: 0 2.2rem;
   position: relative;
   text-transform: uppercase;
+  user-select: none;
 }
 
 /* Slanted right edge, like a paper folder tab */
@@ -1574,7 +1628,7 @@
 
 @media (min-width: 1024px) {
   .scope {
-    padding: 18rem 0;
+    padding: 18rem 0 0;
   }
 
   .scope-head {
@@ -1587,6 +1641,17 @@
 
   .folder {
     top: 11rem;
+  }
+
+  /* Runway ensures all 4 folders dock, align tabs, and stay locked before deck scrolls away */
+  .folders {
+    padding-bottom: 0;
+  }
+
+  .folders::after {
+    content: '';
+    display: block;
+    height: 28vh;
   }
 
   .folder-body {

@@ -21,7 +21,6 @@ export default function HomeHero() {
           </p>
           <div className="hero-actions">
             <PillButton href="#masalah">Kenapa penting</PillButton>
-            <ScrollLink href="#masalah">Scroll</ScrollLink>
           </div>
         </div>
         <a className="photo-credit" href="https://unsplash.com/@akhnaf17_" target="_blank" rel="noreferrer">
