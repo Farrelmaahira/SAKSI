@@ -1,0 +1,5 @@
+export { default as HomeTemplate } from './HomeTemplate'
+export { default as LacakTemplate } from './LacakTemplate'
+export { default as NotFoundTemplate } from './NotFoundTemplate'
+export { default as SimulasiTemplate } from './SimulasiTemplate'
+export { default as SiteLayout } from './SiteLayout'

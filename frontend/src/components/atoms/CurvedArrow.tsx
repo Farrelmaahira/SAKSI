@@ -1,0 +1,11 @@
+import { cn } from '@/lib/utils'
+import type { DoodleProps } from '@/interfaces/doodle'
+
+export default function CurvedArrow({ className }: DoodleProps) {
+  return (
+    <svg className={cn('doodle', className)} viewBox="0 0 160 120" aria-hidden="true">
+      <path d="M10 18c42-14 96 2 116 40 9 17 10 34 4 50" />
+      <path d="M112 92c7 6 13 12 18 18 6-9 13-16 22-22" />
+    </svg>
+  )
+}
