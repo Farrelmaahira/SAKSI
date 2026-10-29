@@ -12,13 +12,13 @@ import { sha256 } from '@/lib/contracts/sha256'
 import { shortHash } from '@/lib/contracts/short-hash'
 import { cn } from '@/lib/utils'
 
-export interface VerifyDocProps {
+interface Props {
   registry: SealedContract[]
   onOpen: (code: string) => void
 }
 
 /* Drop any file: its SHA-256 is computed in the browser and compared with the registry. */
-export default function VerifyDoc({ registry, onOpen }: VerifyDocProps) {
+export default function VerifyDoc({ registry, onOpen }: Props) {
   const [over, setOver] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<VerifyResult | null>(null)

@@ -4,14 +4,14 @@ import { ticketStepNotes } from '@/data/report-form'
 import { reportStatuses } from '@/data/report-statuses'
 import type { Report } from '@/interfaces/contract'
 
-export interface ReportTicketProps {
+interface Props {
   ticket: Report
   code: string
   onOpen: (code: string) => void
   onRestart: () => void
 }
 
-export default function ReportTicket({ ticket, code, onOpen, onRestart }: ReportTicketProps) {
+export default function ReportTicket({ ticket, code, onOpen, onRestart }: Props) {
   return (
     <div className="report-card ticket">
       <p className="ticket-label">Laporan diterima</p>

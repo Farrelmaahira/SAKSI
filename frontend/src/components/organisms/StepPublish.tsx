@@ -6,14 +6,14 @@ import type { Contract } from '@/interfaces/contract'
 import { formatRp } from '@/lib/contracts/format-rp'
 import { shortHash } from '@/lib/contracts/short-hash'
 
-export interface StepPublishProps {
+interface Props {
   published: Contract | null
   sealed: string
   onPublish: () => void
   onReset: () => void
 }
 
-export default function StepPublish({ published, sealed, onPublish, onReset }: StepPublishProps) {
+export default function StepPublish({ published, sealed, onPublish, onReset }: Props) {
   return (
     <div className="publish-step">
       {!published ? (

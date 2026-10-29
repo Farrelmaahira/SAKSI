@@ -1,11 +1,11 @@
-import Illustration from '@/components/atoms/Illustration'
-import type { Benefit } from '@/interfaces/content'
+import Illustration from "@/components/atoms/Illustration";
+import type { Benefit } from "@/interfaces/content";
 
-export interface BenefitCardProps {
-  benefit: Benefit
+interface Props {
+  benefit: Benefit;
 }
 
-export default function BenefitCard({ benefit }: BenefitCardProps) {
+export default function BenefitCard({ benefit }: Props) {
   return (
     <article className="benefit-card" data-reveal>
       <div className="benefit-img">
@@ -14,5 +14,5 @@ export default function BenefitCard({ benefit }: BenefitCardProps) {
       <h3>{benefit.title}</h3>
       <p>{benefit.text}</p>
     </article>
-  )
+  );
 }

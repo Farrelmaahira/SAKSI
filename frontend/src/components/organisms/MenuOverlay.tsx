@@ -5,12 +5,12 @@ import CurvedArrow from '@/components/atoms/CurvedArrow'
 import { navLinks } from '@/data/nav-links'
 import { cn } from '@/lib/utils'
 
-export interface MenuOverlayProps {
+interface Props {
   open: boolean
   onClose: () => void
 }
 
-export default function MenuOverlay({ open, onClose }: MenuOverlayProps) {
+export default function MenuOverlay({ open, onClose }: Props) {
   return (
     <div className={cn('menu', open && 'is-open')} aria-hidden={!open}>
       <button className="menu-close" onClick={onClose} aria-label="Tutup menu" tabIndex={open ? 0 : -1}>

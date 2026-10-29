@@ -2,13 +2,13 @@ import Image from 'next/image'
 import { illustrations, type IllustrationName } from '@/data/illustrations'
 import { img } from '@/lib/img'
 
-export interface IllustrationProps {
+interface Props {
   name: IllustrationName
   alt?: string
   loading?: 'lazy' | 'eager'
 }
 
-export default function Illustration({ name, alt = '', loading = 'eager' }: IllustrationProps) {
+export default function Illustration({ name, alt = '', loading = 'eager' }: Props) {
   const { width, height } = illustrations[name]
   return <Image src={img(name)} alt={alt} width={width} height={height} loading={loading} />
 }

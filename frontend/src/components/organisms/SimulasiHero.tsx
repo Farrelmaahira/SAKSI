@@ -20,7 +20,10 @@ export default function SimulasiHero() {
           </h1>
         </div>
         <div className="ph-body">
-          <p className="page-lead">Tidak perlu paham hukum. Ikuti panduan, seret kartu, dan lihat bagaimana SAKSI menjaga kontrak dari draf sampai diawasi warga.</p>
+          <p className="page-lead">
+            Tidak perlu paham hukum. Ikuti panduan, seret kartu, dan lihat
+            bagaimana SAKSI menjaga kontrak dari draf sampai diawasi warga.
+          </p>
           <div className="hero-actions">
             <PillButton href="#simulasi">Mulai simulasi</PillButton>
           </div>

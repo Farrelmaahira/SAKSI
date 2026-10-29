@@ -1,8 +1,8 @@
-export interface SignatureProps {
+interface Props {
   variant: 'a' | 'b'
 }
 
-export default function Signature({ variant }: SignatureProps) {
+export default function Signature({ variant }: Props) {
   const d =
     variant === 'a'
       ? 'M6 38c10-18 18-30 22-28 5 3-12 26-6 27 6 1 12-20 17-18 4 2-3 14 1 15 4 1 8-9 12-8 3 1 1 6 4 6 4 0 8-5 14-6M20 44c18-3 36-4 52-3'

@@ -3,7 +3,7 @@ import Illustration from '@/components/atoms/Illustration'
 import type { SealedContract } from '@/interfaces/contract'
 import ReportForm from './ReportForm'
 
-export interface ReportSectionProps {
+interface Props {
   ref: Ref<HTMLElement>
   registry: SealedContract[]
   code: string
@@ -12,7 +12,7 @@ export interface ReportSectionProps {
   onOpen: (code: string) => void
 }
 
-export default function ReportSection({ ref, registry, code, onCode, onSubmitted, onOpen }: ReportSectionProps) {
+export default function ReportSection({ ref, registry, code, onCode, onSubmitted, onOpen }: Props) {
   return (
     <section className="report-sec" id="lapor" ref={ref}>
       <div className="container report-grid">

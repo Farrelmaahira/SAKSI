@@ -24,7 +24,6 @@ export default function FeaturesSection() {
         const wrap = wrapRef.current
         if (!track || !wrap) return
 
-        // Hitung jarak geser horizontal agar kartu terakhir (ke-5) berhenti pas di ujung kanan layar
         const getDistance = () => {
           return track.scrollWidth - window.innerWidth + 140
         }
@@ -37,11 +36,10 @@ export default function FeaturesSection() {
             start: 'top top',
             end: () => `+=${Math.max(window.innerHeight * 2, getDistance() * 1.4)}`,
             pin: true,
-            scrub: 1.2, // GSAP physics smooth scrub lerp
+            scrub: 1.2,
             anticipatePin: 1,
             invalidateOnRefresh: true,
             onUpdate: (self) => {
-              // Hitung index aktif dari progress scroll 0 s.d. 1
               const cardIdx = Math.min(
                 features.length - 1,
                 Math.max(0, Math.floor(self.progress * features.length * 0.999))
@@ -58,7 +56,6 @@ export default function FeaturesSection() {
     return () => ctx.revert()
   }, [])
 
-  // Fungsi navigasi tombol panah kiri / kanan
   const goToCard = (index: number) => {
     const clamped = Math.max(0, Math.min(features.length - 1, index))
     setActive(clamped)
@@ -90,6 +87,7 @@ export default function FeaturesSection() {
                 0{active + 1} <em>/ 0{features.length}</em>
               </span>
               <button
+                type="button"
                 onClick={() => goToCard(active - 1)}
                 aria-label="Fitur sebelumnya"
                 disabled={active === 0}
@@ -97,6 +95,7 @@ export default function FeaturesSection() {
                 <Arrow dir="left" />
               </button>
               <button
+                type="button"
                 onClick={() => goToCard(active + 1)}
                 aria-label="Fitur berikutnya"
                 disabled={active === features.length - 1}

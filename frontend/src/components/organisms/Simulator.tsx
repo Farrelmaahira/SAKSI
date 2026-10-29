@@ -1,151 +1,184 @@
-'use client'
+"use client";
 
-import { useEffect, useRef, useState } from 'react'
-import { DndContext, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
-import Arrow from '@/components/atoms/Arrow'
-import PillButton from '@/components/atoms/PillButton'
-import DragPreview from '@/components/molecules/DragPreview'
-import SimScenario from '@/components/molecules/SimScenario'
-import { BASE_VALUE, clauses, distractor, signItems, steps, typeFeedback, unsigned } from '@/data/simulator'
-import type { Contract } from '@/interfaces/contract'
-import type { SignedState } from '@/interfaces/simulator'
-import { contractText } from '@/lib/contracts/contract-text'
-import { saveSimContract } from '@/lib/contracts/save-sim-contract'
-import { sha256 } from '@/lib/contracts/sha256'
-import { buildSimContract } from '@/lib/simulator/build-sim-contract'
-import { randomHex } from '@/lib/simulator/random-hex'
-import SimSidebar from './SimSidebar'
-import StepClauses from './StepClauses'
-import StepHash from './StepHash'
-import StepPublish from './StepPublish'
-import StepSign from './StepSign'
-import StepType from './StepType'
+import { useEffect, useRef, useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import Arrow from "@/components/atoms/Arrow";
+import PillButton from "@/components/atoms/PillButton";
+import DragPreview from "@/components/molecules/DragPreview";
+import SimScenario from "@/components/molecules/SimScenario";
+import {
+  BASE_VALUE,
+  clauses,
+  distractor,
+  signItems,
+  steps,
+  typeFeedback,
+  unsigned,
+} from "@/data/simulator";
+import type { Contract } from "@/interfaces/contract";
+import type { SignedState } from "@/interfaces/simulator";
+import { contractText } from "@/lib/contracts/contract-text";
+import { saveSimContract } from "@/lib/contracts/save-sim-contract";
+import { sha256 } from "@/lib/contracts/sha256";
+import { buildSimContract } from "@/lib/simulator/build-sim-contract";
+import { randomHex } from "@/lib/simulator/random-hex";
+import SimSidebar from "./SimSidebar";
+import StepClauses from "./StepClauses";
+import StepHash from "./StepHash";
+import StepPublish from "./StepPublish";
+import StepSign from "./StepSign";
+import StepType from "./StepType";
 
 export default function Simulator() {
-  const [step, setStep] = useState(0)
-  const [type, setType] = useState<string | null>(null)
-  const [typeMsg, setTypeMsg] = useState<string | null>(null)
-  const [placed, setPlaced] = useState<string[]>([])
-  const [aiIds, setAiIds] = useState<string[]>([])
-  const [clauseMsg, setClauseMsg] = useState<string | null>(null)
-  const [signed, setSigned] = useState<SignedState>(unsigned)
-  const [signMsg, setSignMsg] = useState<string | null>(null)
-  const [sealed, setSealed] = useState('')
-  const [scramble, setScramble] = useState('')
-  const [value, setValue] = useState(BASE_VALUE)
-  const [liveHash, setLiveHash] = useState('')
-  const [published, setPublished] = useState<Contract | null>(null)
-  const [dragging, setDragging] = useState<string | null>(null)
-  const [code] = useState(() => `SKS-SIM-${Math.floor(1000 + Math.random() * 9000)}`)
-  const rootRef = useRef<HTMLDivElement>(null)
-  const firstRender = useRef(true)
+  const [step, setStep] = useState(0);
+  const [type, setType] = useState<string | null>(null);
+  const [typeMsg, setTypeMsg] = useState<string | null>(null);
+  const [placed, setPlaced] = useState<string[]>([]);
+  const [aiIds, setAiIds] = useState<string[]>([]);
+  const [clauseMsg, setClauseMsg] = useState<string | null>(null);
+  const [signed, setSigned] = useState<SignedState>(unsigned);
+  const [signMsg, setSignMsg] = useState<string | null>(null);
+  const [sealed, setSealed] = useState("");
+  const [scramble, setScramble] = useState("");
+  const [value, setValue] = useState(BASE_VALUE);
+  const [liveHash, setLiveHash] = useState("");
+  const [published, setPublished] = useState<Contract | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [code] = useState(
+    () => `SKS-SIM-${Math.floor(1000 + Math.random() * 9000)}`,
+  );
+  const rootRef = useRef<HTMLDivElement>(null);
+  const firstRender = useRef(true);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 140, tolerance: 6 } }),
-  )
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 140, tolerance: 6 },
+    }),
+  );
 
-  const missing = clauses.filter((c) => !placed.includes(c.id))
-  const allSigned = signed.kades && signed.meterai && signed.penyedia
-  const done = [type === 'Pengadaan', missing.length === 0, allSigned, Boolean(sealed), Boolean(published)]
+  const missing = clauses.filter((c) => !placed.includes(c.id));
+  const allSigned = signed.kades && signed.meterai && signed.penyedia;
+  const done = [
+    type === "Pengadaan",
+    missing.length === 0,
+    allSigned,
+    Boolean(sealed),
+    Boolean(published),
+  ];
 
-  // Keep the workspace in view when moving between steps.
   useEffect(() => {
     if (firstRender.current) {
-      firstRender.current = false
-      return
+      firstRender.current = false;
+      return;
     }
-    const el = rootRef.current
-    if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }, [step])
+    const el = rootRef.current;
+    if (el && el.getBoundingClientRect().top < 0)
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [step]);
 
-  // Recompute the fingerprint live while the user edits the contract value.
   useEffect(() => {
-    if (!sealed) return
-    let alive = true
-    sha256(contractText(buildSimContract(code, placed, value))).then((h) => alive && setLiveHash(h))
+    if (!sealed) return;
+    let alive = true;
+    sha256(contractText(buildSimContract(code, placed, value))).then(
+      (h) => alive && setLiveHash(h),
+    );
     return () => {
-      alive = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, sealed])
+      alive = false;
+    };
+  }, [value, sealed]);
 
   const chooseType = (id: string) => {
-    if (id === 'Pengadaan') {
-      setType(id)
-      setTypeMsg(null)
+    if (id === "Pengadaan") {
+      setType(id);
+      setTypeMsg(null);
     } else {
-      setTypeMsg(typeFeedback[id])
+      setTypeMsg(typeFeedback[id]);
     }
-  }
+  };
 
   const addClause = (id: string) => {
-    if (id === distractor.id) return setClauseMsg(distractor.reason)
-    setClauseMsg(null)
-    setPlaced((p) => (p.includes(id) ? p : [...p, id]))
-  }
+    if (id === distractor.id) return setClauseMsg(distractor.reason);
+    setClauseMsg(null);
+    setPlaced((p) => (p.includes(id) ? p : [...p, id]));
+  };
 
   const applyAi = (id: string) => {
-    setAiIds((a) => [...a, id])
-    addClause(id)
-  }
+    setAiIds((a) => [...a, id]);
+    addClause(id);
+  };
 
   const placeSign = (id: string, zone: string) => {
-    const item = signItems.find((s) => s.id === id)
-    if (!item) return
-    if (item.zone !== zone) return setSignMsg('Kotak itu untuk pihak lain. Coba seret ke kotak yang sesuai namanya.')
-    setSignMsg(null)
-    setSigned((s) => ({ ...s, [item.key]: true }))
-  }
+    const item = signItems.find((s) => s.id === id);
+    if (!item) return;
+    if (item.zone !== zone)
+      return setSignMsg(
+        "Kotak itu untuk pihak lain. Coba seret ke kotak yang sesuai namanya.",
+      );
+    setSignMsg(null);
+    setSigned((s) => ({ ...s, [item.key]: true }));
+  };
 
   const seal = async () => {
-    const h = await sha256(contractText(buildSimContract(code, placed, BASE_VALUE)))
-    let i = 0
+    const h = await sha256(
+      contractText(buildSimContract(code, placed, BASE_VALUE)),
+    );
+    let i = 0;
     const t = setInterval(() => {
-      i += 1
-      setScramble(randomHex(64))
+      i += 1;
+      setScramble(randomHex(64));
       if (i > 16) {
-        clearInterval(t)
-        setSealed(h)
-        setLiveHash(h)
+        clearInterval(t);
+        setSealed(h);
+        setLiveHash(h);
       }
-    }, 40)
-  }
+    }, 40);
+  };
 
   const publish = () => {
-    const c = buildSimContract(code, placed, BASE_VALUE)
-    saveSimContract(c)
-    setValue(BASE_VALUE)
-    setPublished(c)
-  }
+    const c = buildSimContract(code, placed, BASE_VALUE);
+    saveSimContract(c);
+    setValue(BASE_VALUE);
+    setPublished(c);
+  };
 
   const reset = () => {
-    setStep(0)
-    setType(null)
-    setTypeMsg(null)
-    setPlaced([])
-    setAiIds([])
-    setClauseMsg(null)
-    setSigned(unsigned)
-    setSignMsg(null)
-    setSealed('')
-    setScramble('')
-    setValue(BASE_VALUE)
-    setLiveHash('')
-    setPublished(null)
-  }
+    setStep(0);
+    setType(null);
+    setTypeMsg(null);
+    setPlaced([]);
+    setAiIds([]);
+    setClauseMsg(null);
+    setSigned(unsigned);
+    setSignMsg(null);
+    setSealed("");
+    setScramble("");
+    setValue(BASE_VALUE);
+    setLiveHash("");
+    setPublished(null);
+  };
 
-  const onDragStart = ({ active }: DragStartEvent) => setDragging(String(active.id))
+  const onDragStart = ({ active }: DragStartEvent) =>
+    setDragging(String(active.id));
 
   const onDragEnd = ({ active, over }: DragEndEvent) => {
-    setDragging(null)
-    if (!over) return
-    const id = String(active.id)
-    const target = String(over.id)
-    if (step === 0 && target === 'desk') chooseType(id)
-    if (step === 1 && target === 'draft') addClause(id)
-    if (step === 2) placeSign(id, target)
-  }
+    setDragging(null);
+    if (!over) return;
+    const id = String(active.id);
+    const target = String(over.id);
+    if (step === 0 && target === "desk") chooseType(id);
+    if (step === 1 && target === "draft") addClause(id);
+    if (step === 2) placeSign(id, target);
+  };
 
   return (
     <div className="sim" ref={rootRef}>
@@ -161,11 +194,27 @@ export default function Simulator() {
             </p>
             <h3>{steps[step].title}</h3>
             <p className="stage-guide">{steps[step].guide}</p>
-            {step < 3 && <p className="touch-hint">Di ponsel, ketuk kartu untuk menaruhnya.</p>}
+            {step < 3 && (
+              <p className="touch-hint">
+                Di ponsel, ketuk kartu untuk menaruhnya.
+              </p>
+            )}
           </header>
 
-          <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
-            {step === 0 && <StepType type={type} message={typeMsg} onChoose={chooseType} onClear={() => setType(null)} />}
+          <DndContext
+            sensors={sensors}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragCancel={() => setDragging(null)}
+          >
+            {step === 0 && (
+              <StepType
+                type={type}
+                message={typeMsg}
+                onChoose={chooseType}
+                onClear={() => setType(null)}
+              />
+            )}
             {step === 1 && (
               <StepClauses
                 placed={placed}
@@ -176,9 +225,16 @@ export default function Simulator() {
                 onApplyAi={applyAi}
               />
             )}
-            {step === 2 && <StepSign signed={signed} message={signMsg} onPlace={placeSign} />}
+            {step === 2 && (
+              <StepSign signed={signed} message={signMsg} onPlace={placeSign} />
+            )}
 
-            <DragOverlay dropAnimation={{ duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' }}>
+            <DragOverlay
+              dropAnimation={{
+                duration: 220,
+                easing: "cubic-bezier(.2,.8,.2,1)",
+              }}
+            >
               <DragPreview id={dragging} />
             </DragOverlay>
           </DndContext>
@@ -197,14 +253,30 @@ export default function Simulator() {
             />
           )}
 
-          {step === 4 && <StepPublish published={published} sealed={sealed} onPublish={publish} onReset={reset} />}
+          {step === 4 && (
+            <StepPublish
+              published={published}
+              sealed={sealed}
+              onPublish={publish}
+              onReset={reset}
+            />
+          )}
 
           <footer className="sim-nav">
-            <button type="button" className="text-btn" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
+            <button
+              type="button"
+              className="text-btn"
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              disabled={step === 0}
+            >
               <Arrow dir="left" /> Kembali
             </button>
             {step < steps.length - 1 && (
-              <PillButton tone="blue" onClick={() => setStep((s) => s + 1)} disabled={!done[step]}>
+              <PillButton
+                tone="blue"
+                onClick={() => setStep((s) => s + 1)}
+                disabled={!done[step]}
+              >
                 Langkah berikutnya
               </PillButton>
             )}
@@ -212,5 +284,5 @@ export default function Simulator() {
         </section>
       </div>
     </div>
-  )
+  );
 }

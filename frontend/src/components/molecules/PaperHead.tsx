@@ -1,12 +1,12 @@
 import { cn } from '@/lib/utils'
 
-export interface PaperHeadProps {
+interface Props {
   title: string
   status: string
   ok: boolean
 }
 
-export default function PaperHead({ title, status, ok }: PaperHeadProps) {
+export default function PaperHead({ title, status, ok }: Props) {
   return (
     <div className="paper-head">
       <span>{title}</span>

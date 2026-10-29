@@ -15,19 +15,19 @@ export default function Navbar({ cta, onOpenMenu }: NavbarProps) {
         <Image
           src="/logo-saksi.png"
           alt="Logo SAKSI"
-          width={72}
-          height={72}
+          width={64}
+          height={64}
           priority
-          style={{ filter: 'brightness(0) invert(1)' }}
         />
+        <span>SAKSI</span>
       </Link>
-      <p className="navbar-caption">SAKSI (Sistem Audit Kontrak Segel Integritas)</p>
-      <div className="navbar-right">
-        {cta && <PillButton to={cta.href}>{cta.label}</PillButton>}
+      <div className="navbar-actions">
+        {cta && <PillButton href={cta.href}>{cta.label}</PillButton>}
         <button
-          className="menu-toggle"
+          className="navbar-burger"
+          type="button"
           onClick={onOpenMenu}
-          aria-label="Buka menu"
+          aria-label="Buka menu navigasi"
         >
           <span />
           <span />

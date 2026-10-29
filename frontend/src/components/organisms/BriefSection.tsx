@@ -26,20 +26,17 @@ export default function BriefSection() {
           },
         })
 
-        // 1. Fade-in teks utama warna putih
         tl.fromTo(
           whiteTextRef.current,
           { opacity: 0, y: 16 },
           { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' },
         )
-          // 2. Loop doodle muncul cepat mengitari kata 'penyimpangan'
           .fromTo(
             loopRef.current,
             { opacity: 0, scale: 0.85 },
             { opacity: 1, scale: 1, duration: 0.35, ease: 'back.out(1.5)' },
             '-=0.3',
           )
-          // 3. Teks abu-abu langsung menyusul cepat (beda sangat tipis, tidak kelamaan)
           .fromTo(
             greyTextRef.current,
             { opacity: 0, y: 12 },

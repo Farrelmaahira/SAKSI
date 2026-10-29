@@ -1,12 +1,12 @@
 import Illustration from '@/components/atoms/Illustration'
 import type { FlowItem } from '@/interfaces/content'
 
-export interface FlowStepProps {
+interface Props {
   item: FlowItem
   index: number
 }
 
-export default function FlowStep({ item, index }: FlowStepProps) {
+export default function FlowStep({ item, index }: Props) {
   return (
     <li>
       <div className="flow-art">

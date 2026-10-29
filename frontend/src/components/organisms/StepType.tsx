@@ -7,14 +7,14 @@ import TypeCardBody from '@/components/molecules/TypeCardBody'
 import { types } from '@/data/simulator'
 import { cn } from '@/lib/utils'
 
-export interface StepTypeProps {
+interface Props {
   type: string | null
   message: string | null
   onChoose: (id: string) => void
   onClear: () => void
 }
 
-export default function StepType({ type, message, onChoose, onClear }: StepTypeProps) {
+export default function StepType({ type, message, onChoose, onClear }: Props) {
   return (
     <>
       <div className="sim-split">

@@ -6,11 +6,11 @@ import Footer from '@/components/organisms/Footer'
 import MenuOverlay from '@/components/organisms/MenuOverlay'
 import Navbar from '@/components/organisms/Navbar'
 
-export interface SiteLayoutProps {
+interface Props {
   children: ReactNode
 }
 
-export default function SiteLayout({ children }: SiteLayoutProps) {
+export default function SiteLayout({ children }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const pathname = usePathname()
 

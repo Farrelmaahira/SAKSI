@@ -215,8 +215,9 @@
   transform: scaleY(1);
 }
 
+/* The roll holds two stacked copies of the label; -50% moves up exactly one line to reveal the white copy. */
 .pill:hover .pill-roll {
-  transform: translateY(-100%);
+  transform: translateY(-50%);
 }
 
 @media (min-width: 768px) {
@@ -1324,18 +1325,27 @@
   max-width: 60rem;
 }
 
+/* Equal-height rows: with sticky stacking, a taller folder would peek out above the one covering it. */
+.folders {
+  display: grid;
+  grid-auto-rows: 1fr;
+  row-gap: 14vh;
+}
+
 .folder {
   margin-bottom: 14vh;
   position: sticky;
   top: 7rem;
 }
-
 .folder-1 { --folder: var(--blue); --folder-ink: var(--white); }
 .folder-2 { --folder: var(--soft); --folder-ink: var(--ink); }
 .folder-3 { --folder: var(--deep); --folder-ink: var(--white); }
 .folder-4 { --folder: var(--ink); --folder-ink: var(--white); }
 
 .folder-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   position: relative;
 }
 
@@ -1348,6 +1358,7 @@
   font-size: 1.4rem;
   gap: 1rem;
   height: 4.6rem;
+  align-self: flex-start;
   margin-left: calc(var(--i) * 22%);
   padding: 0 2.2rem;
   position: relative;
@@ -1379,6 +1390,7 @@
   border-radius: 0 2rem 2rem 2rem;
   color: var(--folder-ink);
   display: grid;
+  flex: 1;
   gap: 3.6rem;
   padding: 3.4rem 2.4rem 3rem;
   position: relative;
@@ -1594,10 +1606,6 @@
 }
 
 @media (min-width: 768px) {
-  .folder {
-    top: 9rem;
-  }
-
   .folder-tab {
     font-size: 1.5rem;
     height: 5.4rem;
@@ -1653,7 +1661,6 @@
     display: block;
     height: 28vh;
   }
-
   .folder-body {
     align-items: center;
     gap: 8rem;

@@ -1,4 +1,4 @@
-import SimulasiTemplate from '@/components/templates/SimulasiTemplate'
+import SimulasiTemplate from '@/components/organisms/SimulasiTemplate'
 import '@/styles/pages.css'
 import '@/styles/sim.css'
 

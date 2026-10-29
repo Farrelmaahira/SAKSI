@@ -5,7 +5,7 @@ import type { SealedContract } from '@/interfaces/contract'
 import { shortHash } from '@/lib/contracts/short-hash'
 import ContractDetail from './ContractDetail'
 
-export interface TrackResultsProps {
+interface Props {
   ref: Ref<HTMLElement>
   registry: SealedContract[]
   loading: boolean
@@ -15,7 +15,7 @@ export interface TrackResultsProps {
   onReport: () => void
 }
 
-export default function TrackResults({ ref, registry, loading, query: q, found, onOpen, onReport }: TrackResultsProps) {
+export default function TrackResults({ ref, registry, loading, query: q, found, onOpen, onReport }: Props) {
   return (
     <section className="track-results" ref={ref}>
       <div className="container">

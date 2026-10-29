@@ -3,11 +3,11 @@
 import { useState } from 'react'
 import type { FaqEntry } from '@/interfaces/content'
 
-export interface FaqItemProps {
+interface Props {
   entry: FaqEntry
 }
 
-export default function FaqItem({ entry }: FaqItemProps) {
+export default function FaqItem({ entry }: Props) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (

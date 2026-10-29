@@ -1,4 +1,4 @@
-export interface TypeIconProps {
+interface Props {
   kind: string
 }
 
@@ -10,7 +10,7 @@ const paths: Record<string, string[]> = {
 }
 
 /* Contract type icons, drawn as simple line marks. */
-export default function TypeIcon({ kind }: TypeIconProps) {
+export default function TypeIcon({ kind }: Props) {
   return (
     <svg className="type-icon" viewBox="0 0 24 24" aria-hidden="true">
       {(paths[kind] ?? []).map((d) => (
