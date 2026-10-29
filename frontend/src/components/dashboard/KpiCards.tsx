@@ -1,9 +1,9 @@
 'use client'
 
 import React from 'react'
-import type { KpiMetric } from '@/types/dashboard'
+import { KpiMetric } from '@/types/dashboard'
 
-interface KpiCardsProps {
+export interface KpiCardsProps {
   metrics: KpiMetric[]
 }
 

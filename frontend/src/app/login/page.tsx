@@ -1,52 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import type { UserRole } from '@/types/dashboard'
-import { DEMO_USERS } from '@/data/dashboard'
+import { useAuth } from '@/hooks/use-auth'
 import '@/styles/login.css'
 import '@/styles/dashboard.css'
 
-export default function LoginPage() {
-  const router = useRouter()
+export function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
-  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+
+  // Logic extracted into custom hook
+  const { statusMessage, isLoading, login, quickLogin } = useAuth('kades')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!username.trim() || !password.trim()) {
-      setStatusMessage('Silakan lengkapi username dan kata sandi Anda.')
-      return
-    }
-    setStatusMessage('Memproses verifikasi akun ke sistem SAKSI...')
-    setTimeout(() => {
-      // Route based on username match or default to kades
-      let matchedRole: UserRole = 'kades'
-      if (username.includes('bpd')) matchedRole = 'bpd'
-      else if (username.includes('inspektorat')) matchedRole = 'inspektorat'
-      router.push(`/dashboard?role=${matchedRole}`)
-    }, 400)
+    login(username, password)
   }
 
-  const handleQuickLogin = (role: UserRole) => {
-    const user = DEMO_USERS[role]
-    setUsername(user.nip)
-    setPassword('••••••••••••')
-    setStatusMessage(`Masuk sebagai ${user.roleLabel}...`)
-    setTimeout(() => {
-      router.push(`/dashboard?role=${role}`)
-    }, 450)
+  const handleDemoClick = (role: 'kades' | 'bpd' | 'inspektorat') => {
+    quickLogin(role)
   }
 
   return (
     <main className="login-page">
       <section className="login-visual" aria-label="Visual desa SAKSI">
         <Image
-          src="/images/hero-village-2400.jpg"
+          src="/images/desa-indonesia.webp"
           alt="Pemandangan Desa di Indonesia"
           fill
           priority
@@ -60,12 +42,11 @@ export default function LoginPage() {
             <Image
               src="/logo-saksi.png"
               alt="Logo SAKSI"
-              width={64}
-              height={64}
+              width={72}
+              height={72}
               priority
-              style={{ filter: 'brightness(0) invert(1)' }}
+              style={{ filter: 'brightness(0) invert(1)', width: 'auto', height: '56px' }}
             />
-            <span>SAKSI</span>
           </Link>
         </div>
 
@@ -107,7 +88,7 @@ export default function LoginPage() {
                 id="username"
                 type="text"
                 className="login-input"
-                placeholder="Contoh: kades.sukamaju atau 1985..."
+                placeholder="Contoh: 197204121998031004 atau kades.sukamaju"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -143,43 +124,29 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <button type="submit" className="login-submit-btn">
-              Masuk ke Sistem →
+            <button type="submit" className="login-submit-btn" disabled={isLoading}>
+              {isLoading ? 'Memverifikasi...' : 'Masuk ke Sistem'}
             </button>
           </form>
 
-          {/* Quick-Fill Demo Cards */}
+          {/* Quick-fill accounts with clean badges (zero emojis) */}
           <div className="demo-quick-section">
             <div className="demo-quick-title">Coba Cepat Akun Demo</div>
             <div className="demo-roles-grid">
               <button
                 type="button"
                 className="demo-role-pill-btn"
-                onClick={() => handleQuickLogin('kades')}
+                onClick={() => handleDemoClick('kades')}
               >
-                <span className="demo-role-emoji">👨‍💼</span>
-                <span className="demo-role-btn-name">Kepala Desa</span>
-                <span className="demo-role-btn-nip">kades.sukamaju</span>
+                Kepala Desa
               </button>
 
               <button
                 type="button"
                 className="demo-role-pill-btn"
-                onClick={() => handleQuickLogin('bpd')}
+                onClick={() => handleDemoClick('bpd')}
               >
-                <span className="demo-role-emoji">🛡️</span>
-                <span className="demo-role-btn-name">BPD Pengawas</span>
-                <span className="demo-role-btn-nip">bpd.pengawas</span>
-              </button>
-
-              <button
-                type="button"
-                className="demo-role-pill-btn"
-                onClick={() => handleQuickLogin('inspektorat')}
-              >
-                <span className="demo-role-emoji">📋</span>
-                <span className="demo-role-btn-name">Inspektorat</span>
-                <span className="demo-role-btn-nip">inspektorat.audit</span>
+                BPD Pengawas
               </button>
             </div>
           </div>
@@ -192,3 +159,5 @@ export default function LoginPage() {
     </main>
   )
 }
+
+export default LoginPage

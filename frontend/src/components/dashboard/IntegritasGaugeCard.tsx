@@ -2,7 +2,7 @@
 
 import React from 'react'
 
-interface IntegritasGaugeProps {
+export interface IntegritasGaugeProps {
   score?: number
 }
 

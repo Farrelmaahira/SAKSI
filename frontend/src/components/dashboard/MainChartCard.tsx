@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 
-interface PointData {
+export interface PointData {
   date: string
   current: number
   previous: number

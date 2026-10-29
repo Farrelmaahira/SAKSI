@@ -1,10 +1,10 @@
 'use client'
 
 import React from 'react'
-import type { WidgetOption } from '@/types/dashboard'
+import { WidgetOption } from '@/types/dashboard'
 import { WIDGET_OPTIONS } from '@/data/dashboard'
 
-interface AddWidgetDrawerProps {
+export interface AddWidgetDrawerProps {
   isOpen: boolean
   onClose: () => void
   onSelectWidget?: (widget: WidgetOption) => void

@@ -2,7 +2,7 @@
 
 import React from 'react'
 
-interface DayData {
+export interface DayData {
   label: string
   shortDay: string
   height: number

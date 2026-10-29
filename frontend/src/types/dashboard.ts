@@ -1,12 +1,12 @@
-export type UserRole = 'kades' | 'bpd' | 'inspektorat'
-
 export interface UserProfile {
   name: string
-  role: UserRole
+  role: 'kades' | 'bpd' | 'inspektorat'
   roleLabel: string
-  avatar: string
+  roleSubtitle: string
+  avatarInitial: string
   nip: string
-  desa: string
+  villageName: string
+  email: string
 }
 
 export interface KpiMetric {
@@ -22,14 +22,16 @@ export interface KpiMetric {
   iconType: 'document' | 'wallet' | 'shield' | 'alert'
 }
 
-export interface ContractRow {
-  id: string
-  name: string
-  vendor: string
+export interface ContractItem {
+  contractId: string
+  title: string
+  vendorName: string
   amount: number
-  status: 'tersegel' | 'audit_lengkap' | 'dalam_tinjauan' | 'perlu_revisi'
+  status: 'sealed' | 'audit_complete' | 'under_review' | 'draft'
   rating: number
-  soldQty?: number
+  volume: string
+  fiscalYear: number
+  integrityScore: number
 }
 
 export interface WidgetOption {
@@ -40,3 +42,52 @@ export interface WidgetOption {
   tag: string
 }
 
+export interface SpkItem {
+  spkNumber: string
+  contractId: string
+  title: string
+  vendorName: string
+  amount: number
+  issuedDate: string
+  dueDate: string
+  status: 'issued' | 'in_progress' | 'completed' | 'draft'
+}
+
+export interface TerminItem {
+  terminNumber: number
+  label: string
+  percentage: number
+  amount: number
+  status: 'disbursed' | 'verified' | 'pending'
+  sp2dNumber?: string
+  disbursementDate?: string
+  physicalProgress: number
+  notes: string
+}
+
+export interface AuditFinding {
+  id: string
+  findingNumber: string
+  contractNumber: string
+  issue: string
+  riskLevel: 'high' | 'medium' | 'low'
+  recommendation: string
+  status: 'resolved' | 'action_required' | 'under_investigation'
+}
+
+export interface CitizenReportItem {
+  reportId: string
+  projectTitle: string
+  reporterCategory: string
+  issueText: string
+  submittedDate: string
+  status: 'reviewed' | 'investigating' | 'resolved'
+  location: string
+}
+
+export interface DashboardOverview {
+  metrics: KpiMetric[]
+  contracts: ContractItem[]
+  integrityIndex: number
+  realizationBudget: number
+}

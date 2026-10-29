@@ -22,6 +22,150 @@
   --dash-upgrade-grad-end: #1B2C69;
 }
 
+/* Dark Mode Tokens & Overrides */
+[data-theme="dark"],
+.dark {
+  --dash-bg-page: #0C0D12;
+  --dash-bg-surface: #14161E;
+  --dash-border-subtle: #242734;
+  --dash-text-primary: #F0F2F8;
+  --dash-text-secondary: #9DA3B4;
+  --dash-text-muted: #6B7280;
+  --dash-accent: #4B7BFF;
+  --dash-accent-soft: rgba(75, 123, 255, 0.16);
+  --dash-chart-line: #4B7BFF;
+  --dash-bar-active: #4B7BFF;
+  --dash-bar-idle: #202432;
+  --dash-success: #22C55E;
+  --dash-success-bg: rgba(34, 197, 94, 0.15);
+  --dash-danger: #EF4444;
+  --dash-danger-bg: rgba(239, 68, 68, 0.15);
+  --dash-star: #F5B82E;
+}
+
+[data-theme="dark"] .dashboard-sidebar {
+  border-right-color: #202432;
+}
+
+[data-theme="dark"] .dashboard-topbar {
+  border-bottom-color: #202432;
+}
+
+[data-theme="dark"] .topbar-search-input {
+  background: #1B1E29;
+  border-color: #282C3C;
+  color: #F0F2F8;
+}
+
+[data-theme="dark"] .topbar-search-input:focus {
+  background: #202433;
+  border-color: #4B7BFF;
+}
+
+[data-theme="dark"] .topbar-shortcut-badge {
+  background: #25293A;
+  color: #9DA3B4;
+}
+
+[data-theme="dark"] .topbar-circle-btn {
+  background: #1B1E29;
+  border-color: #282C3C;
+  color: #9DA3B4;
+}
+
+[data-theme="dark"] .topbar-circle-btn:hover {
+  background: #25293A;
+  color: #F0F2F8;
+}
+
+[data-theme="dark"] .topbar-role-selector {
+  background: #1B1E29;
+  border-color: #282C3C;
+}
+
+[data-theme="dark"] .topbar-dropdown-panel {
+  background: #181B26 !important;
+  border-color: #282C3C !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="dark"] .contracts-table th {
+  border-bottom-color: #202432;
+}
+
+[data-theme="dark"] .contracts-table td {
+  border-bottom-color: #1F2330;
+}
+
+[data-theme="dark"] .contract-icon-box {
+  background: #1E2230;
+}
+
+[data-theme="dark"] .sidebar-collapse-btn {
+  background: #1B1E29;
+  border-color: #282C3C;
+}
+
+[data-theme="dark"] .sidebar-item:hover,
+[data-theme="dark"] .sidebar-sub-item:hover {
+  background-color: #1E2230;
+}
+
+[data-theme="dark"] .btn-pill-subtle {
+  background: #1B1E29;
+  border-color: #282C3C;
+  color: #F0F2F8;
+}
+
+[data-theme="dark"] .btn-date-range {
+  background: #1B1E29;
+  border-color: #282C3C;
+  color: #F0F2F8;
+}
+
+[data-theme="dark"] .drawer-overlay {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+[data-theme="dark"] .drawer-content {
+  background: #14161E;
+}
+
+[data-theme="dark"] .widget-card-item {
+  background: #1B1E29;
+  border-color: #282C3C;
+}
+
+[data-theme="dark"] .widget-card-item:hover {
+  background: #202433;
+}
+
+[data-theme="dark"] .sub-panel-segments {
+  background: #1B1E29;
+  border-color: #282C3C;
+}
+
+[data-theme="dark"] .chart-tooltip-box {
+  background: #1B1E29;
+  border-color: #282C3C;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .ai-suggestion-chip {
+  background: #1B1E29;
+  border-color: #282C3C;
+}
+
+[data-theme="dark"] .ai-suggestion-chip:hover {
+  background: rgba(75, 123, 255, 0.2);
+  border-color: #4B7BFF;
+}
+
+[data-theme="dark"] .ai-input-bar {
+  background: #1B1E29;
+  border-color: #282C3C;
+}
+
 /* Base Dashboard Layout */
 .dashboard-layout {
   display: flex;
@@ -227,6 +371,12 @@
 .sidebar-sub-item:hover {
   color: var(--dash-text-primary);
   background: #f7f8fa;
+}
+
+.sidebar-sub-item.is-active {
+  background-color: var(--dash-accent-soft);
+  color: var(--dash-accent);
+  font-weight: 600;
 }
 
 /* Upgrade Card */
@@ -1335,19 +1485,22 @@
 
 .demo-roles-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
 .demo-role-pill-btn {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 10px 6px;
-  border-radius: 10px;
+  justify-content: center;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 12px;
   border: 1px solid rgba(15, 15, 23, 0.12);
   background: #FAFAFC;
+  color: var(--dash-text-primary);
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   font-family: inherit;
@@ -1357,22 +1510,8 @@
 .demo-role-pill-btn:hover {
   background: #ffffff;
   border-color: var(--dash-accent);
+  color: var(--dash-accent);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(53, 96, 217, 0.12);
-}
-
-.demo-role-emoji {
-  font-size: 18px;
-}
-
-.demo-role-btn-name {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--dash-text-primary);
-}
-
-.demo-role-btn-nip {
-  font-size: 10px;
-  color: var(--dash-text-muted);
+  box-shadow: 0 6px 16px rgba(53, 96, 217, 0.12);
 }
 

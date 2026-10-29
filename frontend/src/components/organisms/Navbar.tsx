@@ -15,11 +15,17 @@ export default function Navbar({ cta, onOpenMenu }: NavbarProps) {
         <Image
           src="/logo-saksi.png"
           alt="Logo SAKSI"
-          width={64}
-          height={64}
+          width={120}
+          height={120}
           priority
+          style={{
+            height: '8.6rem',
+            width: 'auto',
+            filter: 'brightness(0) invert(1)',
+            objectFit: 'contain',
+            display: 'block',
+          }}
         />
-        <span>SAKSI</span>
       </Link>
       <div className="navbar-actions">
         {cta && <PillButton href={cta.href}>{cta.label}</PillButton>}

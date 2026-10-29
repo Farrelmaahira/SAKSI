@@ -1,9 +1,8 @@
 'use client'
 
-import React, { useState, useEffect, Suspense } from 'react'
+import React, { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import type { UserRole, WidgetOption } from '@/types/dashboard'
-import { DEMO_USERS, ROLE_KPIS, CONTRACT_ROWS } from '@/data/dashboard'
+import { useDashboard } from '@/hooks/use-dashboard'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import { Topbar } from '@/components/dashboard/Topbar'
 import { PageHeader } from '@/components/dashboard/PageHeader'
@@ -14,54 +13,44 @@ import { IntegritasGaugeCard } from '@/components/dashboard/IntegritasGaugeCard'
 import { ContractsTableCard } from '@/components/dashboard/ContractsTableCard'
 import { AiAssistantCard } from '@/components/dashboard/AiAssistantCard'
 import { AddWidgetDrawer } from '@/components/dashboard/AddWidgetDrawer'
+import { VerifyTab } from '@/components/dashboard/VerifyTab'
+import { VendorsTab } from '@/components/dashboard/VendorsTab'
+import { SimulateTab } from '@/components/dashboard/SimulateTab'
+import { SpkTab } from '@/components/dashboard/SpkTab'
+import { TerminTab } from '@/components/dashboard/TerminTab'
+import { AuditReportTab } from '@/components/dashboard/AuditReportTab'
+import { CitizenReportsTab } from '@/components/dashboard/CitizenReportsTab'
+import { SettingsTab } from '@/components/dashboard/SettingsTab'
+import { HelpTab } from '@/components/dashboard/HelpTab'
 import '@/styles/dashboard.css'
 
 function DashboardContent() {
   const searchParams = useSearchParams()
-  const initialRole = (searchParams.get('role') as UserRole) || 'kades'
+  const initialRoleParam = (searchParams.get('role') as 'kades' | 'bpd' | 'inspektorat') || 'kades'
 
-  const [activeRole, setActiveRole] = useState<UserRole>('kades')
-  const [isAddWidgetOpen, setIsAddWidgetOpen] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (initialRole && (initialRole === 'kades' || initialRole === 'bpd' || initialRole === 'inspektorat')) {
-      setActiveRole(initialRole)
-    }
-  }, [initialRole])
-
-  const currentUser = DEMO_USERS[activeRole] || DEMO_USERS.kades
-  const currentMetrics = ROLE_KPIS[activeRole] || ROLE_KPIS.kades
-
-  const handleExport = () => {
-    setToastMessage('Mengunduh Laporan Rekapitulasi Kontrak (CSV / PDF)...')
-    setTimeout(() => setToastMessage(null), 3000)
-  }
-
-  const handleSelectWidget = (widget: WidgetOption) => {
-    setToastMessage(`Widget "${widget.title}" berhasil disematkan ke dashboard.`)
-    setIsAddWidgetOpen(false)
-    setTimeout(() => setToastMessage(null), 3500)
-  }
-
-  // Filter contracts if search query is provided
-  const filteredContracts = searchQuery.trim()
-    ? CONTRACT_ROWS.filter(
-        (c) =>
-          c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.id.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : CONTRACT_ROWS
-
-  // Calculate dynamic gauge score per role
-  const gaugeScore = activeRole === 'bpd' ? 94 : activeRole === 'inspektorat' ? 92 : 68
+  // Custom hook containing all dashboard business logic
+  const {
+    activeTab,
+    activeRole,
+    currentUser,
+    metrics,
+    contracts,
+    searchQuery,
+    isAddWidgetOpen,
+    isSidebarCollapsed,
+    toastMessage,
+    gaugeScore,
+    setActiveTab,
+    setRole,
+    setSearchQuery,
+    setIsAddWidgetOpen,
+    toggleSidebar,
+    exportReport,
+    selectWidget,
+  } = useDashboard(initialRoleParam)
 
   return (
     <div className="dashboard-layout">
-      {/* Toast notification */}
       {toastMessage && (
         <div
           style={{
@@ -79,7 +68,6 @@ function DashboardContent() {
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            animation: 'fadeIn 0.2s ease',
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#65D18D" strokeWidth="2.5">
@@ -89,62 +77,92 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* Sidebar (258px) */}
+      {/* Role-adaptive sidebar with official SAKSI logo, no upgrade card, clean tab navigation */}
       <Sidebar
-        collapsed={isCollapsed}
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+        userRole={activeRole}
+        collapsed={isSidebarCollapsed}
+        onToggleCollapse={toggleSidebar}
       />
 
-      {/* Main Area */}
       <div className="dashboard-main">
-        {/* Topbar (72px) */}
+        {/* Topbar with clean initials avatar, no emojis */}
         <Topbar
           currentUser={currentUser}
-          onRoleChange={(role) => setActiveRole(role)}
+          onRoleChange={setRole}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
 
-        {/* Content Container (padding 32px) */}
         <main className="dashboard-content">
-          {/* Header row with controls */}
           <PageHeader
             onOpenAddWidget={() => setIsAddWidgetOpen(true)}
-            onExport={handleExport}
+            onExport={exportReport}
           />
 
-          {/* 4 KPI Cards */}
-          <KpiCards metrics={currentMetrics} />
+          {activeTab === 'dashboard' && (
+            <>
+              <KpiCards metrics={metrics} />
+              <div className="dashboard-grid-2col">
+                <div className="grid-col-left">
+                  <MainChartCard />
+                  <ContractsTableCard contracts={contracts} />
+                </div>
+                <div className="grid-col-right">
+                  <ActivityBarCard />
+                  <IntegritasGaugeCard score={gaugeScore} />
+                  <AiAssistantCard />
+                </div>
+              </div>
+            </>
+          )}
 
-          {/* 2-Column Grid (5:3 Ratio, ~685px vs ~409px) */}
-          <div className="dashboard-grid-2col">
-            {/* Left Column (Total Profit / Realisasi + Best Selling / Kontrak) */}
-            <div className="grid-col-left">
-              <MainChartCard />
-              <ContractsTableCard contracts={filteredContracts} />
+          {activeTab === 'contracts' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <ContractsTableCard
+                contracts={contracts}
+                title={
+                  activeRole === 'inspektorat'
+                    ? 'Audit Kontrak Seluruh Desa (33 Desa Se-Kabupaten)'
+                    : activeRole === 'bpd'
+                    ? 'Daftar Kontrak Desa Sukamaju Dalam Pengawasan BPD'
+                    : 'Semua Kontrak & SPK APBDes Berjalan'
+                }
+              />
             </div>
+          )}
 
-            {/* Right Column (Most Day Active + Gauge + AI Assistant) */}
-            <div className="grid-col-right">
-              <ActivityBarCard />
-              <IntegritasGaugeCard score={gaugeScore} />
-              <AiAssistantCard />
-            </div>
-          </div>
+          {activeTab === 'verify' && <VerifyTab />}
+
+          {activeTab === 'vendors' && <VendorsTab />}
+
+          {activeTab === 'simulate' && <SimulateTab />}
+
+          {activeTab === 'spk' && <SpkTab userRole={activeRole} />}
+
+          {activeTab === 'termin' && <TerminTab userRole={activeRole} />}
+
+          {activeTab === 'audit' && <AuditReportTab userRole={activeRole} />}
+
+          {activeTab === 'reports' && <CitizenReportsTab />}
+
+          {activeTab === 'settings' && <SettingsTab currentUser={currentUser} />}
+
+          {activeTab === 'help' && <HelpTab />}
         </main>
       </div>
 
-      {/* Slide-out Add Widget Sheet (420px) */}
       <AddWidgetDrawer
         isOpen={isAddWidgetOpen}
         onClose={() => setIsAddWidgetOpen(false)}
-        onSelectWidget={handleSelectWidget}
+        onSelectWidget={selectWidget}
       />
     </div>
   )
 }
 
-export default function DashboardPage() {
+export function DashboardPage() {
   return (
     <Suspense fallback={<div style={{ padding: '32px' }}>Memuat Dashboard SAKSI...</div>}>
       <DashboardContent />
@@ -152,3 +170,4 @@ export default function DashboardPage() {
   )
 }
 
+export default DashboardPage

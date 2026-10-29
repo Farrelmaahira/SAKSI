@@ -1,9 +1,8 @@
 import HeroBg from '@/components/atoms/HeroBg'
 import PillButton from '@/components/atoms/PillButton'
 import Underline from '@/components/atoms/Underline'
-import ScrollLink from '@/components/molecules/ScrollLink'
 
-export default function HomeHero() {
+export function HomeHero() {
   return (
     <section className="hero">
       <HeroBg />
@@ -30,3 +29,5 @@ export default function HomeHero() {
     </section>
   )
 }
+
+export default HomeHero

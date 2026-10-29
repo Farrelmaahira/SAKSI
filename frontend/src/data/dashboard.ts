@@ -1,33 +1,39 @@
-import type { UserProfile, KpiMetric, ContractRow, WidgetOption, UserRole } from '@/types/dashboard'
+import { UserProfile, KpiMetric, ContractItem, WidgetOption, SpkItem, TerminItem, AuditFinding, CitizenReportItem } from '@/types/dashboard'
 
-export const DEMO_USERS: Record<UserRole, UserProfile> = {
+export const DEMO_PROFILES: Record<'kades' | 'bpd' | 'inspektorat', UserProfile> = {
   kades: {
     name: 'H. Sudirman, S.IP',
     role: 'kades',
     roleLabel: 'Kepala Desa Sukamaju',
-    avatar: '👨‍💼',
-    nip: 'kades.sukamaju',
-    desa: 'Desa Sukamaju, Kec. Cilongok',
+    roleSubtitle: 'Kuasa Pengguna Anggaran (KPA)',
+    avatarInitial: 'KD',
+    nip: '197204121998031004',
+    villageName: 'Desa Sukamaju, Kec. Cilongok',
+    email: 'kades.sukamaju@desa.id',
   },
   bpd: {
     name: 'Drs. Bambang Haryanto',
     role: 'bpd',
     roleLabel: 'Ketua BPD & Pengawas',
-    avatar: '🛡️',
-    nip: 'bpd.pengawas',
-    desa: 'BPD Sukamaju',
+    roleSubtitle: 'Pengawas Badan Permusyawaratan Desa',
+    avatarInitial: 'BP',
+    nip: 'BPD-330214-001',
+    villageName: 'BPD Desa Sukamaju',
+    email: 'bpd.pengawas@desa.id',
   },
   inspektorat: {
     name: 'Ir. Siti Rahmawati, M.M',
     role: 'inspektorat',
     roleLabel: 'Auditor Madya Inspektorat',
-    avatar: '📋',
-    nip: 'inspektorat.audit',
-    desa: 'Inspektorat Daerah Kab. Banyumas',
+    roleSubtitle: 'APIP Pengawas Internal Daerah',
+    avatarInitial: 'IN',
+    nip: '198109232005012008',
+    villageName: 'Inspektorat Daerah Kab. Banyumas',
+    email: 'inspektorat.audit@banyumaskab.go.id',
   },
 }
 
-export const ROLE_KPIS: Record<UserRole, KpiMetric[]> = {
+export const ROLE_METRICS: Record<'kades' | 'bpd' | 'inspektorat', KpiMetric[]> = {
   kades: [
     {
       id: 'kpi-1',
@@ -150,51 +156,189 @@ export const ROLE_KPIS: Record<UserRole, KpiMetric[]> = {
   ],
 }
 
-export const CONTRACT_ROWS: ContractRow[] = [
+export const CONTRACT_ITEMS: ContractItem[] = [
   {
-    id: '#SKS-83009',
-    name: 'Pembangunan Jalan Usaha Tani Dusun II',
-    vendor: 'PT Maju Bangun Mandiri',
+    contractId: '#SKS-83009',
+    title: 'Pembangunan Jalan Usaha Tani Dusun II',
+    vendorName: 'PT Maju Bangun Mandiri',
     amount: 124839000,
-    status: 'tersegel',
+    status: 'sealed',
     rating: 5.0,
-    soldQty: 2310,
+    volume: '2.310 unit',
+    fiscalYear: 2025,
+    integrityScore: 98.5,
   },
   {
-    id: '#SKS-83001',
-    name: 'Pengadaan Bibit Jagung Hibrida & Pupuk Organik',
-    vendor: 'CV Tani Makmur Sejahtera',
+    contractId: '#SKS-83001',
+    title: 'Pengadaan Bibit Jagung Hibrida & Pupuk Organik',
+    vendorName: 'CV Tani Makmur Sejahtera',
     amount: 92662000,
-    status: 'audit_lengkap',
+    status: 'audit_complete',
     rating: 4.8,
-    soldQty: 1230,
+    volume: '1.230 unit',
+    fiscalYear: 2025,
+    integrityScore: 94.0,
   },
   {
-    id: '#SKS-83004',
-    name: 'Renovasi Balai Pertemuan & Posyandu Melati',
-    vendor: 'Swakelola Warga RW 03',
+    contractId: '#SKS-83004',
+    title: 'Renovasi Balai Pertemuan & Posyandu Melati',
+    vendorName: 'Swakelola Warga RW 03',
     amount: 74048000,
-    status: 'dalam_tinjauan',
+    status: 'under_review',
     rating: 4.7,
-    soldQty: 812,
+    volume: '812 unit',
+    fiscalYear: 2025,
+    integrityScore: 87.5,
   },
   {
-    id: '#SKS-83002',
-    name: 'Pemasangan Lampu Penerangan Jalan Tenaga Surya',
-    vendor: 'CV Mandiri Cahaya Listrik',
+    contractId: '#SKS-83002',
+    title: 'Pemasangan Lampu Penerangan Jalan Tenaga Surya',
+    vendorName: 'CV Mandiri Cahaya Listrik',
     amount: 62820000,
-    status: 'tersegel',
+    status: 'sealed',
     rating: 4.5,
-    soldQty: 645,
+    volume: '645 unit',
+    fiscalYear: 2025,
+    integrityScore: 96.0,
   },
   {
-    id: '#SKS-83005',
-    name: 'Kerja Sama Pengelolaan Air Bersih Tirta Jaya',
-    vendor: 'BUMDes Tirta Sukamaju',
+    contractId: '#SKS-83005',
+    title: 'Kerja Sama Pengelolaan Air Bersih Tirta Jaya',
+    vendorName: 'BUMDes Tirta Sukamaju',
     amount: 48724000,
-    status: 'audit_lengkap',
+    status: 'audit_complete',
     rating: 4.5,
-    soldQty: 572,
+    volume: '572 unit',
+    fiscalYear: 2025,
+    integrityScore: 92.0,
+  },
+]
+
+export const SPK_ITEMS: SpkItem[] = [
+  {
+    spkNumber: 'SPK/33.02.14/2025/083009',
+    contractId: '#SKS-83009',
+    title: 'Pembangunan Jalan Usaha Tani Dusun II',
+    vendorName: 'PT Maju Bangun Mandiri',
+    amount: 124839000,
+    issuedDate: '15 Jan 2025',
+    dueDate: '15 Apr 2025',
+    status: 'in_progress',
+  },
+  {
+    spkNumber: 'SPK/33.02.14/2025/083001',
+    contractId: '#SKS-83001',
+    title: 'Pengadaan Bibit Jagung Hibrida & Pupuk Organik',
+    vendorName: 'CV Tani Makmur Sejahtera',
+    amount: 92662000,
+    issuedDate: '18 Jan 2025',
+    dueDate: '18 Feb 2025',
+    status: 'completed',
+  },
+  {
+    spkNumber: 'SPK/33.02.14/2025/083004',
+    contractId: '#SKS-83004',
+    title: 'Renovasi Balai Pertemuan & Posyandu Melati',
+    vendorName: 'Swakelola Warga RW 03',
+    amount: 74048000,
+    issuedDate: '22 Jan 2025',
+    dueDate: '22 Mar 2025',
+    status: 'draft',
+  },
+  {
+    spkNumber: 'SPK/33.02.14/2025/083002',
+    contractId: '#SKS-83002',
+    title: 'Pemasangan Penerangan Jalan Tenaga Surya',
+    vendorName: 'CV Mandiri Cahaya Listrik',
+    amount: 62820000,
+    issuedDate: '25 Jan 2025',
+    dueDate: '25 Feb 2025',
+    status: 'issued',
+  },
+]
+
+export const TERMIN_ITEMS: TerminItem[] = [
+  {
+    terminNumber: 1,
+    label: 'Termin I (Uang Muka 30%)',
+    percentage: 30,
+    amount: 37451700,
+    status: 'disbursed',
+    sp2dNumber: 'SP2D-33.02.14-00142',
+    disbursementDate: '20 Jan 2025',
+    physicalProgress: 35,
+    notes: 'Pencairan uang muka mobilisasi alat berat dan pengadaan material tahap awal.',
+  },
+  {
+    terminNumber: 2,
+    label: 'Termin II (Progres Fisik 60%)',
+    percentage: 60,
+    amount: 74903400,
+    status: 'verified',
+    sp2dNumber: 'SP2D-33.02.14-00210',
+    disbursementDate: '28 Jan 2025',
+    physicalProgress: 75,
+    notes: 'Verifikasi lapangan BPD menyatakan pengerjaan jalan rabat beton mencapai 75%.',
+  },
+  {
+    terminNumber: 3,
+    label: 'Termin III (Pelunasan & Retensi 10%)',
+    percentage: 10,
+    amount: 12483900,
+    status: 'pending',
+    notes: 'Menunggu Berita Acara Serah Terima Akhir (FHO) dan masa pemeliharaan 60 hari kalender.',
+    physicalProgress: 75,
+  },
+]
+
+export const AUDIT_FINDINGS: AuditFinding[] = [
+  {
+    id: 'fnd-01',
+    findingNumber: 'LHA-2025/BMS/041',
+    contractNumber: '#SKS-83004',
+    issue: 'Klausul sanksi denda keterlambatan per mil belum dicantumkan dalam draf SPK.',
+    riskLevel: 'medium',
+    recommendation: 'KPA dan PPK Desa wajib menyisipkan pasal denda 1/1000 per hari keterlambatan sebelum pengesahan.',
+    status: 'action_required',
+  },
+  {
+    id: 'fnd-02',
+    findingNumber: 'LHA-2025/BMS/038',
+    contractNumber: '#SKS-83009',
+    issue: 'Kesesuaian volume semen dan pasir pada SPK sinkron dengan gambar teknis RKPDes.',
+    riskLevel: 'low',
+    recommendation: 'Pertahankan dokumentasi berita acara penyerahan material dan uji tekan beton.',
+    status: 'resolved',
+  },
+  {
+    id: 'fnd-03',
+    findingNumber: 'LHA-2025/BMS/029',
+    contractNumber: '#SKS-83002',
+    issue: 'Garansi purna jual modul panel surya belum mencantumkan sertifikat jaminan pabrikan.',
+    riskLevel: 'high',
+    recommendation: 'Instruksikan penyedia jasa melampirkan garansi resmi minimal 2 tahun dari distributor resmi.',
+    status: 'under_investigation',
+  },
+]
+
+export const CITIZEN_REPORTS: CitizenReportItem[] = [
+  {
+    reportId: 'LAP-2025-014',
+    projectTitle: 'Pembangunan Jalan Usaha Tani Dusun II',
+    reporterCategory: 'Warga Dusun Krajan',
+    issueText: 'Ketebalan cor beton di titik STA 0+450 terlihat kurang dari patok spesifikasi 15 cm.',
+    submittedDate: '26 Jan 2025',
+    status: 'investigating',
+    location: 'RT 02 / RW 01 Dusun Krajan',
+  },
+  {
+    reportId: 'LAP-2025-009',
+    projectTitle: 'Penerangan Jalan Tenaga Surya',
+    reporterCategory: 'Karang Taruna Sukamaju',
+    issueText: '2 titik lampu PJUTS di dekat perempatan makam belum menyala saat malam hari.',
+    submittedDate: '22 Jan 2025',
+    status: 'resolved',
+    location: 'Jalan Lingkar Timur RT 04',
   },
 ]
 
@@ -235,4 +379,3 @@ export const WIDGET_OPTIONS: WidgetOption[] = [
     tag: '#Audience',
   },
 ]
-

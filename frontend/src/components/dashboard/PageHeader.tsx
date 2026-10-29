@@ -2,7 +2,7 @@
 
 import React from 'react'
 
-interface PageHeaderProps {
+export interface PageHeaderProps {
   onOpenAddWidget: () => void
   onExport: () => void
 }
