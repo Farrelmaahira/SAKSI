@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { UserProfile, KpiMetric, ContractItem, WidgetOption } from '@/types/dashboard'
 import { DEMO_PROFILES, ROLE_METRICS, CONTRACT_ITEMS } from '@/data/dashboard'
+import { apiClient } from '@/lib/api-client'
 
 export interface UseDashboardReturn {
   activeTab: 'dashboard' | 'contracts' | 'verify' | 'vendors' | 'simulate' | 'spk' | 'termin' | 'audit' | 'reports' | 'settings' | 'help'
@@ -15,6 +16,7 @@ export interface UseDashboardReturn {
   isSidebarCollapsed: boolean
   toastMessage: string | null
   gaugeScore: number
+  isLoading: boolean
   setActiveTab: (tab: 'dashboard' | 'contracts' | 'verify' | 'vendors' | 'simulate' | 'spk' | 'termin' | 'audit' | 'reports' | 'settings' | 'help') => void
   setRole: (role: 'kades' | 'bpd' | 'inspektorat') => void
   setSearchQuery: (query: string) => void
@@ -31,18 +33,47 @@ export function useDashboard(initialRole: 'kades' | 'bpd' | 'inspektorat' = 'kad
   const [isAddWidgetOpen, setIsAddWidgetOpen] = useState<boolean>(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [contractsList, setContractsList] = useState<ContractItem[]>(CONTRACT_ITEMS)
+  const [liveMetrics, setLiveMetrics] = useState<KpiMetric[]>(ROLE_METRICS[initialRole] || ROLE_METRICS.kades)
 
   const currentUser = DEMO_PROFILES[activeRole] || DEMO_PROFILES.kades
-  const metrics = ROLE_METRICS[activeRole] || ROLE_METRICS.kades
+
+  useEffect(() => {
+    let isMounted = true
+    setIsLoading(true)
+
+    apiClient
+      .getDashboardOverview(activeRole)
+      .then((data) => {
+        if (!isMounted) return
+        if (data.metrics && data.metrics.length > 0) {
+          setLiveMetrics(data.metrics)
+        }
+        if (data.contracts && data.contracts.length > 0) {
+          setContractsList(data.contracts)
+        }
+      })
+      .catch(() => {
+        // Fallback already handled inside apiClient
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [activeRole])
 
   const filteredContracts = searchQuery.trim()
-    ? CONTRACT_ITEMS.filter(
+    ? contractsList.filter(
         (c) =>
           c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           c.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           c.contractId.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : CONTRACT_ITEMS
+    : contractsList
 
   const gaugeScore = activeRole === 'bpd' ? 94 : activeRole === 'inspektorat' ? 92 : 68
 
@@ -68,13 +99,14 @@ export function useDashboard(initialRole: 'kades' | 'bpd' | 'inspektorat' = 'kad
     activeTab,
     activeRole,
     currentUser,
-    metrics,
+    metrics: liveMetrics,
     contracts: filteredContracts,
     searchQuery,
     isAddWidgetOpen,
     isSidebarCollapsed,
     toastMessage,
     gaugeScore,
+    isLoading,
     setActiveTab,
     setRole: setActiveRole,
     setSearchQuery,
@@ -84,4 +116,3 @@ export function useDashboard(initialRole: 'kades' | 'bpd' | 'inspektorat' = 'kad
     selectWidget,
   }
 }
-

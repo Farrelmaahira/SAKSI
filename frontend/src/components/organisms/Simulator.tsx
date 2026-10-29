@@ -31,6 +31,7 @@ import { saveSimContract } from "@/lib/contracts/save-sim-contract";
 import { sha256 } from "@/lib/contracts/sha256";
 import { buildSimContract } from "@/lib/simulator/build-sim-contract";
 import { randomHex } from "@/lib/simulator/random-hex";
+import { apiClient } from "@/lib/api-client";
 import SimSidebar from "./SimSidebar";
 import StepClauses from "./StepClauses";
 import StepHash from "./StepHash";
@@ -112,9 +113,21 @@ export default function Simulator() {
     setPlaced((p) => (p.includes(id) ? p : [...p, id]));
   };
 
-  const applyAi = (id: string) => {
+  const applyAi = async (id: string) => {
     setAiIds((a) => [...a, id]);
     addClause(id);
+    const targetClause = clauses.find((c) => c.id === id);
+    if (targetClause) {
+      try {
+        await apiClient.auditClause({
+          contractId: code,
+          clauseText: targetClause.text,
+          clauseType: targetClause.title,
+        });
+      } catch {
+        // Fallback handled
+      }
+    }
   };
 
   const placeSign = (id: string, zone: string) => {
