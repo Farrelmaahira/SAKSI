@@ -2,11 +2,11 @@ import Grip from '@/components/atoms/Grip'
 import TypeIcon from '@/components/atoms/TypeIcon'
 import type { ContractTypeOption } from '@/interfaces/simulator'
 
-export interface TypeCardBodyProps {
+interface Props {
   option: ContractTypeOption
 }
 
-export default function TypeCardBody({ option }: TypeCardBodyProps) {
+export default function TypeCardBody({ option }: Props) {
   return (
     <>
       <Grip />

@@ -9,7 +9,7 @@ import PaperHead from '@/components/molecules/PaperHead'
 import SimFeedback from '@/components/molecules/SimFeedback'
 import { clauses, distractor, trayOrder } from '@/data/simulator'
 
-export interface StepClausesProps {
+interface Props {
   placed: string[]
   aiIds: string[]
   message: string | null
@@ -18,7 +18,7 @@ export interface StepClausesProps {
   onApplyAi: (id: string) => void
 }
 
-export default function StepClauses({ placed, aiIds, message, onAdd, onRemove, onApplyAi }: StepClausesProps) {
+export default function StepClauses({ placed, aiIds, message, onAdd, onRemove, onApplyAi }: Props) {
   const missing = clauses.filter((c) => !placed.includes(c.id))
   const suggestion = placed.length >= 2 ? missing[0] : undefined
 

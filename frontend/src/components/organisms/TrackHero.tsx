@@ -4,7 +4,7 @@ import HeroBg from '@/components/atoms/HeroBg'
 import Underline from '@/components/atoms/Underline'
 import type { SealedContract } from '@/interfaces/contract'
 
-export interface TrackHeroProps {
+interface Props {
   registry: SealedContract[]
   input: string
   onInput: (value: string) => void
@@ -12,7 +12,7 @@ export interface TrackHeroProps {
   onOpen: (code: string) => void
 }
 
-export default function TrackHero({ registry, input, onInput, onSearch, onOpen }: TrackHeroProps) {
+export default function TrackHero({ registry, input, onInput, onSearch, onOpen }: Props) {
   return (
     <section className="page-hero track-hero">
       <HeroBg />

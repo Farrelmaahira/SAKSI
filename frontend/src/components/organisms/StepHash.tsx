@@ -3,7 +3,7 @@ import Cross from '@/components/atoms/Cross'
 import PillButton from '@/components/atoms/PillButton'
 import PaperHead from '@/components/molecules/PaperHead'
 
-export interface StepHashProps {
+interface Props {
   code: string
   clauseCount: number
   value: number
@@ -15,7 +15,7 @@ export interface StepHashProps {
   onRestore: () => void
 }
 
-export default function StepHash({ code, clauseCount, value, sealed, scramble, liveHash, onValue, onSeal, onRestore }: StepHashProps) {
+export default function StepHash({ code, clauseCount, value, sealed, scramble, liveHash, onValue, onSeal, onRestore }: Props) {
   const changed = sealed && liveHash ? [...liveHash].filter((ch, i) => ch !== sealed[i]).length : 0
   const matches = sealed && liveHash === sealed
 

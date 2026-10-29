@@ -2,13 +2,13 @@ import Check from '@/components/atoms/Check'
 import { steps } from '@/data/simulator'
 import { cn } from '@/lib/utils'
 
-export interface SimSidebarProps {
+interface Props {
   step: number
   done: boolean[]
   onStep: (step: number) => void
 }
 
-export default function SimSidebar({ step, done, onStep }: SimSidebarProps) {
+export default function SimSidebar({ step, done, onStep }: Props) {
   return (
     <aside className="sim-side">
       <div className="sim-progress" aria-hidden="true">

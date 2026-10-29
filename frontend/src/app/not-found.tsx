@@ -1,4 +1,4 @@
-import NotFoundTemplate from '@/components/templates/NotFoundTemplate'
+import NotFoundTemplate from '@/components/organisms/NotFoundTemplate'
 import '@/styles/pages.css'
 
 export default function NotFound() {

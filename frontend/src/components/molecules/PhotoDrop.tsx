@@ -4,12 +4,12 @@ import { useState, type DragEvent } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
-export interface PhotoDropProps {
+interface Props {
   photos: string[]
   onFiles: (files: FileList | null) => void
 }
 
-export default function PhotoDrop({ photos, onFiles }: PhotoDropProps) {
+export default function PhotoDrop({ photos, onFiles }: Props) {
   const [over, setOver] = useState(false)
 
   const onDrop = (e: DragEvent) => {

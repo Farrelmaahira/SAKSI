@@ -1,11 +1,11 @@
 import Arrow from '@/components/atoms/Arrow'
 
-export interface ScrollLinkProps {
+interface Props {
   href: string
   children: string
 }
 
-export default function ScrollLink({ href, children }: ScrollLinkProps) {
+export default function ScrollLink({ href, children }: Props) {
   return (
     <a className="scroll-link" href={href}>
       <span className="round-icon">

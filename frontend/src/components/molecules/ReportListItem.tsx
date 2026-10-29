@@ -1,11 +1,11 @@
 import { reportStatuses } from '@/data/report-statuses'
 import type { Report } from '@/interfaces/contract'
 
-export interface ReportListItemProps {
+interface Props {
   report: Report
 }
 
-export default function ReportListItem({ report: r }: ReportListItemProps) {
+export default function ReportListItem({ report: r }: Props) {
   return (
     <li>
       <div className="report-top">

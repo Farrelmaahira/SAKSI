@@ -1,18 +1,25 @@
-import Link from 'next/link'
-import type { ReactNode } from 'react'
+import Link from "next/link";
+import type { ReactNode } from "react";
 
-export interface PillButtonProps {
-  children: string
-  tone?: 'light' | 'blue' | 'ink'
-  to?: string
-  href?: string
-  onClick?: () => void
-  type?: 'button' | 'submit'
-  disabled?: boolean
+interface Props {
+  children: string;
+  tone?: "light" | "blue" | "ink";
+  to?: string;
+  href?: string;
+  onClick?: () => void;
+  type?: "button" | "submit";
+  disabled?: boolean;
 }
 
-/* Pill button: rolling label and a fill that rises from the bottom. Renders a Link, anchor, or button. */
-export default function PillButton({ children, tone = 'light', to, href, onClick, type = 'button', disabled }: PillButtonProps) {
+export default function PillButton({
+  children,
+  tone = "light",
+  to,
+  href,
+  onClick,
+  type = "button",
+  disabled,
+}: Props) {
   const inner: ReactNode = (
     <>
       <span className="pill-fill" />
@@ -23,23 +30,28 @@ export default function PillButton({ children, tone = 'light', to, href, onClick
         </span>
       </span>
     </>
-  )
-  const className = `pill pill-${tone}`
+  );
+  const className = `pill pill-${tone}`;
   if (to)
     return (
       <Link className={className} href={to}>
         {inner}
       </Link>
-    )
+    );
   if (href)
     return (
       <a className={className} href={href}>
         {inner}
       </a>
-    )
+    );
   return (
-    <button className={className} type={type} onClick={onClick} disabled={disabled}>
+    <button
+      className={className}
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+    >
       {inner}
     </button>
-  )
+  );
 }

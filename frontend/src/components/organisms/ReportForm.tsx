@@ -12,7 +12,7 @@ import { saveReport } from '@/lib/contracts/save-report'
 import { cn } from '@/lib/utils'
 import ReportTicket from './ReportTicket'
 
-export interface ReportFormProps {
+interface Props {
   registry: SealedContract[]
   code: string
   onCode: (code: string) => void
@@ -20,7 +20,7 @@ export interface ReportFormProps {
   onOpen: (code: string) => void
 }
 
-export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen }: ReportFormProps) {
+export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen }: Props) {
   const [step, setStep] = useState(0)
   const [category, setCategory] = useState('')
   const [clause, setClause] = useState('')

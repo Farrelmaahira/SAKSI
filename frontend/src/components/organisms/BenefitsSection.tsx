@@ -1,5 +1,5 @@
-import BenefitCard from '@/components/molecules/BenefitCard'
-import { benefits } from '@/data/home'
+import BenefitCard from "@/components/molecules/BenefitCard";
+import { benefits } from "@/data/home";
 
 export default function BenefitsSection() {
   return (
@@ -16,5 +16,5 @@ export default function BenefitsSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }
