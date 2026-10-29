@@ -1,6 +1,6 @@
 import type { SealedContract } from '@/interfaces/contract'
 
-export interface ReportReviewProps {
+interface Props {
   contract: SealedContract
   category: string
   clause: string
@@ -10,7 +10,7 @@ export interface ReportReviewProps {
   reporter: string
 }
 
-export default function ReportReview({ contract, category, clause, text, location, photoCount, reporter }: ReportReviewProps) {
+export default function ReportReview({ contract, category, clause, text, location, photoCount, reporter }: Props) {
   return (
     <div className="form-body">
       <dl className="review">

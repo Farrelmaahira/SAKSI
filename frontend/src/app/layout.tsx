@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import SiteLayout from '@/components/templates/SiteLayout'
+import SiteLayout from '@/components/organisms/SiteLayout'
 import './globals.css'
 
 export const metadata: Metadata = {

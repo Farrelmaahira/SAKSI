@@ -10,13 +10,13 @@ import type { SignedState } from '@/interfaces/simulator'
 import { today } from '@/lib/simulator/today'
 import { cn } from '@/lib/utils'
 
-export interface StepSignProps {
+interface Props {
   signed: SignedState
   message: string | null
   onPlace: (id: string, zone: string) => void
 }
 
-export default function StepSign({ signed, message, onPlace }: StepSignProps) {
+export default function StepSign({ signed, message, onPlace }: Props) {
   const allSigned = signed.kades && signed.meterai && signed.penyedia
 
   return (

@@ -1,11 +1,11 @@
 import Check from '@/components/atoms/Check'
 import type { Milestone } from '@/interfaces/contract'
 
-export interface MilestoneItemProps {
+interface Props {
   milestone: Milestone
 }
 
-export default function MilestoneItem({ milestone: m }: MilestoneItemProps) {
+export default function MilestoneItem({ milestone: m }: Props) {
   return (
     <li className={`is-${m.status}`}>
       <span className="tl-dot">{m.status === 'done' && <Check />}</span>

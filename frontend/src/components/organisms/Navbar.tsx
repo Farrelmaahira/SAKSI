@@ -3,12 +3,12 @@ import Logo from "@/components/atoms/Logo";
 import PillButton from "@/components/atoms/PillButton";
 import type { NavLink } from "@/interfaces/content";
 
-export interface NavbarProps {
+interface Props {
   cta: NavLink;
   onOpenMenu: () => void;
 }
 
-export default function Navbar({ cta, onOpenMenu }: NavbarProps) {
+export default function Navbar({ cta, onOpenMenu }: Props) {
   return (
     <header className="navbar">
       <Link className="navbar-logo" href="/" aria-label="SAKSI, ke beranda">

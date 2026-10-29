@@ -1,32 +1,35 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Check from '@/components/atoms/Check'
-import PillButton from '@/components/atoms/PillButton'
-import MilestoneItem from '@/components/molecules/MilestoneItem'
-import ReportListItem from '@/components/molecules/ReportListItem'
-import type { SealedContract } from '@/interfaces/contract'
-import { contractText } from '@/lib/contracts/contract-text'
-import { downloadText } from '@/lib/contracts/download-text'
-import { formatRp } from '@/lib/contracts/format-rp'
+import { useState } from "react";
+import Check from "@/components/atoms/Check";
+import PillButton from "@/components/atoms/PillButton";
+import MilestoneItem from "@/components/molecules/MilestoneItem";
+import ReportListItem from "@/components/molecules/ReportListItem";
+import type { SealedContract } from "@/interfaces/contract";
+import { contractText } from "@/lib/contracts/contract-text";
+import { downloadText } from "@/lib/contracts/download-text";
+import { formatRp } from "@/lib/contracts/format-rp";
 
-export interface ContractDetailProps {
-  contract: SealedContract
-  onReport: () => void
+interface Props {
+  contract: SealedContract;
+  onReport: () => void;
 }
 
-export default function ContractDetail({ contract: c, onReport }: ContractDetailProps) {
-  const [copied, setCopied] = useState(false)
+export default function ContractDetail({
+  contract: c,
+  onReport,
+}: Props) {
+  const [copied, setCopied] = useState(false);
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(c.hash)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1600)
+      await navigator.clipboard.writeText(c.hash);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
     } catch {
-      setCopied(false)
+      setCopied(false);
     }
-  }
+  };
 
   return (
     <article className="contract">
@@ -34,7 +37,9 @@ export default function ContractDetail({ contract: c, onReport }: ContractDetail
         <div className="contract-tags">
           <span className="tag">{c.type}</span>
           <span className="tag outline">{c.code}</span>
-          {c.fromSimulation && <span className="tag outline">Dari simulasi</span>}
+          {c.fromSimulation && (
+            <span className="tag outline">Dari simulasi</span>
+          )}
         </div>
         <h2>{c.title}</h2>
         <p>{c.village}</p>
@@ -76,9 +81,13 @@ export default function ContractDetail({ contract: c, onReport }: ContractDetail
             </p>
             <div className="hash-actions">
               <button type="button" className="text-btn" onClick={copy}>
-                {copied ? 'Tersalin' : 'Salin hash'}
+                {copied ? "Tersalin" : "Salin hash"}
               </button>
-              <button type="button" className="text-btn" onClick={() => downloadText(`${c.code}.txt`, contractText(c))}>
+              <button
+                type="button"
+                className="text-btn"
+                onClick={() => downloadText(`${c.code}.txt`, contractText(c))}
+              >
                 Unduh dokumen
               </button>
             </div>
@@ -121,7 +130,9 @@ export default function ContractDetail({ contract: c, onReport }: ContractDetail
           <div className="reports-card">
             <p className="reports-title">Laporan warga ({c.reports.length})</p>
             {c.reports.length === 0 ? (
-              <p className="reports-empty">Belum ada laporan untuk kontrak ini.</p>
+              <p className="reports-empty">
+                Belum ada laporan untuk kontrak ini.
+              </p>
             ) : (
               <ul className="report-list">
                 {c.reports.map((r) => (
@@ -136,5 +147,5 @@ export default function ContractDetail({ contract: c, onReport }: ContractDetail
         </div>
       </div>
     </article>
-  )
+  );
 }

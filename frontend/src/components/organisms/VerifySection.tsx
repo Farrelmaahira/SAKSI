@@ -1,12 +1,12 @@
 import type { SealedContract } from '@/interfaces/contract'
 import VerifyDoc from './VerifyDoc'
 
-export interface VerifySectionProps {
+interface Props {
   registry: SealedContract[]
   onOpen: (code: string) => void
 }
 
-export default function VerifySection({ registry, onOpen }: VerifySectionProps) {
+export default function VerifySection({ registry, onOpen }: Props) {
   return (
     <section className="verify-sec">
       <div className="container">

@@ -2,12 +2,12 @@ import Grip from '@/components/atoms/Grip'
 import { clauses, distractor, signItems, types } from '@/data/simulator'
 import TypeCardBody from './TypeCardBody'
 
-export interface DragPreviewProps {
+interface Props {
   id: string | null
 }
 
 /* The card that follows the pointer while dragging. */
-export default function DragPreview({ id }: DragPreviewProps) {
+export default function DragPreview({ id }: Props) {
   if (!id) return null
   const t = types.find((x) => x.id === id)
   if (t)

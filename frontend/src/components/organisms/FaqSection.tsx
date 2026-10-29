@@ -1,5 +1,5 @@
-import FaqItem from '@/components/molecules/FaqItem'
-import { faq } from '@/data/simulasi'
+import FaqItem from "@/components/molecules/FaqItem";
+import { faq } from "@/data/simulasi";
 
 export default function FaqSection() {
   return (
@@ -16,5 +16,5 @@ export default function FaqSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }
