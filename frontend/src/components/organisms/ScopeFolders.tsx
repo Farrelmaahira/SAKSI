@@ -37,6 +37,24 @@ export default function ScopeFolders() {
                 scrollTrigger: { trigger: next, start: 'top bottom', end: 'top 20%', scrub: true },
               },
             )
+          } else {
+            // Last folder (04): as it docks, it sinks & shrinks into the deck just like 01-03
+            gsap.fromTo(
+              folder.querySelector('.folder-sheet'),
+              { scale: 1, y: 0 },
+              {
+                scale: 0.95,
+                y: '1.4rem',
+                transformOrigin: 'center top',
+                ease: 'none',
+                scrollTrigger: {
+                  trigger: folder,
+                  start: 'top 20%',
+                  end: 'top 11rem',
+                  scrub: true,
+                },
+              },
+            )
           }
 
           // AI recommendation writes the missing clause into the draft.
