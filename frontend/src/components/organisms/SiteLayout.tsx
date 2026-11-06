@@ -26,20 +26,19 @@ export default function SiteLayout({ children }: Props) {
     document.body.style.overflow = menuOpen ? 'hidden' : ''
   }, [menuOpen])
 
-  const isStandalone = pathname === '/login' || pathname?.startsWith('/dashboard')
+  // The dashboard has its own shell.
+  const isStandalone = pathname?.startsWith('/dashboard')
 
-  const cta = isStandalone
-    ? null
-    : pathname === '/simulasi'
-      ? { label: 'Lacak kontrak', href: '/lacak' }
-      : { label: 'Coba simulasi', href: '/simulasi' }
+  const cta = pathname === '/simulasi' ? { label: 'Lacak kontrak', href: '/lacak' } : { label: 'Coba simulasi', href: '/simulasi' }
+
+  if (isStandalone) return <>{children}</>
 
   return (
     <>
-      {!isStandalone && <Navbar cta={cta} onOpenMenu={() => setMenuOpen(true)} />}
-      {!isStandalone && <MenuOverlay open={menuOpen} onClose={() => setMenuOpen(false)} />}
+      <Navbar cta={cta} onOpenMenu={() => setMenuOpen(true)} />
+      <MenuOverlay open={menuOpen} onClose={() => setMenuOpen(false)} />
       {children}
-      {!isStandalone && <Footer />}
+      <Footer />
     </>
   )
 }

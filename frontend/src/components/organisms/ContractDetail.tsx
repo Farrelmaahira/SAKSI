@@ -20,6 +20,7 @@ export default function ContractDetail({
   onReport,
 }: Props) {
   const [copied, setCopied] = useState(false);
+  const hides = (f: string) => Boolean(c.hidden?.includes(f));
 
   const copy = async () => {
     try {
@@ -54,13 +55,19 @@ export default function ContractDetail({
             </div>
             <div>
               <dt>Pihak kedua</dt>
-              <dd>{c.second}</dd>
+              <dd>{hides('pihak') ? <span className="muted-note">Tidak dipublikasikan desa</span> : c.second}</dd>
             </div>
             <div>
               <dt>Nilai</dt>
               <dd>
-                {formatRp(c.value)}
-                {c.valueNote && <small> {c.valueNote}</small>}
+                {hides('nilai') ? (
+                  <span className="muted-note">Tidak dipublikasikan desa</span>
+                ) : (
+                  <>
+                    {formatRp(c.value)}
+                    {c.valueNote && <small> {c.valueNote}</small>}
+                  </>
+                )}
               </dd>
             </div>
             <div>
@@ -93,22 +100,26 @@ export default function ContractDetail({
             </div>
           </div>
 
-          <details className="clauses">
-            <summary>
-              Isi kontrak, {c.clauses.length} pasal
-              <span className="faq-plus" aria-hidden="true" />
-            </summary>
-            <ol>
-              {c.clauses.map((cl, i) => (
-                <li key={cl.title}>
-                  <strong>
-                    Pasal {i + 1}. {cl.title}
-                  </strong>
-                  <p>{cl.text}</p>
-                </li>
-              ))}
-            </ol>
-          </details>
+          {hides('pasal') ? (
+            <p className="clauses clauses-hidden">Isi pasal tidak dipublikasikan desa. Keaslian dokumen tetap bisa dicek lewat hash di atas.</p>
+          ) : (
+            <details className="clauses">
+              <summary>
+                Isi kontrak, {c.clauses.length} pasal
+                <span className="faq-plus" aria-hidden="true" />
+              </summary>
+              <ol>
+                {c.clauses.map((cl, i) => (
+                  <li key={cl.title}>
+                    <strong>
+                      Pasal {i + 1}. {cl.title}
+                    </strong>
+                    <p>{cl.text}</p>
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )}
         </div>
 
         <div className="contract-side">

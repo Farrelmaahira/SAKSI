@@ -1,9 +1,6 @@
+import Image from 'next/image'
+
+/* Shield mark with a transparent background, cropped tight. It is black; CSS turns it white on the blue/photo areas. */
 export default function Logo() {
-  return (
-    <svg className="logo-mark" viewBox="0 0 40 40" aria-hidden="true">
-      <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" strokeWidth="2" />
-      <circle cx="20" cy="20" r="11" fill="currentColor" />
-      <path d="M15 20.5l3.5 3.5 7-8" fill="none" stroke="var(--logo-check, #0a3cce)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
+  return <Image className="logo-mark" src="/logo-saksi-mark.png" alt="" width={519} height={552} loading="eager" />
 }

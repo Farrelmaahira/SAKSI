@@ -1,0 +1,41 @@
+name: saksi
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: saksi
+    ports:
+      - "5432:5432"
+    volumes:
+      - saksi_postgres_data:/var/lib/postgresql/data
+      - ./backend/internal/adapter/postgres/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./backend/scripts/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d saksi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    image: saksi-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SAKSI_SECRET=saksi-development-secret-key-min16chars
+      - PORT=8080
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/saksi?sslmode=disable
+      - STORAGE_DIR=/data/files
+      - AI_ENGINE_URL=http://localhost:8000
+      - WEB_ORIGIN=http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  saksi_postgres_data:

@@ -9,7 +9,7 @@ import VerifySection from "@/components/organisms/VerifySection";
 import { useReveal } from "@/hooks/use-reveal";
 import type { SealedContract } from "@/interfaces/contract";
 import { findContract } from "@/lib/contracts/find-contract";
-import { loadRegistry } from "@/lib/contracts/load-registry";
+import { loadPublicRegistry } from "@/lib/db/load-public-registry";
 
 export default function LacakTemplate() {
   useReveal();
@@ -24,7 +24,7 @@ export default function LacakTemplate() {
   const reportRef = useRef<HTMLElement>(null);
 
   const reload = () =>
-    loadRegistry().then((list) => {
+    loadPublicRegistry().then((list) => {
       setRegistry(list);
       setLoading(false);
     });

@@ -22,6 +22,8 @@ export interface Report {
   reporter: string;
   response?: string;
   photos?: number;
+  /* Email of the signed-in reporter, used only to list "my reports" on the dashboard */
+  owner?: string;
 }
 
 export interface Clause {
@@ -45,6 +47,10 @@ export interface Contract {
   milestones: Milestone[];
   reports: Report[];
   fromSimulation?: boolean;
+  /* Email of the account that published it from the simulation. Not part of the hashed text. */
+  owner?: string;
+  /* Fields the village chose not to show publicly (publications). Display only, never part of the hash. */
+  hidden?: string[];
 }
 
 export interface SealedContract extends Contract {
