@@ -63,6 +63,83 @@ type User struct {
 	UpdatedAt         time.Time `json:"updatedAt"`
 }
 
+type ContractJenis string
+
+const (
+	JenisPengadaan       ContractJenis = "pengadaan"
+	JenisHibah           ContractJenis = "hibah"
+	JenisKerjaSamaBUMDes ContractJenis = "kerja_sama_bumdes"
+	JenisSewaAset        ContractJenis = "sewa_aset"
+	JenisUMKM            ContractJenis = "umkm"
+)
+
+func (j ContractJenis) Valid() bool {
+	switch j {
+	case JenisPengadaan, JenisHibah, JenisKerjaSamaBUMDes, JenisSewaAset, JenisUMKM:
+		return true
+	default:
+		return false
+	}
+}
+
+type Counterparty struct {
+	ID     int64  `json:"id"`
+	UserID *int64 `json:"userId,omitempty"`
+	Nama   string `json:"nama"`
+	Jenis  string `json:"jenis"`
+	NPWP   string `json:"npwp,omitempty"`
+	Alamat string `json:"alamat,omitempty"`
+}
+
+type WizardQuestionOption struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+}
+
+type WizardQuestion struct {
+	Key         string                 `json:"key"`
+	Label       string                 `json:"label"`
+	Description string                 `json:"description,omitempty"`
+	Type        string                 `json:"type"` // "text", "textarea", "number", "date", "select"
+	Required    bool                   `json:"required"`
+	Options     []WizardQuestionOption `json:"options,omitempty"`
+	Placeholder string                 `json:"placeholder,omitempty"`
+}
+
+type ContractDraftPreview struct {
+	Judul              string  `json:"judul"`
+	Jenis              string  `json:"jenis"`
+	Nilai              float64 `json:"nilai"`
+	TeksDraf           string  `json:"teksDraf"`
+	SHA256Hash         string  `json:"sha256Hash"`
+	IntegrityScore     float64 `json:"integrityScore"`
+	MandatoryFulfilled int     `json:"mandatoryFulfilled"`
+	TotalMandatory     int     `json:"totalMandatory"`
+	Summary            string  `json:"summary"`
+}
+
+type ContractDetail struct {
+	ID               int64          `json:"id"`
+	VillageID        *int64         `json:"villageId,omitempty"`
+	VillageName      string         `json:"villageName,omitempty"`
+	CounterpartyID   *int64         `json:"counterpartyId,omitempty"`
+	CounterpartyNama string         `json:"counterpartyNama,omitempty"`
+	Jenis            ContractJenis  `json:"jenis"`
+	Judul            string         `json:"judul"`
+	Nilai            float64        `json:"nilai"`
+	Tenggat          time.Time      `json:"tenggat"`
+	SkemaPembayaran  string         `json:"skemaPembayaran,omitempty"`
+	MetodePemilihan  string         `json:"metodePemilihan,omitempty"`
+	Status           string         `json:"status"`
+	NomorVersi       int            `json:"nomorVersi"`
+	TeksKontrak      string         `json:"teksKontrak,omitempty"`
+	JawabanForm      map[string]any `json:"jawabanForm,omitempty"`
+	IntegrityScore   float64        `json:"integrityScore"`
+	SHA256Hash       string         `json:"sha256Hash"`
+	CreatedBy        int64          `json:"createdBy"`
+	CreatedAt        time.Time      `json:"createdAt"`
+}
+
 type ContractStatus string
 
 const (
