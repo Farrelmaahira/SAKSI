@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"io"
+	"time"
 
 	"saksi-backend/internal/domain"
 )
@@ -20,10 +21,31 @@ type RegisterUserParams struct {
 	Alamat            string
 }
 
+type CreateContractParams struct {
+	VillageID        int64
+	CounterpartyID   int64
+	Jenis            domain.ContractJenis
+	Judul            string
+	Nilai            float64
+	Tenggat          time.Time
+	SkemaPembayaran  string
+	MetodePemilihan  string
+	JawabanForm      map[string]any
+	IsiTeks          string
+	CreatedBy        int64
+	IntegrityScore   float64
+	SHA256Hash       string
+}
+
 type Store interface {
 	CreateUserWithRole(ctx context.Context, p RegisterUserParams) (domain.User, error)
 	UserByEmail(ctx context.Context, email string) (domain.User, error)
 	UserByID(ctx context.Context, id int64) (domain.User, error)
+
+	ListCounterparties(ctx context.Context, jenis *string, search string) ([]domain.Counterparty, error)
+	CounterpartyByID(ctx context.Context, id int64) (domain.Counterparty, error)
+	CreateContractWithDetails(ctx context.Context, p CreateContractParams) (domain.ContractDetail, error)
+	GetContractDetail(ctx context.Context, id int64) (domain.ContractDetail, error)
 
 	ListContracts(ctx context.Context, villageID string, role domain.UserRole, query string) ([]domain.Contract, error)
 	ContractByID(ctx context.Context, id string) (domain.Contract, error)
