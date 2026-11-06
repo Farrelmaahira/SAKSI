@@ -47,3 +47,4 @@ func RequireAuth(secret string) func(http.Handler) http.Handler {
 		})
 	}
 }
+
