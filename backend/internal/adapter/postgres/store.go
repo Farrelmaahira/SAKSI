@@ -49,7 +49,8 @@ func (s *Store) CreateUser(ctx context.Context, u domain.User) (domain.User, err
 	query := `INSERT INTO users (id, email, password_hash, role, name, nip, village_id, village_name, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 	_, err := s.db.Exec(ctx, query, u.ID, u.Email, u.PasswordHash, string(u.Role), u.Name, u.NIP, u.VillageID, u.VillageName, u.CreatedAt, u.UpdatedAt)
-	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 		return u, domain.ErrConflict
 	}
 	return u, err
