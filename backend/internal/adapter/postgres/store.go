@@ -4,7 +4,6 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -26,10 +25,6 @@ func Open(ctx context.Context, url string) (*Store, error) {
 	db, err := pgxpool.New(ctx, url)
 	if err != nil {
 		return nil, err
-	}
-	if _, err := db.Exec(ctx, schema); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("postgres: apply schema: %w", err)
 	}
 	return &Store{db: db}, nil
 }
