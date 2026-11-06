@@ -7,10 +7,23 @@ import (
 	"saksi-backend/internal/domain"
 )
 
+type RegisterUserParams struct {
+	Nama              string
+	Email             string
+	PasswordHash      string
+	Role              domain.UserRole
+	VillageID         *int64
+	NoHP              string
+	CounterpartyName  string
+	CounterpartyJenis string
+	NPWP              string
+	Alamat            string
+}
+
 type Store interface {
-	CreateUser(ctx context.Context, u domain.User) (domain.User, error)
+	CreateUserWithRole(ctx context.Context, p RegisterUserParams) (domain.User, error)
 	UserByEmail(ctx context.Context, email string) (domain.User, error)
-	UserByID(ctx context.Context, id string) (domain.User, error)
+	UserByID(ctx context.Context, id int64) (domain.User, error)
 
 	ListContracts(ctx context.Context, villageID string, role domain.UserRole, query string) ([]domain.Contract, error)
 	ContractByID(ctx context.Context, id string) (domain.Contract, error)

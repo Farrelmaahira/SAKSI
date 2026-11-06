@@ -20,11 +20,23 @@ const (
 	RoleKades       UserRole = "kades"
 	RoleBPD         UserRole = "bpd"
 	RoleInspektorat UserRole = "inspektorat"
+	RolePenyedia    UserRole = "penyedia"
+	RoleAdminDaerah UserRole = "admin_daerah"
+	RoleWarga       UserRole = "warga"
 )
 
 func (r UserRole) Valid() bool {
 	switch r {
-	case RoleKades, RoleBPD, RoleInspektorat:
+	case RoleKades, RoleBPD, RoleInspektorat, RolePenyedia, RoleAdminDaerah, RoleWarga:
+		return true
+	default:
+		return false
+	}
+}
+
+func (r UserRole) CanSelfRegister() bool {
+	switch r {
+	case RoleKades, RolePenyedia, RoleWarga:
 		return true
 	default:
 		return false
@@ -32,16 +44,23 @@ func (r UserRole) Valid() bool {
 }
 
 type User struct {
-	ID           string    `json:"id"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"-"`
-	Role         UserRole  `json:"role"`
-	Name         string    `json:"name"`
-	NIP          string    `json:"nip"`
-	VillageID    string    `json:"villageId"`
-	VillageName  string    `json:"villageName"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID                int64     `json:"id"`
+	Email             string    `json:"email"`
+	PasswordHash      string    `json:"-"`
+	Role              UserRole  `json:"role"`
+	Name              string    `json:"name"`
+	NIP               string    `json:"nip,omitempty"`
+	Status            string    `json:"status"`
+	VillageID         *int64    `json:"villageId,omitempty"`
+	VillageName       string    `json:"villageName,omitempty"`
+	RegionID          *int64    `json:"regionId,omitempty"`
+	NoHP              string    `json:"noHp,omitempty"`
+	CounterpartyName  string    `json:"counterpartyName,omitempty"`
+	CounterpartyJenis string    `json:"counterpartyJenis,omitempty"`
+	NPWP              string    `json:"npwp,omitempty"`
+	Alamat            string    `json:"alamat,omitempty"`
+	CreatedAt         time.Time `json:"createdAt"`
+	UpdatedAt         time.Time `json:"updatedAt"`
 }
 
 type ContractStatus string

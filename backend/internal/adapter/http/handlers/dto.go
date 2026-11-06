@@ -10,33 +10,53 @@ type LoginRequest struct {
 }
 
 type RegisterRequest struct {
+	Nama        string `json:"nama"`
+	Name        string `json:"name"` // alias fallback
 	Email       string `json:"email"`
 	Password    string `json:"password"`
-	Name        string `json:"name"`
-	NIP         string `json:"nip"`
-	Role        string `json:"role"`
-	VillageID   string `json:"villageId"`
-	VillageName string `json:"villageName"`
+	Role        string `json:"role"` // "kades"|"perangkat_desa", "penyedia", "warga"
+	VillageID   *int64 `json:"villageId,omitempty"`
+	NoHP        string `json:"noHp,omitempty"`        // khusus warga
+	CompanyName string `json:"companyName,omitempty"` // khusus penyedia
+	CompanyType string `json:"companyType,omitempty"` // khusus penyedia ("penyedia"|"umkm")
+	NPWP        string `json:"npwp,omitempty"`
+	Address     string `json:"address,omitempty"`
+	Alamat      string `json:"alamat,omitempty"` // alias
+}
+
+func (r *RegisterRequest) GetName() string {
+	if r.Nama != "" {
+		return r.Nama
+	}
+	return r.Name
+}
+
+func (r *RegisterRequest) GetAddress() string {
+	if r.Alamat != "" {
+		return r.Alamat
+	}
+	return r.Address
 }
 
 type SessionResponse struct {
 	Token       string `json:"token"`
+	UserID      int64  `json:"userId"`
 	Role        string `json:"role"`
-	Name        string `json:"name"`
+	Nama        string `json:"nama"`
 	Email       string `json:"email"`
-	NIP         string `json:"nip"`
-	VillageID   string `json:"villageId"`
-	VillageName string `json:"villageName"`
+	VillageID   *int64 `json:"villageId,omitempty"`
+	VillageName string `json:"villageName,omitempty"`
+	Status      string `json:"status"`
 }
 
 type MeResponse struct {
-	UserID      string `json:"userId"`
+	UserID      int64  `json:"userId"`
 	Role        string `json:"role"`
-	Name        string `json:"name"`
+	Nama        string `json:"nama"`
 	Email       string `json:"email"`
-	NIP         string `json:"nip"`
-	VillageID   string `json:"villageId"`
-	VillageName string `json:"villageName"`
+	VillageID   *int64 `json:"villageId,omitempty"`
+	VillageName string `json:"villageName,omitempty"`
+	Status      string `json:"status"`
 }
 
 type CreateContractRequest struct {

@@ -4,6 +4,8 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -40,29 +42,124 @@ func notFound(err error) error {
 	return err
 }
 
-func (s *Store) CreateUser(ctx context.Context, u domain.User) (domain.User, error) {
-	query := `INSERT INTO users (id, email, password_hash, role, name, nip, village_id, village_name, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
-	_, err := s.db.Exec(ctx, query, u.ID, u.Email, u.PasswordHash, string(u.Role), u.Name, u.NIP, u.VillageID, u.VillageName, u.CreatedAt, u.UpdatedAt)
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		return u, domain.ErrConflict
+func (s *Store) CreateUserWithRole(ctx context.Context, p usecase.RegisterUserParams) (domain.User, error) {
+	var user domain.User
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return user, err
 	}
-	return u, err
+	defer tx.Rollback(ctx)
+
+	var userID int64
+	var createdAt time.Time
+	insertUserSQL := `INSERT INTO users (nama, email, password_hash, status, dibuat_pada)
+		VALUES ($1, $2, $3, 'aktif', now()) RETURNING id, dibuat_pada`
+	err = tx.QueryRow(ctx, insertUserSQL, p.Nama, p.Email, p.PasswordHash).Scan(&userID, &createdAt)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return user, domain.ErrConflict
+		}
+		return user, err
+	}
+
+	insertRoleSQL := `INSERT INTO user_roles (user_id, role, village_id) VALUES ($1, $2, $3)`
+	_, err = tx.Exec(ctx, insertRoleSQL, userID, string(p.Role), p.VillageID)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return user, fmt.Errorf("domain: invalid village reference: %w", domain.ErrNotFound)
+		}
+		return user, err
+	}
+
+	switch p.Role {
+	case domain.RoleWarga:
+		insertWargaSQL := `INSERT INTO warga_profiles (user_id, village_id, no_hp) VALUES ($1, $2, $3)`
+		_, err = tx.Exec(ctx, insertWargaSQL, userID, p.VillageID, p.NoHP)
+		if err != nil {
+			return user, err
+		}
+	case domain.RolePenyedia:
+		jenis := p.CounterpartyJenis
+		if jenis == "" {
+			jenis = "penyedia"
+		}
+		nama := p.CounterpartyName
+		if nama == "" {
+			nama = p.Nama
+		}
+		insertCounterpartySQL := `INSERT INTO counterparties (user_id, nama, jenis, npwp, alamat) VALUES ($1, $2, $3, $4, $5)`
+		_, err = tx.Exec(ctx, insertCounterpartySQL, userID, nama, jenis, p.NPWP, p.Alamat)
+		if err != nil {
+			return user, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return user, err
+	}
+
+	user = domain.User{
+		ID:                userID,
+		Email:             p.Email,
+		Role:              p.Role,
+		Name:              p.Nama,
+		Status:            "aktif",
+		VillageID:         p.VillageID,
+		NoHP:              p.NoHP,
+		CounterpartyName:  p.CounterpartyName,
+		CounterpartyJenis: p.CounterpartyJenis,
+		NPWP:              p.NPWP,
+		Alamat:            p.Alamat,
+		CreatedAt:         createdAt,
+		UpdatedAt:         createdAt,
+	}
+	return user, nil
 }
 
 func (s *Store) UserByEmail(ctx context.Context, email string) (domain.User, error) {
 	var u domain.User
-	query := `SELECT id, email, password_hash, role, name, nip, village_id, village_name, created_at, updated_at FROM users WHERE LOWER(email) = LOWER($1)`
-	err := s.db.QueryRow(ctx, query, email).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Role, &u.Name, &u.NIP, &u.VillageID, &u.VillageName, &u.CreatedAt, &u.UpdatedAt)
-	return u, notFound(err)
+	var roleStr string
+	query := `SELECT u.id, u.nama, u.email, u.password_hash, u.status, u.dibuat_pada,
+		COALESCE(ur.role::text, ''), ur.village_id, COALESCE(v.nama, '')
+		FROM users u
+		LEFT JOIN user_roles ur ON u.id = ur.user_id
+		LEFT JOIN villages v ON ur.village_id = v.id
+		WHERE LOWER(u.email) = LOWER($1)
+		LIMIT 1`
+	err := s.db.QueryRow(ctx, query, email).Scan(
+		&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Status, &u.CreatedAt,
+		&roleStr, &u.VillageID, &u.VillageName,
+	)
+	if err != nil {
+		return u, notFound(err)
+	}
+	u.Role = domain.UserRole(roleStr)
+	u.UpdatedAt = u.CreatedAt
+	return u, nil
 }
 
-func (s *Store) UserByID(ctx context.Context, id string) (domain.User, error) {
+func (s *Store) UserByID(ctx context.Context, id int64) (domain.User, error) {
 	var u domain.User
-	query := `SELECT id, email, password_hash, role, name, nip, village_id, village_name, created_at, updated_at FROM users WHERE id = $1`
-	err := s.db.QueryRow(ctx, query, id).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Role, &u.Name, &u.NIP, &u.VillageID, &u.VillageName, &u.CreatedAt, &u.UpdatedAt)
-	return u, notFound(err)
+	var roleStr string
+	query := `SELECT u.id, u.nama, u.email, u.password_hash, u.status, u.dibuat_pada,
+		COALESCE(ur.role::text, ''), ur.village_id, COALESCE(v.nama, '')
+		FROM users u
+		LEFT JOIN user_roles ur ON u.id = ur.user_id
+		LEFT JOIN villages v ON ur.village_id = v.id
+		WHERE u.id = $1
+		LIMIT 1`
+	err := s.db.QueryRow(ctx, query, id).Scan(
+		&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Status, &u.CreatedAt,
+		&roleStr, &u.VillageID, &u.VillageName,
+	)
+	if err != nil {
+		return u, notFound(err)
+	}
+	u.Role = domain.UserRole(roleStr)
+	u.UpdatedAt = u.CreatedAt
+	return u, nil
 }
 
 func (s *Store) ListContracts(ctx context.Context, villageID string, role domain.UserRole, search string) ([]domain.Contract, error) {
