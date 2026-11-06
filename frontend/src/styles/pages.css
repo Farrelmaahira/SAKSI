@@ -1,4 +1,4 @@
-﻿/* Shared styles for the inner pages (simulation, tracking, 404). */
+/* Shared styles for the inner pages (simulation, tracking, 404). */
 :root {
   --red: #d3341f;
   --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
@@ -125,22 +125,8 @@
 }
 
 .page-hero > .container {
-  max-width: 182rem;
-  padding: 0 1.4rem;
   position: relative;
   z-index: 1;
-}
-
-@media (min-width: 768px) {
-  .page-hero > .container {
-    padding: 0 2.8rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .page-hero > .container {
-    padding: 0 5.6rem;
-  }
 }
 
 .page-hero-grid {

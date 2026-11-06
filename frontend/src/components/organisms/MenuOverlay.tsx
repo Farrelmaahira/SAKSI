@@ -2,7 +2,7 @@ import Illustration from '@/components/atoms/Illustration'
 import Link from 'next/link'
 import CloseIcon from '@/components/atoms/CloseIcon'
 import CurvedArrow from '@/components/atoms/CurvedArrow'
-import { navLinks } from '@/data/nav-links'
+import { useNavLinks } from '@/hooks/use-nav-links'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -11,6 +11,8 @@ interface Props {
 }
 
 export default function MenuOverlay({ open, onClose }: Props) {
+  const navLinks = useNavLinks()
+
   return (
     <div className={cn('menu', open && 'is-open')} aria-hidden={!open}>
       <button className="menu-close" onClick={onClose} aria-label="Tutup menu" tabIndex={open ? 0 : -1}>

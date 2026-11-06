@@ -1,6 +1,6 @@
 import Image from 'next/image'
 
-export function HeroBg() {
+export default function HeroBg() {
   return (
     <div className="hero-bg" aria-hidden="true">
       <Image
@@ -15,4 +15,3 @@ export function HeroBg() {
   )
 }
 
-export default HeroBg

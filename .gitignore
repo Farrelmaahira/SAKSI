@@ -1,1 +1,5 @@
 /docs
+# graphify output
+graphify-out/
+
+.DS_Store

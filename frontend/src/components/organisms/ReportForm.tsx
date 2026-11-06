@@ -7,6 +7,7 @@ import PhotoDrop from '@/components/molecules/PhotoDrop'
 import ReportReview from '@/components/molecules/ReportReview'
 import { formSteps, reportCategories } from '@/data/report-form'
 import type { Report, SealedContract } from '@/interfaces/contract'
+import { getSession } from '@/lib/auth/get-session'
 import { newReportId } from '@/lib/contracts/new-report-id'
 import { saveReport } from '@/lib/contracts/save-report'
 import { cn } from '@/lib/utils'
@@ -28,7 +29,7 @@ export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen
   const [location, setLocation] = useState('')
   const [photos, setPhotos] = useState<string[]>([])
   const [anonymous, setAnonymous] = useState(true)
-  const [name, setName] = useState('')
+  const [name, setName] = useState(() => getSession()?.name ?? '')
   const [ticket, setTicket] = useState<Report | null>(null)
 
   const contract = registry.find((c) => c.code === code)
@@ -60,6 +61,7 @@ export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen
       status: 0,
       reporter,
       photos: photos.length,
+      owner: getSession()?.email,
     }
     saveReport(contract.code, report)
     setTicket(report)

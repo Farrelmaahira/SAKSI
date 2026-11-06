@@ -3,9 +3,11 @@
 import Link from 'next/link'
 import PillButton from '@/components/atoms/PillButton'
 import Underline from '@/components/atoms/Underline'
-import { navLinks } from '@/data/nav-links'
+import { useNavLinks } from '@/hooks/use-nav-links'
 
 export default function Footer() {
+  const navLinks = useNavLinks()
+
   return (
     <footer className="footer">
       <div className="container">
