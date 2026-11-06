@@ -1,13 +1,9 @@
 package handlers
 
 import (
-	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -15,66 +11,64 @@ import (
 	"saksi-backend/internal/usecase"
 )
 
-type ctxKey string
+// DTO untuk modul autentikasi
 
-const (
-	ctxUserID    ctxKey = "userId"
-	ctxRole      ctxKey = "role"
-	ctxVillageID ctxKey = "villageId"
-)
-
-type Deps struct {
-	Store    usecase.Store
-	Storage  usecase.Storage
-	AIEngine usecase.AIEngine
-	Secret   string
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
-func WriteJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+type RegisterRequest struct {
+	Nama        string `json:"nama"`
+	Name        string `json:"name"` // alias fallback
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	Role        string `json:"role"` // "kades"|"perangkat_desa", "penyedia", "warga"
+	VillageID   *int64 `json:"villageId,omitempty"`
+	NoHP        string `json:"noHp,omitempty"`        // khusus warga
+	CompanyName string `json:"companyName,omitempty"` // khusus penyedia
+	CompanyType string `json:"companyType,omitempty"` // khusus penyedia ("penyedia"|"umkm")
+	NPWP        string `json:"npwp,omitempty"`
+	Address     string `json:"address,omitempty"`
+	Alamat      string `json:"alamat,omitempty"` // alias
 }
 
-func WriteError(w http.ResponseWriter, status int, msg string) {
-	WriteJSON(w, status, ErrorResponse{Error: msg})
-}
-
-func formatVillageID(v *int64) string {
-	if v == nil {
-		return ""
+func (r *RegisterRequest) GetName() string {
+	if r.Nama != "" {
+		return r.Nama
 	}
-	return strconv.FormatInt(*v, 10)
+	return r.Name
 }
 
-func ClaimsFromContext(ctx context.Context) (int64, domain.UserRole, *int64) {
-	uid, _ := ctx.Value(ctxUserID).(int64)
-	role, _ := ctx.Value(ctxRole).(domain.UserRole)
-	villageID, _ := ctx.Value(ctxVillageID).(*int64)
-	return uid, role, villageID
-}
-
-func RequireAuth(secret string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			token := strings.TrimPrefix(authHeader, "Bearer ")
-			if token == "" || token == authHeader {
-				WriteError(w, http.StatusUnauthorized, "authorization token required")
-				return
-			}
-			claims, err := usecase.VerifyToken(strings.TrimSpace(token), secret)
-			if err != nil {
-				WriteError(w, http.StatusUnauthorized, "invalid or expired token")
-				return
-			}
-			ctx := context.WithValue(r.Context(), ctxUserID, claims.UserID)
-			ctx = context.WithValue(ctx, ctxRole, claims.Role)
-			ctx = context.WithValue(ctx, ctxVillageID, claims.VillageID)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
+func (r *RegisterRequest) GetAddress() string {
+	if r.Alamat != "" {
+		return r.Alamat
 	}
+	return r.Address
 }
+
+type SessionResponse struct {
+	Token       string `json:"token"`
+	UserID      int64  `json:"userId"`
+	Role        string `json:"role"`
+	Nama        string `json:"nama"`
+	Email       string `json:"email"`
+	VillageID   *int64 `json:"villageId,omitempty"`
+	VillageName string `json:"villageName,omitempty"`
+	Status      string `json:"status"`
+}
+
+type MeResponse struct {
+	UserID      int64  `json:"userId"`
+	Role        string `json:"role"`
+	Nama        string `json:"nama"`
+	Email       string `json:"email"`
+	VillageID   *int64 `json:"villageId,omitempty"`
+	VillageName string `json:"villageName,omitempty"`
+	Status      string `json:"status"`
+}
+
+// Handlers untuk modul autentikasi
 
 func HandleRegister(d *Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -232,79 +226,3 @@ func HandleMe(d *Deps) http.HandlerFunc {
 		})
 	}
 }
-
-func HandleDashboardMetrics(d *Deps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, role, vID := ClaimsFromContext(r.Context())
-		villageID := formatVillageID(vID)
-		metrics, err := d.Store.GetDashboardMetrics(r.Context(), villageID, role)
-		if err != nil {
-			WriteError(w, http.StatusInternalServerError, "failed to fetch dashboard metrics")
-			return
-		}
-		WriteJSON(w, http.StatusOK, metrics)
-	}
-}
-
-func HandleListContracts(d *Deps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, role, vID := ClaimsFromContext(r.Context())
-		villageID := formatVillageID(vID)
-		search := r.URL.Query().Get("q")
-		list, err := d.Store.ListContracts(r.Context(), villageID, role, search)
-		if err != nil {
-			WriteError(w, http.StatusInternalServerError, "failed to query contracts")
-			return
-		}
-		WriteJSON(w, http.StatusOK, list)
-	}
-}
-
-func HandleGetContract(d *Deps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, role, vID := ClaimsFromContext(r.Context())
-		villageID := formatVillageID(vID)
-		contractID := r.PathValue("id")
-		contract, err := d.Store.ContractByID(r.Context(), contractID)
-		if err != nil {
-			WriteError(w, http.StatusNotFound, "contract not found")
-			return
-		}
-
-		if err := usecase.AuthorizeContractAccess(role, villageID, contract); err != nil {
-			WriteError(w, http.StatusForbidden, "access denied: IDOR violation")
-			return
-		}
-
-		WriteJSON(w, http.StatusOK, contract)
-	}
-}
-
-func HandleAuditContract(d *Deps) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req VerifyContractRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			WriteError(w, http.StatusBadRequest, "invalid request body")
-			return
-		}
-
-		score, fulfilled, total, summary, err := d.AIEngine.AuditClauses(r.Context(), req.ContractText)
-		if err != nil {
-			WriteError(w, http.StatusInternalServerError, "ai audit failed")
-			return
-		}
-
-		hasher := sha256.New()
-		hasher.Write([]byte(req.ContractText))
-		hash := hex.EncodeToString(hasher.Sum(nil))
-
-		WriteJSON(w, http.StatusOK, AuditResponse{
-			IntegrityScore:     score,
-			MandatoryFulfilled: fulfilled,
-			TotalMandatory:     total,
-			SHA256Hash:         hash,
-			Summary:            summary,
-		})
-	}
-}
-
