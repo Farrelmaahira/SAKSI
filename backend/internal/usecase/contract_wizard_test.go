@@ -112,3 +112,4 @@ Pasal 7: Penyelesaian Perselisihan melalui musyawarah mufakat.
 		t.Fatalf("expected non-empty summary")
 	}
 }
+

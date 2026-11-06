@@ -122,3 +122,4 @@ func TestStore_Contracts_Workflow(t *testing.T) {
 		t.Fatalf("expected integrity score %f, got %f", params.IntegrityScore, detail.IntegrityScore)
 	}
 }
+

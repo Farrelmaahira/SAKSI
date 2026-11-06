@@ -382,3 +382,4 @@ func AuditContractDraft(contractText string) (score float64, fulfilled int, tota
 
 	return score, fulfilled, total, summary, hash
 }
+

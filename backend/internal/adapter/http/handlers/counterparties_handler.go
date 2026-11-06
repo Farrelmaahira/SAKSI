@@ -24,3 +24,4 @@ func HandleListCounterparties(d *Deps) http.HandlerFunc {
 		WriteJSON(w, http.StatusOK, list)
 	}
 }
+

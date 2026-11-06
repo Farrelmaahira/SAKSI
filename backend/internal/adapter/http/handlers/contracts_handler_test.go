@@ -220,3 +220,4 @@ func TestHandleCreateContract_Authorization_And_Creation(t *testing.T) {
 		}
 	})
 }
+
