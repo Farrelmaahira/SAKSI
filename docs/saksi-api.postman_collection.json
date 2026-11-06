@@ -1,0 +1,547 @@
+{
+	"info": {
+		"_postman_id": "a671cf70-07bf-48d6-95aa-28da95a7c29e",
+		"name": "SAKSI Backend API",
+		"description": "Koleksi Postman API untuk Platform SAKSI (Sistem Akuntabilitas Kontrak & Sinergi Desa). Mencakup alur registrasi multi-role (kades, penyedia, warga), login, profil, dashboard, rekanan/counterparties, dan wizard pembuatan & audit kontrak untuk Kepala Desa.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"description": "Endpoint autentikasi dan registrasi publik SAKSI.",
+			"item": [
+				{
+					"name": "Register - Perangkat Desa (Kades)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nama\": \"Kepala Desa Sukamaju\",\n  \"email\": \"kades@sukamaju.desa.id\",\n  \"password\": \"rahasia123\",\n  \"role\": \"kades\",\n  \"villageId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Registrasi mandiri untuk Kepala Desa / Perangkat Desa. Wajib menyertakan `villageId`."
+					},
+					"response": []
+				},
+				{
+					"name": "Register - Penyedia / Vendor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nama\": \"Direktur PT Maju\",\n  \"email\": \"kontraktor@ptmaju.com\",\n  \"password\": \"rahasia123\",\n  \"role\": \"penyedia\",\n  \"companyName\": \"PT Maju Konstruksi Desa\",\n  \"companyType\": \"penyedia\",\n  \"npwp\": \"01.234.567.8-901.000\",\n  \"alamat\": \"Jl. Raya Industri No. 45\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Registrasi mandiri untuk Penyedia / Mitra UMKM. Menyimpan nama dan jenis badan usaha ke tabel counterparties."
+					},
+					"response": []
+				},
+				{
+					"name": "Register - Warga",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nama\": \"Budi Santoso\",\n  \"email\": \"budi@warga.id\",\n  \"password\": \"rahasia123\",\n  \"role\": \"warga\",\n  \"villageId\": 1,\n  \"noHp\": \"081298765432\",\n  \"alamat\": \"RT 02 RW 01 Desa Sukamaju\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Registrasi mandiri untuk Warga desa. Wajib menyertakan `villageId` dan `noHp`."
+					},
+					"response": []
+				},
+				{
+					"name": "Register - Reject Forbidden Role (Inspektorat)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nama\": \"Auditor Daerah\",\n  \"email\": \"auditor@daerah.go.id\",\n  \"password\": \"rahasia123\",\n  \"role\": \"inspektorat\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						},
+						"description": "Menunjukkan penolakan pendaftaran untuk peran pengawas/admin daerah (bpd, inspektorat, admin_daerah) dengan kode 400 Bad Request."
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var data = pm.response.json();",
+									"    if (data.token) {",
+									"        pm.collectionVariables.set(\"authToken\", data.token);",
+									"        console.log(\"Saved authToken to collection variables\");",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"kades.sukamaju@desa.id\",\n  \"password\": \"passwordKades123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"description": "Login pengguna. Token otomatis disimpan ke variabel koleksi `authToken` untuk request terproteksi berikutnya."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Authenticated User (Me)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						},
+						"description": "Mengambil profil pengguna yang sedang login berdasarkan klaim Bearer token."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Counterparties",
+			"description": "Endpoint master data rekanan/penyedia pihak kedua.",
+			"item": [
+				{
+					"name": "List Counterparties",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/counterparties?jenis=&q=",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"counterparties"
+							],
+							"query": [
+								{
+									"key": "jenis",
+									"value": "",
+									"description": "Filter jenis rekanan: penyedia, umkm, bumdes, lainnya"
+								},
+								{
+									"key": "q",
+									"value": "",
+									"description": "Pencarian nama badan usaha"
+								}
+							]
+						},
+						"description": "Mengambil daftar rekanan yang terdaftar untuk dipilih sebagai Pihak Kedua pada pembuatan kontrak."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Dashboard",
+			"description": "Endpoint statistik ringkasan dan dashboard SAKSI.",
+			"item": [
+				{
+					"name": "Get Dashboard Metrics",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/dashboard/metrics",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"dashboard",
+								"metrics"
+							]
+						},
+						"description": "Mengambil ringkasan metrik dashboard (jumlah kontrak, skor rata-rata integritas, vendor aktif)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Contracts",
+			"description": "Endpoint manajemen kontrak dan wizard pembuatan kontrak Kepala Desa.",
+			"item": [
+				{
+					"name": "Get Contract Options",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/contracts/options",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"contracts",
+								"options"
+							]
+						},
+						"description": "Mengambil daftar pilihan jenis kontrak (pengadaan, hibah, kerja_sama_bumdes, sewa_aset, umkm), metode pemilihan, dan skema termin pembayaran."
+					},
+					"response": []
+				},
+				{
+					"name": "Wizard - Generate Questions",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"jenis\": \"pengadaan\",\n  \"counterpartyId\": 1\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/contracts/wizard/questions",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"contracts",
+								"wizard",
+								"questions"
+							]
+						},
+						"description": "Menghasilkan form kuesioner dinamis berdasarkan jenis kontrak dan pihak kedua yang dipilih (AI/Fallback)."
+					},
+					"response": []
+				},
+				{
+					"name": "Wizard - Draft Preview & Audit",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"counterpartyId\": 1,\n  \"jenis\": \"pengadaan\",\n  \"judul\": \"Pembangunan Jalan Usaha Tani RT 03\",\n  \"nilai\": 65000000,\n  \"tenggat\": \"2026-12-31\",\n  \"skemaPembayaran\": \"termin\",\n  \"metodePemilihan\": \"pengadaan_langsung\",\n  \"jawabanForm\": {\n    \"lingkup_pekerjaan\": \"Pengaspalan jalan 400 meter tebal 5 cm\",\n    \"jadwal_mulai\": \"2026-12-01\",\n    \"denda_keterlambatan\": \"1_per_mil\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/contracts/wizard/preview",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"contracts",
+								"wizard",
+								"preview"
+							]
+						},
+						"description": "Menghasilkan pratinjau draf teks SPK dan skor audit integritas awal sebelum kontrak disimpan ke database."
+					},
+					"response": []
+				},
+				{
+					"name": "Wizard - Create Contract (Kades)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"counterpartyId\": 1,\n  \"jenis\": \"pengadaan\",\n  \"judul\": \"Pembangunan Jalan Usaha Tani RT 03\",\n  \"nilai\": 65000000,\n  \"tenggat\": \"2026-12-31\",\n  \"skemaPembayaran\": \"termin\",\n  \"metodePemilihan\": \"pengadaan_langsung\",\n  \"jawabanForm\": {\n    \"lingkup_pekerjaan\": \"Pengaspalan jalan 400 meter tebal 5 cm\",\n    \"jadwal_mulai\": \"2026-12-01\",\n    \"denda_keterlambatan\": \"1_per_mil\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/contracts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"contracts"
+							]
+						},
+						"description": "Menyimpan kontrak baru secara atomik ke PostgreSQL (contracts, contract_parties, contract_versions, ai_audits, contract_status_history). Khusus role kades."
+					},
+					"response": []
+				},
+				{
+					"name": "List Contracts",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/contracts?q=",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"contracts"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "",
+									"description": "Pencarian nomor kontrak atau judul"
+								}
+							]
+						},
+						"description": "Mengambil daftar kontrak yang dibatasi oleh desa atau role pengguna."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Contract Detail",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/contracts/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"contracts",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1",
+									"description": "ID Kontrak"
+								}
+							]
+						},
+						"description": "Mengambil rincian kontrak spesifik lengkap dengan pengecekan otorisasi IDOR."
+					},
+					"response": []
+				},
+				{
+					"name": "Audit Contract Clauses (AI Engine)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"contractText\": \"Surat Perjanjian Kerja Pengaspalan Jalan Desa RT 01 RW 02...\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/contracts/audit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"contracts",
+								"audit"
+							]
+						},
+						"description": "Mengirim draf teks kontrak ke AI Engine untuk audit kesesuaian pasal, skor integritas, dan hash SHA-256."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "authToken",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
