@@ -56,6 +56,14 @@ type Store interface {
 	ListEvidenceByContract(ctx context.Context, contractID string) ([]domain.EvidenceFile, error)
 
 	GetDashboardMetrics(ctx context.Context, villageID string, role domain.UserRole) (domain.DashboardMetrics, error)
+
+	// Public Contracts & Citizen Reports
+	ListPublicContracts(ctx context.Context, villageID int64, search string) ([]domain.PublicContractSummary, error)
+	GetPublicContractDetail(ctx context.Context, villageID int64, contractID int64) (domain.PublicContractDetail, error)
+	CreateCitizenReport(ctx context.Context, r domain.CitizenReport, fileIDs []int64) (domain.CitizenReport, error)
+	ListCitizenReportsByReporter(ctx context.Context, reporterID int64) ([]domain.CitizenReport, error)
+	GetCitizenReportByID(ctx context.Context, reportID int64, requesterID int64, requesterRole domain.UserRole) (domain.CitizenReport, error)
+	SaveUploadedFile(ctx context.Context, key string, mime string, size int64, uploadedBy int64) (int64, error)
 }
 
 type Storage interface {

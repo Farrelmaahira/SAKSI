@@ -194,3 +194,74 @@ type DashboardMetrics struct {
 	IntegrityIndex         int     `json:"integrityIndex"`
 }
 
+// Model untuk Pengaduan Warga (Citizen Reports) & Kontrak Publik
+
+type ReportStatus string
+
+const (
+	ReportStatusDiterima       ReportStatus = "diterima"
+	ReportStatusDiverifikasi   ReportStatus = "diverifikasi"
+	ReportStatusDitindaklanjuti ReportStatus = "ditindaklanjuti"
+	ReportStatusDiteruskan     ReportStatus = "diteruskan"
+	ReportStatusSelesai        ReportStatus = "selesai"
+	ReportStatusDitolak        ReportStatus = "ditolak"
+)
+
+type ReportAttachment struct {
+	FileID           int64     `json:"fileId"`
+	KunciPenyimpanan string    `json:"kunciPenyimpanan"`
+	Mime             string    `json:"mime"`
+	Ukuran           int64     `json:"ukuran"`
+	DiunggahPada     time.Time `json:"diunggahPada"`
+}
+
+type ReportAction struct {
+	ID               int64     `json:"id"`
+	ReportID         int64     `json:"reportId"`
+	AktorUserID      int64     `json:"aktorUserId"`
+	AktorNama        string    `json:"aktorNama,omitempty"`
+	Tindakan         string    `json:"tindakan"`
+	Catatan          string    `json:"catatan,omitempty"`
+	DiteruskanKeRole string    `json:"diteruskanKeRole,omitempty"`
+	Waktu            time.Time `json:"waktu"`
+}
+
+type CitizenReport struct {
+	ID              int64              `json:"id"`
+	ContractID      int64              `json:"contractId"`
+	ContractTitle   string             `json:"contractTitle,omitempty"`
+	PelaporUserID   int64              `json:"pelaporUserId"`
+	PelaporNama     string             `json:"pelaporNama,omitempty"`
+	KodePelacakan   string             `json:"kodePelacakan"`
+	Kategori        string             `json:"kategori"`
+	Deskripsi       string             `json:"deskripsi"`
+	LokasiLat       *float64           `json:"lokasiLat,omitempty"`
+	LokasiLng       *float64           `json:"lokasiLng,omitempty"`
+	Status          ReportStatus       `json:"status"`
+	DibuatPada      time.Time          `json:"dibuatPada"`
+	Attachments     []ReportAttachment `json:"attachments,omitempty"`
+	Actions         []ReportAction     `json:"actions,omitempty"`
+}
+
+type PublicContractSummary struct {
+	ID               int64     `json:"id"`
+	Nomor            string    `json:"nomor"`
+	Judul            string    `json:"judul"`
+	Jenis            string    `json:"jenis"`
+	Nilai            float64   `json:"nilai"`
+	Tenggat          time.Time `json:"tenggat"`
+	Status           string    `json:"status"`
+	VillageID        int64     `json:"villageId"`
+	VillageName      string    `json:"villageName"`
+	CounterpartyNama string    `json:"counterpartyNama"`
+}
+
+type PublicContractDetail struct {
+	PublicContractSummary
+	IsiTeks        string   `json:"isiTeks"`
+	KlausulList    []string `json:"klausulList"`
+	IntegrityScore float64  `json:"integrityScore"`
+	SHA256Hash     string   `json:"sha256Hash"`
+}
+
+
