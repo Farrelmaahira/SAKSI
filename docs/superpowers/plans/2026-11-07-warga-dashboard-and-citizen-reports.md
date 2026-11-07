@@ -48,97 +48,97 @@ Fitur ini melengkapi kebutuhan transparansi publik dan partisipasi warga desa pa
 ## 3. Tasks
 
 ### Task 1: Domain Models & Store Interfaces for Citizen Reports & Public Contracts
-- [ ] Update `backend/internal/domain/models.go` dengan enum dan struct:
+- [x] Update `backend/internal/domain/models.go` dengan enum dan struct:
   - `ReportStatus` (`diterima`, `diverifikasi`, `ditindaklanjuti`, `diteruskan`, `selesai`, `ditolak`)
   - `CitizenReport` (`ID`, `ContractID`, `ContractTitle`, `PelaporUserID`, `KodePelacakan`, `Kategori`, `Deskripsi`, `LokasiLat`, `LokasiLng`, `Status`, `DibuatPada`, `Attachments`, `Actions`)
   - `PublicContractSummary` (`ID`, `Nomor`, `Judul`, `Jenis`, `Nilai`, `Tenggat`, `Status`, `PihakKeduaNama`)
   - `PublicContractDetail` (`PublicContractSummary` + `IsiTeks`, `KlausulList`, `IntegrityScore`)
-- [ ] Update `backend/internal/usecase/ports.go` dengan method store baru:
+- [x] Update `backend/internal/usecase/ports.go` dengan method store baru:
   - `ListPublicContracts(ctx context.Context, villageID int64, search string) ([]domain.PublicContractSummary, error)`
   - `GetPublicContractDetail(ctx context.Context, villageID int64, contractID int64) (domain.PublicContractDetail, error)`
   - `CreateCitizenReport(ctx context.Context, r domain.CitizenReport, fileKeys []string) (domain.CitizenReport, error)`
   - `ListCitizenReportsByReporter(ctx context.Context, reporterID int64) ([]domain.CitizenReport, error)`
   - `GetCitizenReportByID(ctx context.Context, reportID int64, requesterID int64, requesterRole domain.UserRole) (domain.CitizenReport, error)`
-- [ ] Jalankan `go build ./...` di backend untuk memastikan tidak ada compile error.
+- [x] Jalankan `go build ./...` di backend untuk memastikan tidak ada compile error.
 
 ---
 
 ### Task 2: Postgres Store Implementation & Tests (TDD)
-- [ ] Buat test file `backend/internal/adapter/postgres/store_reports_test.go`:
+- [x] Buat test file `backend/internal/adapter/postgres/store_reports_test.go`:
   - Test `ListPublicContracts` (hanya menampilkan status `dipublikasikan`, `berjalan`, `selesai`).
   - Test `GetPublicContractDetail` (ringkasan + klausul/teks terverifikasi).
   - Test `CreateCitizenReport` (atomic transaction insert ke `citizen_reports`, `files`, dan `report_attachments`).
   - Test `ListCitizenReportsByReporter` dan `GetCitizenReportByID` (memastikan IDOR check dan data konsisten).
-- [ ] Buat implementasi `backend/internal/adapter/postgres/store_reports.go`:
+- [x] Buat implementasi `backend/internal/adapter/postgres/store_reports.go`:
   - Implementasikan seluruh method interface `ports.go` dengan query SQL native pgx.
   - Generate kode pelacakan unik format `LAP-YYYYMMDD-XXXX`.
-- [ ] Jalankan test store: `go test -v ./internal/adapter/postgres -run TestReports`
-- [ ] Commit: `feat(postgres): implement citizen reports and public contracts store`
+- [x] Jalankan test store: `go test -v ./internal/adapter/postgres -run TestReports`
+- [x] Commit: `feat(postgres): implement citizen reports and public contracts store`
 
 ---
 
 ### Task 3: HTTP Handlers for Public Contracts & Citizen Reports
-- [ ] Buat unit test handler `backend/internal/adapter/http/handlers/reports_handler_test.go`:
+- [x] Buat unit test handler `backend/internal/adapter/http/handlers/reports_handler_test.go`:
   - Test `HandleListPublicContracts` (GET 200 dengan filter village ID warga).
   - Test `HandleGetPublicContractDetail` (GET 200 atau 404 jika belum dipublikasikan).
   - Test `HandleCreateCitizenReport` (POST multipart/form-data dengan validasi input dan lampiran foto).
   - Test `HandleListMyReports` (GET 200 list laporan pelapor).
   - Test `HandleGetReportDetail` (GET 200 detail laporan + masking nama pelapor jika kades/warga lain).
-- [ ] Buat handler `backend/internal/adapter/http/handlers/public_contracts_handler.go`:
+- [x] Buat handler `backend/internal/adapter/http/handlers/public_contracts_handler.go`:
   - `HandleListPublicContracts(d *Deps) http.HandlerFunc`
   - `HandleGetPublicContractDetail(d *Deps) http.HandlerFunc`
-- [ ] Buat handler `backend/internal/adapter/http/handlers/reports_handler.go`:
+- [x] Buat handler `backend/internal/adapter/http/handlers/reports_handler.go`:
   - `HandleCreateCitizenReport(d *Deps) http.HandlerFunc` (handle multipart upload via `d.Storage`).
   - `HandleListMyReports(d *Deps) http.HandlerFunc`
   - `HandleGetReportDetail(d *Deps) http.HandlerFunc`
-- [ ] Hubungkan rute baru di `backend/cmd/api/main.go`:
+- [x] Hubungkan rute baru di `backend/cmd/api/main.go`:
   - Protected endpoints under `authMiddleware`:
     - `GET /api/v1/public/contracts`
     - `GET /api/v1/public/contracts/{id}`
     - `POST /api/v1/reports`
     - `GET /api/v1/reports`
     - `GET /api/v1/reports/{id}`
-- [ ] Jalankan seluruh test handler: `go test -v ./internal/adapter/http/handlers -run "TestPublicContracts|TestCitizenReports"`
-- [ ] Commit: `feat(api): implement public contracts and citizen reports handlers`
+- [x] Jalankan seluruh test handler: `go test -v ./internal/adapter/http/handlers -run "TestPublicContracts|TestCitizenReports"`
+- [x] Commit: `feat(api): implement public contracts and citizen reports handlers`
 
 ---
 
 ### Task 4: Postman Collection Updates
-- [ ] Update `docs/saksi-api.postman_collection.json`:
+- [x] Update `docs/saksi-api.postman_collection.json`:
   - Tambahkan folder `Public Contracts` (`List Public Contracts`, `Get Public Contract Detail`).
   - Tambahkan folder `Citizen Reports` (`Create Report (Multipart)`, `List My Reports`, `Get Report Detail`).
   - Pastikan menggunakan variable `{{baseUrl}}` dan `{{authToken}}`.
   - Validasi schema JSON v2.1.0.
-- [ ] Commit: `docs(api): update postman collection with public contracts and reports`
+- [x] Commit: `docs(api): update postman collection with public contracts and reports`
 
 ---
 
 ### Task 5: Frontend Integration (Allowlist, Navigation, & API Wiring)
-- [ ] Perbarui `frontend/src/lib/dash/warga-allowed.ts`:
+- [x] Perbarui `frontend/src/lib/dash/warga-allowed.ts`:
   - Tambahkan path `/dashboard/kontrak` dan matcher `/dashboard/kontrak/:code`.
-- [ ] Perbarui `frontend/src/lib/dash/nav-for.ts`:
+- [x] Perbarui `frontend/src/lib/dash/nav-for.ts`:
   - Tambahkan nav item `{ label: 'Kontrak Desa', href: '/dashboard/kontrak', icon: 'file' }` untuk role `warga`.
-- [ ] Buat API client `frontend/src/lib/api/reports.ts`:
+- [x] Buat API client `frontend/src/lib/api/reports.ts`:
   - Fungsi `fetchPublicContracts(token: string)`
   - Fungsi `fetchPublicContractDetail(token: string, id: string)`
   - Fungsi `submitCitizenReport(token: string, formData: FormData)`
   - Fungsi `fetchMyReports(token: string)`
-- [ ] Integrasikan `frontend/src/components/organisms/BuatLaporanTemplate.tsx`:
+- [x] Integrasikan `frontend/src/components/organisms/BuatLaporanTemplate.tsx`:
   - Panggil `submitCitizenReport` saat submit laporan.
   - Tampilkan kode pelacakan hasil response API backend.
-- [ ] Integrasikan `frontend/src/components/organisms/WargaHome.tsx`:
+- [x] Integrasikan `frontend/src/components/organisms/WargaHome.tsx`:
   - Tampilkan total laporan riil dan daftar kontrak berjalan terkini.
-- [ ] Jalankan build frontend: `npm run build` di folder `frontend` untuk memverifikasi type-safety.
-- [ ] Commit: `feat(frontend): integrate warga contract browsing and report submission`
+- [x] Jalankan build frontend: `npm run build` di folder `frontend` untuk memverifikasi type-safety.
+- [x] Commit: `feat(frontend): integrate warga contract browsing and report submission`
 
 ---
 
 ### Task 6: Verification & Knowledge Graph Sync
-- [ ] Uji alur end-to-end via curl/backend:
+- [x] Uji alur end-to-end via curl/backend:
   - Login sebagai warga (`budi.santoso@warga.id`).
   - Ambil list kontrak publik desa `GET /api/v1/public/contracts`.
   - Kirim laporan pengaduan `POST /api/v1/reports` dengan multipart body.
   - Ambil list laporan pelapor `GET /api/v1/reports`.
-- [ ] Perbarui knowledge graph: `/graphify update`.
-- [ ] Verifikasi status git clean dan siap untuk review.
+- [x] Perbarui knowledge graph: `/graphify update`.
+- [x] Verifikasi status git clean dan siap untuk review.
 
