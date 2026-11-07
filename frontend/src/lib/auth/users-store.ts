@@ -6,6 +6,6 @@ export const users = createStore<StoredUser[]>(USERS_KEY, () => seedUsers)
 
 /* Browsers that saved the user list before a demo account existed get that account added */
 export function ensureSeedUsers() {
-  const missing = seedUsers.filter((s) => !users.get().some((u) => u.id === s.id))
+  const missing = seedUsers.filter((s) => !users.get().some((u) => u.id === s.id || u.email.toLowerCase() === s.email.toLowerCase()))
   if (missing.length) users.set((all) => [...all, ...missing])
 }

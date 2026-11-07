@@ -34,6 +34,7 @@ export const seedAccounts: SeedAccount[] = [
   { email: 'bpd@saksi.id', label: 'BPD', note: 'Desa Sukamaju' },
   { email: 'inspektorat@saksi.id', label: 'Inspektorat', note: 'Punya 2 wilayah' },
   { email: 'warga@saksi.id', label: 'Warga', note: 'Desa Sukamaju' },
+  { email: 'budi.santoso@warga.id', label: 'Budi Santoso (Warga)', note: 'Desa Sukamaju' },
 ]
 
 /* Seed accounts replace invitations for the demo (kades, BPD, Inspektorat) */
@@ -42,6 +43,7 @@ export const seedUsers: StoredUser[] = [
   { id: 'u-penyedia', name: 'Rina Kartika', email: 'penyedia@saksi.id', roles: [{ id: 'r-penyedia', role: 'pihak_kedua', title: 'Penyedia', counterpartyId: 'cp-maju' }] },
   { id: 'u-bpd', name: 'Asep Saepudin', email: 'bpd@saksi.id', roles: [{ id: 'r-bpd', role: 'bpd', title: 'Ketua BPD', villageId: 'sukamaju' }] },
   { id: 'u-warga', name: 'Siti Rahma', email: 'warga@saksi.id', phone: '0812-5550-0142', roles: [{ id: 'r-warga', role: 'warga', title: 'Pelapor', villageId: 'sukamaju' }] },
+  { id: 'u-budi', name: 'Budi Santoso Warga', email: 'budi.santoso@warga.id', phone: '0812-5550-0199', roles: [{ id: 'r-budi', role: 'warga', title: 'Pelapor', villageId: 'sukamaju' }] },
   {
     id: 'u-insp',
     name: 'Dewi Lestari',
