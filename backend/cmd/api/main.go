@@ -77,6 +77,16 @@ func main() {
 	mux.Handle("GET /api/v1/contracts/{id}", authMiddleware(handlers.HandleGetContract(deps)))
 	mux.Handle("POST /api/v1/contracts/audit", authMiddleware(handlers.HandleAuditContract(deps)))
 
+	// Public contracts for citizens & tracking
+	mux.Handle("GET /api/v1/public/contracts", authMiddleware(handlers.HandleListPublicContracts(deps)))
+	mux.Handle("GET /api/v1/public/contracts/{id}", authMiddleware(handlers.HandleGetPublicContractDetail(deps)))
+
+	// Citizen reports routes
+	mux.Handle("POST /api/v1/reports", authMiddleware(handlers.HandleCreateCitizenReport(deps)))
+	mux.Handle("GET /api/v1/reports", authMiddleware(handlers.HandleListMyReports(deps)))
+	mux.Handle("GET /api/v1/reports/{id}", authMiddleware(handlers.HandleGetReportDetail(deps)))
+
+
 	webOrigin := env("WEB_ORIGIN", "http://localhost:3000")
 
 	corsMiddleware := func(next http.Handler) http.Handler {
