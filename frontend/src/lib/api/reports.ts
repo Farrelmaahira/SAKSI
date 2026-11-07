@@ -17,6 +17,26 @@ export interface PublicContractDetail extends PublicContractSummary {
   isiTeks: string
   klausulList: string[]
   integrityScore: number
+  sha256Hash?: string
+}
+
+export interface ReportAttachmentResponse {
+  fileId: number
+  kunciPenyimpanan: string
+  mime: string
+  ukuran: number
+  diunggahPada: string
+}
+
+export interface ReportActionResponse {
+  id: number
+  reportId: number
+  aktorUserId: number
+  aktorNama?: string
+  tindakan: string
+  catatan?: string
+  diteruskanKeRole?: string
+  waktu: string
 }
 
 export interface CreatedReportResponse {
@@ -24,30 +44,47 @@ export interface CreatedReportResponse {
   contractId: number
   contractTitle?: string
   pelaporUserId: number
+  pelaporNama?: string
   kodePelacakan: string
   kategori: string
   deskripsi: string
+  lokasiLat?: number
+  lokasiLng?: number
   status: string
   dibuatPada: string
+  attachments?: ReportAttachmentResponse[]
+  actions?: ReportActionResponse[]
+}
+
+export function getAuthToken(): string {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem('saksi:token') || ''
+}
+
+export function setAuthToken(token: string) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem('saksi:token', token)
 }
 
 export async function fetchPublicContracts(token?: string, search: string = ''): Promise<PublicContractSummary[]> {
   try {
+    const activeToken = token || getAuthToken()
     const headers: Record<string, string> = {}
-    if (token) headers['Authorization'] = `Bearer ${token}`
+    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`
     const query = search ? `?search=${encodeURIComponent(search)}` : ''
     const res = await fetch(`${API_BASE_URL}/public/contracts${query}`, { headers })
     if (res.ok) return await res.json()
   } catch (err) {
-    console.warn('Failed to fetch public contracts from API, using fallback:', err)
+    console.warn('Failed to fetch public contracts from API:', err)
   }
   return []
 }
 
 export async function fetchPublicContractDetail(id: number | string, token?: string): Promise<PublicContractDetail | null> {
   try {
+    const activeToken = token || getAuthToken()
     const headers: Record<string, string> = {}
-    if (token) headers['Authorization'] = `Bearer ${token}`
+    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`
     const res = await fetch(`${API_BASE_URL}/public/contracts/${id}`, { headers })
     if (res.ok) return await res.json()
   } catch (err) {
@@ -56,13 +93,14 @@ export async function fetchPublicContractDetail(id: number | string, token?: str
   return null
 }
 
-export async function submitCitizenReport(formData: FormData, token: string): Promise<CreatedReportResponse | null> {
+export async function submitCitizenReport(formData: FormData, token?: string): Promise<CreatedReportResponse | null> {
   try {
+    const activeToken = token || getAuthToken()
+    const headers: Record<string, string> = {}
+    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`
     const res = await fetch(`${API_BASE_URL}/reports`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers,
       body: formData,
     })
     if (res.ok) {
@@ -74,13 +112,12 @@ export async function submitCitizenReport(formData: FormData, token: string): Pr
   return null
 }
 
-export async function fetchMyReports(token: string): Promise<CreatedReportResponse[]> {
+export async function fetchMyReports(token?: string): Promise<CreatedReportResponse[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/reports`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
+    const activeToken = token || getAuthToken()
+    const headers: Record<string, string> = {}
+    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`
+    const res = await fetch(`${API_BASE_URL}/reports`, { headers })
     if (res.ok) return await res.json()
   } catch (err) {
     console.warn('Failed to fetch citizen reports from API:', err)
@@ -88,3 +125,15 @@ export async function fetchMyReports(token: string): Promise<CreatedReportRespon
   return []
 }
 
+export async function fetchReportDetail(id: number | string, token?: string): Promise<CreatedReportResponse | null> {
+  try {
+    const activeToken = token || getAuthToken()
+    const headers: Record<string, string> = {}
+    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`
+    const res = await fetch(`${API_BASE_URL}/reports/${id}`, { headers })
+    if (res.ok) return await res.json()
+  } catch (err) {
+    console.warn(`Failed to fetch report detail ${id}:`, err)
+  }
+  return null
+}

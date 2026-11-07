@@ -3,7 +3,8 @@
 import { useDash } from '@/hooks/use-dash'
 import { db } from '@/lib/db/db'
 import { scopeContracts } from '@/lib/db/scope-contracts'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { fetchPublicContracts } from '@/lib/api/reports'
 import type { KontrakFilter } from '@/interfaces/dash'
 import type { DContract } from '@/interfaces/db'
 import { nextStep } from '@/lib/db/next-step'
@@ -35,7 +36,42 @@ export default function KontrakListTemplate() {
   const { session } = useDash()
   const d = db.use()
   const role = session.role
-  const all = scopeContracts(d, role)
+  const [dbContracts, setDbContracts] = useState<DContract[] | null>(null)
+
+  useEffect(() => {
+    if (role.role === 'warga') {
+      let active = true
+      fetchPublicContracts().then((res) => {
+        if (active && res && res.length > 0) {
+          const mapped: DContract[] = res.map((c) => ({
+            code: c.nomor,
+            title: c.judul,
+            template: (c.jenis as any) || 'pengadaan',
+            templateId: c.jenis,
+            counterpartyId: 'cp-maju',
+            villageId: 'sukamaju',
+            status: c.status === 'selesai' ? 'selesai' : 'berjalan',
+            amount: c.nilai,
+            createdAt: '2026-11-06',
+            versions: [],
+            reviews: [],
+            signatures: {},
+            seals: [],
+            terms: [],
+            progress: [],
+            history: [],
+            selfReport: false,
+          }))
+          setDbContracts(mapped)
+        }
+      })
+      return () => {
+        active = false
+      }
+    }
+  }, [role.role])
+
+  const all = (role.role === 'warga' && dbContracts !== null) ? dbContracts : scopeContracts(d, role)
   const [filter, setFilter] = useState<KontrakFilter>('semua')
   const [q, setQ] = useState('')
   const isDesa = role.role === 'perangkat_desa'

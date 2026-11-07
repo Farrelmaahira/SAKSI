@@ -1,6 +1,7 @@
 import { MAX_ATTEMPTS, LOCK_MINUTES } from '@/data/auth'
 import type { LoginResult } from '@/interfaces/auth'
 import { addAudit } from '@/lib/audit/add-audit'
+import { setAuthToken } from '@/lib/api/reports'
 import { findUser } from './find-user'
 import { ensureSeedUsers } from './users-store'
 import { isEmail } from './is-email'
@@ -8,9 +9,28 @@ import { passwordMatches } from './password-matches'
 import { startSession } from './start-session'
 import { updateUser } from './update-user'
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'
+
 export async function login(emailInput: string, password: string): Promise<LoginResult> {
   if (!isEmail(emailInput)) return { ok: false, field: 'email', error: 'Format email belum benar, contoh: nama@desa.id' }
   if (!password) return { ok: false, field: 'password', error: 'Masukkan kata sandi.' }
+
+  // Sinkronisasi token dengan Backend API
+  try {
+    const apiRes = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailInput, password }),
+    })
+    if (apiRes.ok) {
+      const data = await apiRes.json()
+      if (data.token) {
+        setAuthToken(data.token)
+      }
+    }
+  } catch {
+    // Fallback bila backend API sedang tidak aktif
+  }
 
   ensureSeedUsers()
   const u = findUser(emailInput)

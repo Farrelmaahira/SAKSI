@@ -10,7 +10,7 @@ import { newReportId } from '@/lib/contracts/new-report-id'
 import { saveReport } from '@/lib/contracts/save-report'
 import { villageById } from '@/lib/master/village-by-id'
 import { tokens } from '@/lib/auth/tokens-store'
-import { submitCitizenReport } from '@/lib/api/reports'
+import { submitCitizenReport, fetchPublicContracts } from '@/lib/api/reports'
 import NotAllowed from '@/components/molecules/NotAllowed'
 import PageHead from '@/components/molecules/PageHead'
 import Panel from '@/components/molecules/Panel'
@@ -34,7 +34,43 @@ export default function BuatLaporanTemplate() {
   const [sent, setSent] = useState<Report | null>(null)
 
   useEffect(() => {
-    loadPublicRegistry().then(setRegistry)
+    let active = true
+    async function load() {
+      const data = await fetchPublicContracts()
+      if (active && data && data.length > 0) {
+        const mapped: SealedContract[] = data.map((c) => ({
+          code: c.nomor,
+          type: c.jenis,
+          title: c.judul,
+          village: c.villageName || 'Desa Sukamaju',
+          first: 'Pemerintah Desa',
+          second: c.counterpartyNama || 'Penyedia Rekanan',
+          value: c.nilai,
+          duration: '60 hari',
+          start: '2026-11-06',
+          progress: 50,
+          clauses: [
+            { title: 'Pasal 1 - Lingkup Pekerjaan / Pengadaan', text: 'Ruang lingkup pekerjaan' },
+            { title: 'Pasal 2 - Nilai Kontrak dan Pembayaran', text: 'Ketentuan pembayaran' },
+            { title: 'Pasal 3 - Waktu Pelaksanaan dan Tenggat', text: 'Tenggat waktu pelaksanaan' },
+            { title: 'Pasal 4 - Hak dan Kewajiban', text: 'Hak serta kewajiban para pihak' },
+            { title: 'Pasal 5 - Sanksi dan Denda Keterlambatan', text: 'Ketentuan sanksi' },
+          ],
+          milestones: [],
+          reports: [],
+          hash: '',
+        }))
+        setRegistry(mapped)
+      } else {
+        loadPublicRegistry().then((reg) => {
+          if (active) setRegistry(reg)
+        })
+      }
+    }
+    load()
+    return () => {
+      active = false
+    }
   }, [])
 
   if (session.role.role !== 'warga') return <NotAllowed />
