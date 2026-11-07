@@ -196,3 +196,4 @@ func HandleGetReportDetail(d *Deps) http.HandlerFunc {
 		WriteJSON(w, http.StatusOK, report)
 	}
 }
+

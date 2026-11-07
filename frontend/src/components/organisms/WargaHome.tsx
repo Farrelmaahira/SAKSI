@@ -54,9 +54,9 @@ export default function WargaHome() {
           )}
         </Panel>
       </div>
-      <Panel title="Pantau kontrak desa" desc="Daftar kontrak, progres, termin, dan keaslian dokumen terbuka untuk semua orang tanpa login.">
+      <Panel title="Kontrak desa yang berjalan" desc="Pantau rincian kegiatan, rekanan, dan klausul kontrak yang sedang berjalan di desa Anda.">
         <div className="d-btn-row">
-          <Btn to="/lacak" variant="ghost" icon="globe">Buka portal publik</Btn>
+          <Btn to="/dashboard/kontrak" variant="light" icon="file">Lihat kontrak desa</Btn>
         </div>
       </Panel>
     </>

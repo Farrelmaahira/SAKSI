@@ -9,6 +9,8 @@ import { loadPublicRegistry } from '@/lib/db/load-public-registry'
 import { newReportId } from '@/lib/contracts/new-report-id'
 import { saveReport } from '@/lib/contracts/save-report'
 import { villageById } from '@/lib/master/village-by-id'
+import { tokens } from '@/lib/auth/tokens-store'
+import { submitCitizenReport } from '@/lib/api/reports'
 import NotAllowed from '@/components/molecules/NotAllowed'
 import PageHead from '@/components/molecules/PageHead'
 import Panel from '@/components/molecules/Panel'
@@ -27,6 +29,7 @@ export default function BuatLaporanTemplate() {
   const [text, setText] = useState('')
   const [location, setLocation] = useState('')
   const [photos, setPhotos] = useState<string[]>([])
+  const [rawFiles, setRawFiles] = useState<File[]>([])
   const [tried, setTried] = useState(false)
   const [sent, setSent] = useState<Report | null>(null)
 
@@ -49,16 +52,19 @@ export default function BuatLaporanTemplate() {
 
   const addPhotos = (files: FileList | null) => {
     if (!files) return
-    const urls = [...files].filter((f) => f.type.startsWith('image/')).map((f) => URL.createObjectURL(f))
+    const valid = [...files].filter((f) => f.type.startsWith('image/'))
+    const urls = valid.map((f) => URL.createObjectURL(f))
     setPhotos((p) => [...p, ...urls].slice(0, 4))
+    setRawFiles((f) => [...f, ...valid].slice(0, 4))
   }
-
 
   const removePhoto = (i: number) => {
     URL.revokeObjectURL(photos[i])
     setPhotos((p) => p.filter((_, j) => j !== i))
+    setRawFiles((f) => f.filter((_, j) => j !== i))
   }
-  const submit = () => {
+
+  const submit = async () => {
     setTried(true)
     if (!contract || invalid) return
     const report: Report = {
@@ -75,6 +81,24 @@ export default function BuatLaporanTemplate() {
       owner: session.email,
       photos: photos.length,
     }
+
+    // Panggil real backend jika token tersedia
+    const userToken = tokens.get().find((t) => t.userId === session.userId)?.token || ''
+    if (userToken) {
+      const fd = new FormData()
+      const cId = parseInt(contract.code.replace(/\D/g, ''), 10) || 1
+      fd.append('contractId', String(cId))
+      fd.append('kategori', category)
+      fd.append('deskripsi', `[${clause}] ${text.trim()}${location ? ' - Lokasi: ' + location.trim() : ''}`)
+      for (const file of rawFiles) {
+        fd.append('photos', file)
+      }
+      const backendRes = await submitCitizenReport(fd, userToken)
+      if (backendRes && backendRes.kodePelacakan) {
+        report.id = backendRes.kodePelacakan
+      }
+    }
+
     saveReport(contract.code, report)
     setSent(report)
   }

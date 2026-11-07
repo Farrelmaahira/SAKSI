@@ -65,3 +65,4 @@ func HandleGetPublicContractDetail(d *Deps) http.HandlerFunc {
 		WriteJSON(w, http.StatusOK, detail)
 	}
 }
+

@@ -62,13 +62,13 @@ export default function KontrakListTemplate() {
     { key: 'selesai', label: 'Selesai', count: count('selesai') },
   ]
 
-  const title = { perangkat_desa: 'Kontrak desa', pihak_kedua: 'Kontrak saya', bpd: 'Kontrak diawasi', inspektorat: 'Kontrak diawasi', warga: 'Kontrak' }[role.role]
+  const title = { perangkat_desa: 'Kontrak desa', pihak_kedua: 'Kontrak saya', bpd: 'Kontrak diawasi', inspektorat: 'Kontrak diawasi', warga: 'Kontrak desa' }[role.role]
   const desc = {
     perangkat_desa: 'Semua kontrak desa dari draf sampai selesai.',
     pihak_kedua: 'Kontrak tempat usaha Anda menjadi pihak kedua. Draf yang belum dikirim desa tidak tampil di sini.',
     bpd: 'Kontrak desa yang sudah dikirim untuk ditinjau. Hanya bisa dibaca.',
     inspektorat: 'Kontrak semua desa di wilayah Anda. Hanya bisa dibaca.',
-    warga: 'Warga memantau kontrak lewat portal publik.',
+    warga: 'Kontrak desa yang sedang berjalan dan dapat dipantau oleh masyarakat.',
   }[role.role]
 
   return (

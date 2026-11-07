@@ -9,6 +9,7 @@ export function navFor(role: RoleKey, counts: NavCounts): NavItem[] {
   if (role === 'warga')
     return [
       home,
+      { to: '/dashboard/kontrak', label: 'Kontrak Desa', icon: 'file' },
       { to: '/dashboard/laporan/baru', label: 'Buat Laporan', icon: 'plus' },
       { to: '/dashboard/laporan', label: 'Laporan Saya', icon: 'flag', badge: counts.reports, end: true }, // exact match, or it stays lit on Buat Laporan
       { to: '/dashboard/notifikasi', label: 'Notifikasi', icon: 'bell' },
