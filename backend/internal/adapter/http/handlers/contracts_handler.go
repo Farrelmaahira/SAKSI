@@ -362,7 +362,7 @@ func HandleListContracts(d *Deps) http.HandlerFunc {
 		search := r.URL.Query().Get("q")
 		list, err := d.Store.ListContracts(r.Context(), villageID, role, search)
 		if err != nil {
-			WriteError(w, http.StatusInternalServerError, "failed to query contracts")
+			WriteError(w, http.StatusInternalServerError, "failed to query contracts: "+err.Error())
 			return
 		}
 		WriteJSON(w, http.StatusOK, list)
