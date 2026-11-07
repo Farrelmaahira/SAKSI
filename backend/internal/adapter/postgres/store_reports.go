@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"saksi-backend/internal/domain"
+	"saksi-backend/internal/usecase"
 )
 
 // ListPublicContracts mengambil daftar kontrak publik (status dipublikasikan, berjalan, selesai).
@@ -434,4 +435,205 @@ func generateTrackingCode() string {
 	_, _ = rand.Read(b)
 	randSuffix := strings.ToUpper(hex.EncodeToString(b))
 	return fmt.Sprintf("LAP-%s-%s", time.Now().Format("20060102"), randSuffix)
+}
+
+// ListCitizenReportsByContract mengembalikan semua laporan warga untuk kontrak tertentu dengan validasi IDOR kepemilikan desa.
+func (s *Store) ListCitizenReportsByContract(ctx context.Context, contractID int64, villageID int64, requesterRole domain.UserRole) ([]domain.CitizenReport, error) {
+	// 1. Cek kepemilikan kontrak & IDOR desa
+	var contractVillageID int64
+	var contractTitle string
+	checkQuery := `SELECT COALESCE(village_id, 0), judul FROM contracts WHERE id = $1`
+	err := s.db.QueryRow(ctx, checkQuery, contractID).Scan(&contractVillageID, &contractTitle)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, err
+	}
+
+	if requesterRole != domain.RoleInspektorat && contractVillageID != villageID {
+		return nil, domain.ErrForbidden
+	}
+
+	// 2. Query daftar laporan warga pada kontrak ini
+	query := `
+		SELECT 
+			cr.id, 
+			cr.contract_id, 
+			COALESCE(c.judul, '') AS contract_title,
+			cr.pelapor_user_id, 
+			COALESCE(u.nama, '') AS pelapor_nama,
+			cr.kode_pelacakan, 
+			cr.kategori, 
+			cr.deskripsi, 
+			cr.lokasi_lat, 
+			cr.lokasi_lng, 
+			cr.status::text, 
+			cr.dibuat_pada
+		FROM citizen_reports cr
+		JOIN contracts c ON c.id = cr.contract_id
+		LEFT JOIN users u ON u.id = cr.pelapor_user_id
+		WHERE cr.contract_id = $1
+		ORDER BY cr.dibuat_pada DESC
+	`
+
+	rows, err := s.db.Query(ctx, query, contractID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []domain.CitizenReport
+	for rows.Next() {
+		var r domain.CitizenReport
+		var statusStr string
+		if err := rows.Scan(
+			&r.ID,
+			&r.ContractID,
+			&r.ContractTitle,
+			&r.PelaporUserID,
+			&r.PelaporNama,
+			&r.KodePelacakan,
+			&r.Kategori,
+			&r.Deskripsi,
+			&r.LokasiLat,
+			&r.LokasiLng,
+			&statusStr,
+			&r.DibuatPada,
+		); err != nil {
+			return nil, err
+		}
+		r.Status = domain.ReportStatus(statusStr)
+
+		// Enforce privasi: Perangkat desa / Kades hanya melihat nama tersamar "Warga terverifikasi"
+		if requesterRole == domain.RoleKades || requesterRole == domain.RolePerangkatDesa || requesterRole == domain.RolePenyedia {
+			r.PelaporNama = "Warga terverifikasi"
+		}
+
+		r.Attachments = s.loadAttachments(ctx, r.ID)
+		r.Actions = s.loadActions(ctx, r.ID)
+
+		list = append(list, r)
+	}
+
+	if list == nil {
+		list = []domain.CitizenReport{}
+	}
+	return list, nil
+}
+
+// ListCitizenReports mengembalikan daftar laporan terfilter secara cerdas berdasarkan peran pengguna (Warga, Kades, BPD, Inspektorat).
+func (s *Store) ListCitizenReports(ctx context.Context, f usecase.ListReportsFilter) ([]domain.CitizenReport, error) {
+	baseQuery := `
+		SELECT 
+			cr.id, 
+			cr.contract_id, 
+			COALESCE(c.judul, '') AS contract_title,
+			cr.pelapor_user_id, 
+			COALESCE(u.nama, '') AS pelapor_nama,
+			cr.kode_pelacakan, 
+			cr.kategori, 
+			cr.deskripsi, 
+			cr.lokasi_lat, 
+			cr.lokasi_lng, 
+			cr.status::text, 
+			cr.dibuat_pada
+		FROM citizen_reports cr
+		LEFT JOIN contracts c ON c.id = cr.contract_id
+		LEFT JOIN users u ON u.id = cr.pelapor_user_id
+	`
+
+	var whereClauses []string
+	var args []any
+	argIdx := 1
+
+	// Scoping berdasar peran:
+	switch f.RequesterRole {
+	case domain.RoleWarga:
+		// Warga hanya boleh melihat laporan buatannya sendiri
+		whereClauses = append(whereClauses, fmt.Sprintf("cr.pelapor_user_id = $%d", argIdx))
+		args = append(args, f.RequesterUserID)
+		argIdx++
+	case domain.RoleKades, domain.RolePerangkatDesa, domain.RoleBPD:
+		// Kades & BPD melihat seluruh laporan di desanya
+		if f.VillageID > 0 {
+			whereClauses = append(whereClauses, fmt.Sprintf("c.village_id = $%d", argIdx))
+			args = append(args, f.VillageID)
+			argIdx++
+		}
+	case domain.RoleInspektorat:
+		// Inspektorat dapat memfilter berdasar desa jika diberikan
+		if f.VillageID > 0 {
+			whereClauses = append(whereClauses, fmt.Sprintf("c.village_id = $%d", argIdx))
+			args = append(args, f.VillageID)
+			argIdx++
+		}
+	}
+
+	if f.ContractID != nil && *f.ContractID > 0 {
+		whereClauses = append(whereClauses, fmt.Sprintf("cr.contract_id = $%d", argIdx))
+		args = append(args, *f.ContractID)
+		argIdx++
+	}
+
+	if f.Status != nil && *f.Status != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("cr.status::text = $%d", argIdx))
+		args = append(args, string(*f.Status))
+		argIdx++
+	}
+
+	if f.Search != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("(cr.kode_pelacakan ILIKE $%d OR cr.deskripsi ILIKE $%d OR COALESCE(c.judul, '') ILIKE $%d)", argIdx, argIdx, argIdx))
+		args = append(args, "%"+f.Search+"%")
+		argIdx++
+	}
+
+	if len(whereClauses) > 0 {
+		baseQuery += " WHERE " + strings.Join(whereClauses, " AND ")
+	}
+	baseQuery += " ORDER BY cr.dibuat_pada DESC"
+
+	rows, err := s.db.Query(ctx, baseQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []domain.CitizenReport
+	for rows.Next() {
+		var r domain.CitizenReport
+		var statusStr string
+		if err := rows.Scan(
+			&r.ID,
+			&r.ContractID,
+			&r.ContractTitle,
+			&r.PelaporUserID,
+			&r.PelaporNama,
+			&r.KodePelacakan,
+			&r.Kategori,
+			&r.Deskripsi,
+			&r.LokasiLat,
+			&r.LokasiLng,
+			&statusStr,
+			&r.DibuatPada,
+		); err != nil {
+			return nil, err
+		}
+		r.Status = domain.ReportStatus(statusStr)
+
+		// Enforce privasi: Perangkat desa / Kades hanya melihat nama tersamar "Warga terverifikasi"
+		if f.RequesterRole == domain.RoleKades || f.RequesterRole == domain.RolePerangkatDesa || f.RequesterRole == domain.RolePenyedia {
+			r.PelaporNama = "Warga terverifikasi"
+		}
+
+		r.Attachments = s.loadAttachments(ctx, r.ID)
+		r.Actions = s.loadActions(ctx, r.ID)
+
+		list = append(list, r)
+	}
+
+	if list == nil {
+		list = []domain.CitizenReport{}
+	}
+	return list, nil
 }

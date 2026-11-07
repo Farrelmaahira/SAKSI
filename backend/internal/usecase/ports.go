@@ -37,6 +37,15 @@ type CreateContractParams struct {
 	SHA256Hash       string
 }
 
+type ListReportsFilter struct {
+	RequesterRole   domain.UserRole
+	RequesterUserID int64
+	VillageID       int64
+	ContractID      *int64
+	Status          *domain.ReportStatus
+	Search          string
+}
+
 type Store interface {
 	CreateUserWithRole(ctx context.Context, p RegisterUserParams) (domain.User, error)
 	UserByEmail(ctx context.Context, email string) (domain.User, error)
@@ -63,6 +72,8 @@ type Store interface {
 	CreateCitizenReport(ctx context.Context, r domain.CitizenReport, fileIDs []int64) (domain.CitizenReport, error)
 	ListCitizenReportsByReporter(ctx context.Context, reporterID int64) ([]domain.CitizenReport, error)
 	GetCitizenReportByID(ctx context.Context, reportID int64, requesterID int64, requesterRole domain.UserRole) (domain.CitizenReport, error)
+	ListCitizenReportsByContract(ctx context.Context, contractID int64, villageID int64, requesterRole domain.UserRole) ([]domain.CitizenReport, error)
+	ListCitizenReports(ctx context.Context, filter ListReportsFilter) ([]domain.CitizenReport, error)
 	SaveUploadedFile(ctx context.Context, key string, mime string, size int64, uploadedBy int64) (int64, error)
 }
 

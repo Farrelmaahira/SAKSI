@@ -132,4 +132,48 @@ func TestStore_Reports_Workflow(t *testing.T) {
 	if repKades.PelaporNama != "Warga terverifikasi" {
 		t.Errorf("expected PelaporNama to be masked as 'Warga terverifikasi', got '%s'", repKades.PelaporNama)
 	}
+
+	// 7. Test ListCitizenReportsByContract
+	contractReports, err := store.ListCitizenReportsByContract(ctx, contractID, 1, domain.RoleKades)
+	if err != nil {
+		t.Fatalf("ListCitizenReportsByContract failed: %v", err)
+	}
+	if len(contractReports) == 0 {
+		t.Errorf("expected at least 1 report for contract %d", contractID)
+	}
+	if contractReports[0].PelaporNama != "Warga terverifikasi" {
+		t.Errorf("expected PelaporNama masked as 'Warga terverifikasi', got '%s'", contractReports[0].PelaporNama)
+	}
+
+	// 7b. IDOR check: Kades desa lain tidak boleh melihat laporan kontrak ini
+	_, err = store.ListCitizenReportsByContract(ctx, contractID, 999, domain.RoleKades)
+	if err != domain.ErrForbidden {
+		t.Errorf("expected ErrForbidden for kades of another village, got %v", err)
+	}
+
+	// 8. Test ListCitizenReports (Role-Aware)
+	// 8a. Kades melihat seluruh laporan di desanya
+	kadesReports, err := store.ListCitizenReports(ctx, usecase.ListReportsFilter{
+		RequesterRole:   domain.RoleKades,
+		RequesterUserID: 1,
+		VillageID:       1,
+	})
+	if err != nil {
+		t.Fatalf("ListCitizenReports as kades failed: %v", err)
+	}
+	if len(kadesReports) == 0 {
+		t.Errorf("expected kades to see village reports")
+	}
+
+	// 8b. Warga hanya melihat laporannya sendiri
+	wargaReports, err := store.ListCitizenReports(ctx, usecase.ListReportsFilter{
+		RequesterRole:   domain.RoleWarga,
+		RequesterUserID: 3,
+	})
+	if err != nil {
+		t.Fatalf("ListCitizenReports as warga failed: %v", err)
+	}
+	if len(wargaReports) == 0 {
+		t.Errorf("expected warga to see their reports")
+	}
 }

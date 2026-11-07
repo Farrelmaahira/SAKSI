@@ -17,17 +17,18 @@ var (
 type UserRole string
 
 const (
-	RoleKades       UserRole = "kades"
-	RoleBPD         UserRole = "bpd"
-	RoleInspektorat UserRole = "inspektorat"
-	RolePenyedia    UserRole = "penyedia"
-	RoleAdminDaerah UserRole = "admin_daerah"
-	RoleWarga       UserRole = "warga"
+	RoleKades         UserRole = "kades"
+	RolePerangkatDesa UserRole = "perangkat_desa"
+	RoleBPD           UserRole = "bpd"
+	RoleInspektorat   UserRole = "inspektorat"
+	RolePenyedia      UserRole = "penyedia"
+	RoleAdminDaerah   UserRole = "admin_daerah"
+	RoleWarga         UserRole = "warga"
 )
 
 func (r UserRole) Valid() bool {
 	switch r {
-	case RoleKades, RoleBPD, RoleInspektorat, RolePenyedia, RoleAdminDaerah, RoleWarga:
+	case RoleKades, RolePerangkatDesa, RoleBPD, RoleInspektorat, RolePenyedia, RoleAdminDaerah, RoleWarga:
 		return true
 	default:
 		return false
