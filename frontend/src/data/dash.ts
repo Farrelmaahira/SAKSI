@@ -59,7 +59,7 @@ export const tabsFor: Record<RoleKey, string[] | null> = {
   pihak_kedua: ['ringkasan', 'draf', 'peninjauan', 'tanda-tangan', 'spk', 'termin', 'progres', 'riwayat'],
   bpd: null,
   inspektorat: null,
-  warga: [],
+  warga: ['ringkasan', 'progres', 'laporan', 'riwayat'],
 }
 
 export const rancanganPlans = {
