@@ -7,7 +7,7 @@ export default function BenefitsSection() {
       <div className="container">
         <div className="benefits-head" data-reveal>
           <p className="label dark">Manfaat</p>
-          <h2 className="display">Siapa yang terbantu.</h2>
+          <h2 className="display" data-split>Siapa yang terbantu.</h2>
         </div>
         <div className="benefit-grid">
           {benefits.map((benefit) => (

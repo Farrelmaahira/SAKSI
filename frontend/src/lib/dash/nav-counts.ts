@@ -6,10 +6,13 @@ import { isClosed } from '@/lib/db/is-closed'
 import { nextStep } from '@/lib/db/next-step'
 import { scopeContracts } from '@/lib/db/scope-contracts'
 import { scopeReports } from '@/lib/db/scope-reports'
+import { myReports } from '@/lib/db/my-reports'
 
 /* Badges on the sidebar: what is waiting for this role */
 export function navCounts(data: Db, session: Session): NavCounts {
   const role = session.role
+  // Citizens only see their own reports: the badge counts the ones still being handled
+  if (role.role === 'warga') return { reports: myReports(data, session.email).filter((r) => !isClosed(r)).length, contracts: 0 }
   const reports = scopeReports(data, role)
   const contracts = scopeContracts(data, role)
   return {

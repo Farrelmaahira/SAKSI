@@ -1,6 +1,11 @@
-import { ReactNode } from 'react'
+import { ReactNode } from "react";
 
-interface Props { label: string; title: string; desc?: string; actions?: ReactNode }
+interface Props {
+  label: string;
+  title: string;
+  desc?: string;
+  actions?: ReactNode;
+}
 
 export default function PageHead({ label, title, desc, actions }: Props) {
   return (
@@ -12,5 +17,5 @@ export default function PageHead({ label, title, desc, actions }: Props) {
       </div>
       {actions && <div className="d-head-actions">{actions}</div>}
     </header>
-  )
+  );
 }

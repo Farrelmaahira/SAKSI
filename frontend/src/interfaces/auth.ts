@@ -1,6 +1,6 @@
 import type { CounterpartyType } from './master'
 
-export type RoleKey = 'perangkat_desa' | 'pihak_kedua' | 'bpd' | 'inspektorat'
+export type RoleKey = 'perangkat_desa' | 'pihak_kedua' | 'bpd' | 'inspektorat' | 'warga'
 
 /* One row of user_roles */
 export interface UserRole {
@@ -24,6 +24,8 @@ export interface StoredUser {
   failedAttempts: number
   lockedUntil?: number
   createdAt: string
+  /* Citizen profile (warga_profiles): phone number; the home village is the villageId of the warga role */
+  phone?: string
   roles: UserRole[]
 }
 

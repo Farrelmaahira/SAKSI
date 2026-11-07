@@ -10,8 +10,10 @@ import { fmtDateTime } from '@/lib/dates/fmt-date-time'
 import Btn from '@/components/atoms/Btn'
 import Locked from '@/components/atoms/Locked'
 import { setSelfReport } from '@/lib/db/set-self-report'
+import { useConfirm } from '@/hooks/use-confirm'
 
 export default function ProgresTab({ c, session }: TabProps) {
+  const confirm = useConfirm()
   const last = progressOf(c)
   const [pct, setPct] = useState(Math.min(100, last + 10))
   const [note, setNote] = useState('')
@@ -21,10 +23,18 @@ export default function ProgresTab({ c, session }: TabProps) {
   const running = c.status === 'berjalan'
   const canReport = running && (r === 'perangkat_desa' || (r === 'pihak_kedua' && c.selfReport))
 
-  const save = () => {
+  const save = async () => {
     if (pct <= last) return setErr(`Progres harus lebih dari ${last}%.`)
     if (note.trim().length < 5) return setErr('Tulis catatan singkat pekerjaan yang sudah selesai.')
-    if (pct === 100 && !window.confirm('Progres 100% akan menandai kontrak selesai. Lanjutkan?')) return
+    if (pct === 100) {
+      const ok = await confirm({
+        title: 'Tandai kontrak selesai?',
+        text: 'Progres 100% menandai kontrak ini selesai. Setelah itu progres tidak bisa ditambah lagi.',
+        confirmLabel: 'Ya, tandai selesai',
+        art: 'document-ready_o5d5',
+      })
+      if (!ok) return
+    }
     addProgress(c.code, { percent: pct, note: note.trim(), photos }, session)
     setNote('')
     setErr('')

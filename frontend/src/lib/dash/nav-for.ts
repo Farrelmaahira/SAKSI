@@ -6,6 +6,14 @@ export function navFor(role: RoleKey, counts: NavCounts): NavItem[] {
   const home = { to: '/dashboard', label: 'Beranda', icon: 'home', end: true }
   const audit = { to: '/dashboard/jejak-audit', label: 'Jejak Audit', icon: 'clock' }
   const seal = { to: '/dashboard/verifikasi-segel', label: 'Verifikasi Segel', icon: 'shield' }
+  if (role === 'warga')
+    return [
+      home,
+      { to: '/dashboard/laporan/baru', label: 'Buat Laporan', icon: 'plus' },
+      { to: '/dashboard/laporan', label: 'Laporan Saya', icon: 'flag', badge: counts.reports, end: true }, // exact match, or it stays lit on Buat Laporan
+      { to: '/dashboard/notifikasi', label: 'Notifikasi', icon: 'bell' },
+      { to: '/dashboard/profil', label: 'Profil', icon: 'user' },
+    ]
   if (role === 'perangkat_desa')
     return [
       home,

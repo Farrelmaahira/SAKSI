@@ -59,9 +59,14 @@ export default function DashSidebar({
       <div className="app-role">
         <p className="app-role-label">Masuk sebagai</p>
         <strong>{roleLabels[role.role]}</strong>
-        <span>
-          {role.title} · {wilayahLabel(role)}
-        </span>
+        <p className="app-role-row">
+          <Icon name="user" />
+          <span>{role.title}</span>
+        </p>
+        <p className="app-role-row">
+          <Icon name="map" />
+          <span>{wilayahLabel(role)}</span>
+        </p>
         {session.roles.length > 1 && (
           <label className="app-role-switch">
             <span className="sr-only">Ganti peran atau wilayah</span>

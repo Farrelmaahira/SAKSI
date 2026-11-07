@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { DashContext } from "@/contexts/dash-context";
+import { useConfirm } from "@/hooks/use-confirm";
 import { NAV_KEY } from "@/data/dash-nav";
 import type { Session } from "@/interfaces/auth";
 import { logout } from "@/lib/auth/logout";
@@ -12,6 +13,8 @@ import { navFor } from "@/lib/dash/nav-for";
 import { db } from "@/lib/db/db";
 import { fillSealHashes } from "@/lib/db/fill-seal-hashes";
 import { resetDemo } from "@/lib/db/reset-demo";
+import NotAllowed from "@/components/molecules/NotAllowed";
+import { wargaAllowed } from "@/lib/dash/warga-allowed";
 import DashSidebar from "./DashSidebar";
 import DashTopbar from "./DashTopbar";
 
@@ -24,6 +27,7 @@ interface Props {
 /* The signed-in frame: sidebar, top bar and page area. Only rendered in the browser, after sign-in. */
 export default function DashShell({ session, children, onLeaving }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
   const path = usePathname();
   const data = db.use();
   const [sideOpen, setSideOpen] = useState(false);
@@ -63,13 +67,15 @@ export default function DashShell({ session, children, onLeaving }: Props) {
     });
   };
 
-  const onReset = () => {
-    if (
-      window.confirm(
-        "Kembalikan semua data dashboard ke data contoh awal? Akun Anda tidak terhapus.",
-      )
-    )
-      resetDemo();
+  const onReset = async () => {
+    const ok = await confirm({
+      title: "Kembalikan ke data contoh?",
+      text: "Semua kontrak, laporan, dan catatan di dashboard kembali ke data contoh awal. Akun Anda tidak terhapus.",
+      confirmLabel: "Ya, kembalikan",
+      tone: "danger",
+      art: "document-warning_2es6",
+    });
+    if (ok) resetDemo();
   };
 
   return (
@@ -102,7 +108,7 @@ export default function DashShell({ session, children, onLeaving }: Props) {
         />
         <main className="app-content">
           <DashContext.Provider value={{ session }}>
-            {children}
+            {session.role.role === "warga" && !wargaAllowed(path) ? <NotAllowed /> : children}
           </DashContext.Provider>
         </main>
       </div>

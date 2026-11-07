@@ -4,10 +4,11 @@ export default function HeroBg() {
   return (
     <div className="hero-bg" aria-hidden="true">
       <Image
-        src="/images/hero-village-2400.webp"
+        src="/images/hero-village-2400.jpg"
         width={2400}
         height={1596}
         sizes="100vw"
+        quality={90}
         alt="Latar Belakang Desa Indonesia"
         preload
       />

@@ -15,6 +15,7 @@ import Chips from '@/components/molecules/Chips'
 import Icon from '@/components/atoms/Icon'
 import ReportCard from '@/components/organisms/ReportCard'
 import Empty from '@/components/molecules/Empty'
+import LaporanSayaTemplate from '@/components/organisms/LaporanSayaTemplate'
 
 export default function LaporanTemplate() {
   const { session } = useDash()
@@ -22,6 +23,7 @@ export default function LaporanTemplate() {
   const r = session.role
   const [filter, setFilter] = useState<LaporanFilter>('perlu')
   const [q, setQ] = useState('')
+  if (r.role === 'warga') return <LaporanSayaTemplate />
   if (r.role === 'pihak_kedua') return <NotAllowed />
 
   const contracts = scopeContracts(d, r)

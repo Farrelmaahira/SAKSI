@@ -62,12 +62,13 @@ export default function KontrakListTemplate() {
     { key: 'selesai', label: 'Selesai', count: count('selesai') },
   ]
 
-  const title = { perangkat_desa: 'Kontrak desa', pihak_kedua: 'Kontrak saya', bpd: 'Kontrak diawasi', inspektorat: 'Kontrak diawasi' }[role.role]
+  const title = { perangkat_desa: 'Kontrak desa', pihak_kedua: 'Kontrak saya', bpd: 'Kontrak diawasi', inspektorat: 'Kontrak diawasi', warga: 'Kontrak' }[role.role]
   const desc = {
     perangkat_desa: 'Semua kontrak desa dari draf sampai selesai.',
     pihak_kedua: 'Kontrak tempat usaha Anda menjadi pihak kedua. Draf yang belum dikirim desa tidak tampil di sini.',
     bpd: 'Kontrak desa yang sudah dikirim untuk ditinjau. Hanya bisa dibaca.',
     inspektorat: 'Kontrak semua desa di wilayah Anda. Hanya bisa dibaca.',
+    warga: 'Warga memantau kontrak lewat portal publik.',
   }[role.role]
 
   return (
@@ -122,13 +123,13 @@ export default function KontrakListTemplate() {
                           </small>
                         </Link>
                       </td>
-                      {role.role === 'inspektorat' && <td>{villageById(c.villageId)?.name}</td>}
-                      <td>{role.role === 'pihak_kedua' ? villageById(c.villageId)?.name : counterpartyById(c.counterpartyId)?.name}</td>
-                      <td className="num">{formatRp(valueOf(c))}</td>
-                      <td>
+                      {role.role === 'inspektorat' && <td data-label="Desa">{villageById(c.villageId)?.name}</td>}
+                      <td data-label={role.role === 'pihak_kedua' ? 'Desa' : 'Pihak kedua'}>{role.role === 'pihak_kedua' ? villageById(c.villageId)?.name : counterpartyById(c.counterpartyId)?.name}</td>
+                      <td className="num" data-label="Nilai">{formatRp(valueOf(c))}</td>
+                      <td data-label="Status">
                         <StatusBadge status={c.status} />
                       </td>
-                      <td>
+                      <td data-label="Progres">
                         {isActive(c) || c.status === 'selesai' ? (
                           <div className="d-cell-progress">
                             <Bar value={progressOf(c)} tone={isLate(c) ? 'red' : 'blue'} />
@@ -139,7 +140,7 @@ export default function KontrakListTemplate() {
                           <span className="d-muted">-</span>
                         )}
                       </td>
-                      <td>
+                      <td data-label="Berikutnya">
                         {step ? (
                           <Link className={`d-step ${mine ? 'is-mine' : ''}`} href={`/dashboard/kontrak/${c.code}?tab=${step.tab}`}>
                             {mine && <Icon name="arrow" />}

@@ -6,7 +6,7 @@ export default function ScopeSection() {
       <div className="container">
         <div className="scope-head" data-reveal>
           <p className="label dark">Cakupan</p>
-          <h2 className="display">Empat jenis kontrak desa.</h2>
+          <h2 className="display" data-split>Empat jenis kontrak desa.</h2>
           <p className="scope-intro">
             Setiap jenis punya pasal wajibnya sendiri. Saat ada yang terlewat,
             AI memberi rekomendasi dan menuliskannya ke dalam draf.

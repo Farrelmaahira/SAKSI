@@ -64,17 +64,17 @@ export default function JejakAuditTemplate() {
               <tbody>
                 {list.map((l) => (
                   <tr key={l.id}>
-                    <td className="d-nowrap">{fmtDateTime(l.at)}</td>
-                    <td>
+                    <td className="d-nowrap" data-label="Waktu">{fmtDateTime(l.at)}</td>
+                    <td data-label="Pelaku">
                       <strong>{l.actor}</strong>
                       <small className="d-block d-muted">{l.role}</small>
                     </td>
-                    <td>
+                    <td data-label="Tindakan">
                       {l.action}
                       {l.detail && <small className="d-block d-muted">{l.detail}</small>}
                     </td>
-                    <td>{l.contractCode ? <Link href={`/dashboard/kontrak/${l.contractCode}`}>{l.contractCode}</Link> : <span className="d-muted">-</span>}</td>
-                    {session.role.role === 'inspektorat' && <td>{villageById(l.villageId)?.name ?? '-'}</td>}
+                    <td data-label="Kontrak">{l.contractCode ? <Link href={`/dashboard/kontrak/${l.contractCode}`}>{l.contractCode}</Link> : <span className="d-muted">-</span>}</td>
+                    {session.role.role === 'inspektorat' && <td data-label="Desa">{villageById(l.villageId)?.name ?? '-'}</td>}
                   </tr>
                 ))}
               </tbody>

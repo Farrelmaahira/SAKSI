@@ -23,7 +23,7 @@ export default function Notifications({ session }: Props) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [lastPath, setLastPath] = useState(pathname)
-  const [tab, setTab] = useState<Notif['kind']>('tindakan')
+  const [tab, setTab] = useState<Notif['kind']>(session.role.role === 'warga' ? 'aktivitas' : 'tindakan')
   const ref = useRef<HTMLDivElement>(null)
 
   const all = notificationsFor(session, d, logs)

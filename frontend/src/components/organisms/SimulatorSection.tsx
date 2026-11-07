@@ -8,7 +8,7 @@ export default function SimulatorSection() {
         <div className="sim-head">
           <div>
             <p className="label dark">Simulasi</p>
-            <h2 className="display-md">Lima langkah, satu kontrak.</h2>
+            <h2 className="display-md" data-split>Lima langkah, satu kontrak.</h2>
           </div>
           <p className="sim-disclaimer">
             Semua data di sini contoh. Tidak ada yang dikirim ke mana pun.

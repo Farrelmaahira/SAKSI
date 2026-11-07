@@ -2,6 +2,7 @@ import { MAX_ATTEMPTS, LOCK_MINUTES } from '@/data/auth'
 import type { LoginResult } from '@/interfaces/auth'
 import { addAudit } from '@/lib/audit/add-audit'
 import { findUser } from './find-user'
+import { ensureSeedUsers } from './users-store'
 import { isEmail } from './is-email'
 import { passwordMatches } from './password-matches'
 import { startSession } from './start-session'
@@ -11,6 +12,7 @@ export async function login(emailInput: string, password: string): Promise<Login
   if (!isEmail(emailInput)) return { ok: false, field: 'email', error: 'Format email belum benar, contoh: nama@desa.id' }
   if (!password) return { ok: false, field: 'password', error: 'Masukkan kata sandi.' }
 
+  ensureSeedUsers()
   const u = findUser(emailInput)
   if (!u) return { ok: false, field: 'email', error: 'Email belum terdaftar. Pihak kedua bisa mendaftar sendiri; akun desa, BPD, dan Inspektorat dibuat lewat undangan.' }
 

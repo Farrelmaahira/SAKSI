@@ -1,54 +1,54 @@
-import { useSyncExternalStore } from 'react'
-import type { Store } from '@/interfaces/store'
+import { useSyncExternalStore } from "react";
+import type { Store } from "@/interfaces/store";
 
 /* Tiny localStorage-backed store. Components re-render through useSyncExternalStore when it changes. */
 export function createStore<T>(key: string, seed: () => T): Store<T> {
-  let cache: T | null = null
-  let serverCache: T | null = null
-  const listeners = new Set<() => void>()
+  let cache: T | null = null;
+  let serverCache: T | null = null;
+  const listeners = new Set<() => void>();
 
   const get = (): T => {
-    if (cache !== null) return cache
+    if (cache !== null) return cache;
     try {
-      const raw = localStorage.getItem(key)
-      cache = raw ? (JSON.parse(raw) as T) : seed()
+      const raw = localStorage.getItem(key);
+      cache = raw ? (JSON.parse(raw) as T) : seed();
     } catch {
-      cache = seed()
+      cache = seed();
     }
-    return cache
-  }
+    return cache;
+  };
 
   // The server has no localStorage, so it renders the seed once and keeps that snapshot stable.
-  const getServer = (): T => (serverCache ??= seed())
+  const getServer = (): T => (serverCache ??= seed());
 
   const write = (next: T) => {
-    cache = next
+    cache = next;
     try {
-      localStorage.setItem(key, JSON.stringify(next))
+      localStorage.setItem(key, JSON.stringify(next));
     } catch {
       /* storage full or blocked: keep the in-memory copy */
     }
-    listeners.forEach((l) => l())
-  }
+    listeners.forEach((l) => l());
+  };
 
-  const set = (fn: (prev: T) => T) => write(fn(get()))
-  const reset = () => write(seed())
+  const set = (fn: (prev: T) => T) => write(fn(get()));
+  const reset = () => write(seed());
 
   const subscribe = (l: () => void) => {
-    listeners.add(l)
+    listeners.add(l);
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== key) return
-      cache = null
-      l()
-    }
-    window.addEventListener('storage', onStorage)
+      if (e.key !== key) return;
+      cache = null;
+      l();
+    };
+    window.addEventListener("storage", onStorage);
     return () => {
-      listeners.delete(l)
-      window.removeEventListener('storage', onStorage)
-    }
-  }
+      listeners.delete(l);
+      window.removeEventListener("storage", onStorage);
+    };
+  };
 
-  const use = () => useSyncExternalStore(subscribe, get, getServer)
+  const use = () => useSyncExternalStore(subscribe, get, getServer);
 
-  return { get, set, reset, subscribe, use }
+  return { get, set, reset, subscribe, use };
 }

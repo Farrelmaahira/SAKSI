@@ -30,6 +30,26 @@ export const flowLabels: Record<ReportFlow, string> = {
   ditutup: 'Ditutup',
 }
 
+/* Same flow, worded for the citizen who sent the report */
+export const wargaFlowLabels: Record<ReportFlow, string> = {
+  baru: 'Diterima',
+  diverifikasi: 'Diverifikasi',
+  diteruskan: 'Diteruskan ke Inspektorat',
+  ditindaklanjuti: 'Ditindaklanjuti',
+  ditutup: 'Selesai',
+}
+
+/* Notification headline per action on a citizen's report */
+export const wargaNotifTitle: Record<ActionKind, string> = {
+  tanggapan: 'Desa menanggapi laporan Anda',
+  klarifikasi: 'BPD meminta klarifikasi dari desa',
+  verifikasi: 'Laporan Anda diverifikasi BPD',
+  eskalasi: 'Laporan Anda diteruskan ke Inspektorat',
+  selesai: 'Laporan Anda ditandai selesai',
+  tindak_lanjut: 'Inspektorat menindaklanjuti laporan Anda',
+  tutup: 'Laporan Anda ditutup',
+}
+
 export const actionLabels: Record<ActionKind, string> = {
   tanggapan: 'Tanggapan desa',
   klarifikasi: 'Permintaan klarifikasi',

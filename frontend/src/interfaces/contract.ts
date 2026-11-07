@@ -24,6 +24,8 @@ export interface Report {
   photos?: number;
   /* Email of the signed-in reporter, used only to list "my reports" on the dashboard */
   owner?: string;
+  /* Real name of the signed-in reporter. Only BPD and Inspektorat may see it; `reporter` is what everyone else sees. */
+  reporterName?: string;
 }
 
 export interface Clause {

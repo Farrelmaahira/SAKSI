@@ -7,5 +7,6 @@ import { wilayahLabel } from './wilayah-label'
 
 export function startSession(u: StoredUser, role: UserRole) {
   setSession({ userId: u.id, name: u.name, email: u.email, role, roles: u.roles })
+  if (role.role === 'warga') return
   addAudit({ actor: u.name, role: roleLabels[role.role], action: 'Masuk', detail: wilayahLabel(role), villageId: role.villageId, regionId: regionOf(role) })
 }

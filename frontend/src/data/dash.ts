@@ -26,6 +26,8 @@ export const iconPaths: Record<string, string> = {
   lock: 'M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
   eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
   map: 'M9 4l6 2 5-2v14l-5 2-6-2-5 2V6zM9 4v14M15 6v14',
+  pin: 'M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0zM12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  image: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM21 15l-3.1-3.1a2 2 0 0 0-2.8 0L6 21',
   bell: 'M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2.2 2.2 0 0 0 4 0',
   sidebar: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM9 5v14',
 }
@@ -57,6 +59,7 @@ export const tabsFor: Record<RoleKey, string[] | null> = {
   pihak_kedua: ['ringkasan', 'draf', 'peninjauan', 'tanda-tangan', 'spk', 'termin', 'progres', 'riwayat'],
   bpd: null,
   inspektorat: null,
+  warga: [],
 }
 
 export const rancanganPlans = {
@@ -76,4 +79,4 @@ export const rancanganPlans = {
   },
 } as const
 
-export const whoLabel = { perangkat_desa: 'Perangkat desa', pihak_kedua: 'Pihak kedua', bpd: 'BPD', inspektorat: 'Inspektorat' }
+export const whoLabel = { perangkat_desa: 'Perangkat desa', pihak_kedua: 'Pihak kedua', bpd: 'BPD', inspektorat: 'Inspektorat', warga: 'Warga' }

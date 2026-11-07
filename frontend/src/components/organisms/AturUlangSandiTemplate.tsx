@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
-import { useSearchParams } from 'next/navigation'
-import AuthShell from './AuthShell'
-import ResetForm from './ResetForm'
+import { useSearchParams } from "next/navigation";
+import AuthShell from "./AuthShell";
+import ResetForm from "./ResetForm";
 
 export default function AturUlangSandiTemplate() {
-  const token = useSearchParams().get('token') ?? ''
+  const token = useSearchParams().get("token") ?? "";
 
   return (
     <AuthShell
@@ -13,9 +13,13 @@ export default function AturUlangSandiTemplate() {
       title="Buat kata sandi"
       mark="baru."
       lead="Pilih kata sandi yang mudah Anda ingat tetapi sulit ditebak orang lain."
-      points={['Minimal 8 karakter', 'Campurkan huruf dan angka', 'Jangan pakai kata sandi yang sama dengan akun lain']}
+      points={[
+        "Minimal 8 karakter",
+        "Campurkan huruf dan angka",
+        "Jangan pakai kata sandi yang sama dengan akun lain",
+      ]}
     >
       <ResetForm token={token} />
     </AuthShell>
-  )
+  );
 }

@@ -11,11 +11,9 @@ import FlowBadge from '@/components/atoms/FlowBadge'
 import { reportDate } from '@/lib/db/report-date'
 import Icon from '@/components/atoms/Icon'
 import Link from 'next/link'
-import { actionLabels } from '@/data/db'
-import { roleLabels } from '@/data/auth'
-import { timeAgo } from '@/lib/dates/time-ago'
 import { placeholderFor } from '@/data/dash'
 import Btn from '@/components/atoms/Btn'
+import ReportThread from '@/components/molecules/ReportThread'
 
 interface Props { report: DReport; contract?: DContract; session: Session }
 
@@ -48,10 +46,24 @@ export default function ReportCard({ report: r, contract, session }: Props) {
           <Link href={`/dashboard/kontrak/${r.contractCode}?tab=laporan`}>{r.contractCode}</Link>
           {contract && <span>· {contract.title}</span>}
         </li>
-        <li>Pasal: {r.clause}</li>
-        {r.location && <li>Lokasi: {r.location}</li>}
-        <li>{r.photos} foto bukti</li>
-        <li>Pelapor: {r.reporter}</li>
+        <li>
+          <Icon name="doc" />
+          <span>Pasal: {r.clause}</span>
+        </li>
+        {r.location && (
+          <li>
+            <Icon name="pin" />
+            <span>Lokasi: {r.location}</span>
+          </li>
+        )}
+        <li>
+          <Icon name="image" />
+          <span>{r.photos} foto bukti</span>
+        </li>
+        <li>
+          <Icon name="user" />
+          <span>{session.role.role === 'perangkat_desa' ? 'Pelapor: identitas dirahasiakan' : `Pelapor: ${r.reporterName ?? r.reporter}`}</span>
+        </li>
       </ul>
 
       {waitingClarification && (
@@ -61,18 +73,7 @@ export default function ReportCard({ report: r, contract, session }: Props) {
         </p>
       )}
 
-      {r.actions.length > 0 && (
-        <ol className="d-thread">
-          {r.actions.map((a) => (
-            <li key={a.id} className={`kind-${a.kind}`}>
-              <p>
-                <strong>{actionLabels[a.kind]}</strong> oleh {a.by} ({roleLabels[a.role]}) · {timeAgo(a.at)}
-              </p>
-              {a.text && <p className="d-thread-text">{a.text}</p>}
-            </li>
-          ))}
-        </ol>
-      )}
+      <ReportThread actions={r.actions} />
 
       {options.length > 0 && (
         <div className="d-report-act">

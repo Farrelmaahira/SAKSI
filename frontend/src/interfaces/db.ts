@@ -57,6 +57,9 @@ export interface DReport {
   location?: string
   date: string
   reporter: string
+  /* Account email of the citizen who sent it, and their real name (hidden from the village government) */
+  owner?: string
+  reporterName?: string
   photos: number
   flow: ReportFlow
   actions: ReportAction[]

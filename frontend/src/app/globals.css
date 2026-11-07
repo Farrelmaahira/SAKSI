@@ -597,7 +597,17 @@
   min-height: 100svh;
   overflow: hidden;
   padding: 12rem 0 4rem;
+  position: sticky;
+  top: 0;
+  z-index: 0;
+}
+
+/* Everything after the hero is one sheet that slides over the sticky hero (see useHeroSink) */
+.home-sheet {
+  background: var(--white);
+  overflow: clip;
   position: relative;
+  z-index: 1;
 }
 
 .hero-bg {
@@ -616,7 +626,7 @@
   background: var(--ink);
   content: '';
   inset: 0;
-  opacity: 0.12;
+  opacity: 0.6;
   position: absolute;
 }
 
@@ -972,15 +982,17 @@
 }
 
 .pattern-list {
+  --f: 2.6rem; /* item text size */
+  --no: 3rem; /* number size */
   border-top: 0.1rem solid rgba(15, 15, 23, 0.2);
   list-style: none;
 }
 
 .pattern-list li {
-  align-items: baseline;
+  align-items: flex-start;
   border-bottom: 0.1rem solid rgba(15, 15, 23, 0.2);
   display: flex;
-  font-size: 2.6rem;
+  font-size: var(--f);
   font-weight: 320;
   gap: 2.4rem;
   letter-spacing: -0.03em;
@@ -988,16 +1000,40 @@
   padding: 2.6rem 0;
 }
 
+/* Number column: as tall as the first text line so the number sits centred on it */
 .pattern-list li span {
+  align-items: center;
   color: var(--blue);
+  display: flex;
   flex: none;
-  font-size: 1.4rem;
+  font-size: var(--no);
+  font-variant-numeric: tabular-nums;
+  height: calc(var(--f) * 1.2);
   letter-spacing: 0;
-  width: 3rem;
+  width: calc(var(--no) * 1.3);
 }
 
 .pattern-list li.gap {
   color: var(--blue);
+}
+
+/* "!" as a filled badge so it carries the same weight as the numbers */
+.pattern-list li.gap span {
+  font-size: 0; /* the badge below replaces the literal "!" */
+}
+
+.pattern-list li.gap span::before {
+  align-items: center;
+  background: var(--blue);
+  border-radius: 50%;
+  color: var(--white);
+  content: '!';
+  display: flex;
+  font-size: calc(var(--no) * 0.75);
+  font-weight: 500;
+  height: calc(var(--no) * 1.1);
+  justify-content: center;
+  width: calc(var(--no) * 1.1);
 }
 
 .research {
@@ -1045,8 +1081,9 @@
 }
 
 @media (min-width: 768px) {
-  .pattern-list li {
-    font-size: 3.6rem;
+  .pattern-list {
+    --f: 3.6rem;
+    --no: 4rem;
   }
 
   .research {
@@ -1073,8 +1110,12 @@
     gap: 10rem;
   }
 
+  .pattern-list {
+    --f: 4.4rem;
+    --no: 4.8rem;
+  }
+
   .pattern-list li {
-    font-size: 4.4rem;
     padding: 3.4rem 0;
   }
 
@@ -2047,14 +2088,12 @@
 
 /* Reveal on scroll */
 [data-reveal] {
-  opacity: 0;
-  transform: translateY(4rem);
-  transition: opacity 1s ease-out, transform 1.2s var(--ease);
+  opacity: 0; /* useReveal animates it in */
 }
 
-[data-reveal].is-in {
-  opacity: 1;
-  transform: none;
+/* Text that useTextReveal splits stays hidden until it is ready */
+[data-split] {
+  visibility: hidden;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2064,7 +2103,10 @@
 
   [data-reveal] {
     opacity: 1;
-    transform: none;
+  }
+
+  [data-split] {
+    visibility: visible;
   }
 
   *,

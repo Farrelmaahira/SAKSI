@@ -11,9 +11,24 @@ import { isActive } from '@/lib/db/is-active'
 import { daysUntil } from '@/lib/dates/days-until'
 import { fmtDate } from '@/lib/dates/fmt-date'
 import { scopeLogs } from '@/lib/db/scope-logs'
+import { myReports } from '@/lib/db/my-reports'
+import { wargaNotifTitle } from '@/data/db'
+
+/* A citizen is told when a report is received and each time someone handles it */
+function wargaNotifications(s: Session, d: Db): Notif[] {
+  const list: Notif[] = []
+  for (const x of myReports(d, s.email)) {
+    const sent = Date.parse(x.date)
+    list.push({ id: `rw:${x.id}`, kind: 'aktivitas', title: 'Laporan Anda diterima', text: `${x.id} · ${x.category}`, to: '/dashboard/laporan', at: Number.isNaN(sent) ? new Date().toISOString() : new Date(sent).toISOString(), tone: 'ink' })
+    for (const a of x.actions)
+      list.push({ id: `rw:${x.id}:${a.id}`, kind: 'aktivitas', title: wargaNotifTitle[a.kind], text: `${x.id} · ${a.text || x.category}`, to: '/dashboard/laporan', at: a.at, tone: a.kind === 'tanggapan' || a.kind === 'selesai' || a.kind === 'tindak_lanjut' ? 'blue' : 'ink' })
+  }
+  return list.sort((a, b) => b.at.localeCompare(a.at))
+}
 
 export function notificationsFor(s: Session, d: Db, logs: AuditLog[]): Notif[] {
   const r = s.role
+  if (r.role === 'warga') return wargaNotifications(s, d)
   const contracts = scopeContracts(d, r)
   const reports = scopeReports(d, r)
   const list: Notif[] = []

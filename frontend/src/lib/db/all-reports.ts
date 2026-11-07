@@ -3,6 +3,12 @@ import { loadReports } from '@/lib/contracts/load-reports'
 
 /* ---------- Reports ---------- */
 
+/* Seed reports that belong to the demo citizen account (older saved data has no owner on them) */
+const seedOwners: Record<string, Pick<DReport, 'owner' | 'reporterName'>> = {
+  'LPR-2026-0102': { owner: 'warga@saksi.id', reporterName: 'Siti Rahma' },
+  'LPR-2026-0087': { owner: 'warga@saksi.id', reporterName: 'Siti Rahma' },
+}
+
 /* Citizen reports sent from the public portal live in their own key; merge them in as "baru" */
 export function allReports(d: Db): DReport[] {
   const stored = loadReports()
@@ -19,9 +25,11 @@ export function allReports(d: Db): DReport[] {
           location: r.location,
           date: r.date,
           reporter: r.reporter,
+          owner: r.owner,
+          reporterName: r.reporterName,
           photos: r.photos ?? 0,
           flow: 'baru',
           actions: [],
         })
-  return [...extra, ...d.reports]
+  return [...extra, ...d.reports].map((r) => (r.owner || !seedOwners[r.id] ? r : { ...r, ...seedOwners[r.id] }))
 }

@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react'
 import { useRequireSession } from '@/hooks/use-require-session'
+import { ConfirmProvider } from '@/contexts/confirm-context'
 import DashShell from './DashShell'
 
 interface Props {
@@ -15,8 +16,10 @@ export default function DashLayout({ children }: Props) {
 
   if (!session) return null
   return (
-    <DashShell session={session} onLeaving={() => setLeaving(true)}>
-      {children}
-    </DashShell>
+    <ConfirmProvider>
+      <DashShell session={session} onLeaving={() => setLeaving(true)}>
+        {children}
+      </DashShell>
+    </ConfirmProvider>
   )
 }

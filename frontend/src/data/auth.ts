@@ -17,6 +17,7 @@ export const roleLabels: Record<RoleKey, string> = {
   pihak_kedua: 'Pihak Kedua',
   bpd: 'BPD',
   inspektorat: 'Inspektorat',
+  warga: 'Warga',
 }
 
 export const roleArt: Record<RoleKey, IllustrationName> = {
@@ -24,6 +25,7 @@ export const roleArt: Record<RoleKey, IllustrationName> = {
   pihak_kedua: 'food-truck_my6o',
   bpd: 'data-reports_l2u3',
   inspektorat: 'fingerprint_kdwq',
+  warga: 'online-community_3o0l',
 }
 
 export const seedAccounts: SeedAccount[] = [
@@ -31,6 +33,7 @@ export const seedAccounts: SeedAccount[] = [
   { email: 'penyedia@saksi.id', label: 'Pihak Kedua', note: 'CV Maju Bersama' },
   { email: 'bpd@saksi.id', label: 'BPD', note: 'Desa Sukamaju' },
   { email: 'inspektorat@saksi.id', label: 'Inspektorat', note: 'Punya 2 wilayah' },
+  { email: 'warga@saksi.id', label: 'Warga', note: 'Desa Sukamaju' },
 ]
 
 /* Seed accounts replace invitations for the demo (kades, BPD, Inspektorat) */
@@ -38,6 +41,7 @@ export const seedUsers: StoredUser[] = [
   { id: 'u-kades', name: 'Hendra Wijaya', email: 'kades@saksi.id', roles: [{ id: 'r-kades', role: 'perangkat_desa', title: 'Kepala Desa', villageId: 'sukamaju' }] },
   { id: 'u-penyedia', name: 'Rina Kartika', email: 'penyedia@saksi.id', roles: [{ id: 'r-penyedia', role: 'pihak_kedua', title: 'Penyedia', counterpartyId: 'cp-maju' }] },
   { id: 'u-bpd', name: 'Asep Saepudin', email: 'bpd@saksi.id', roles: [{ id: 'r-bpd', role: 'bpd', title: 'Ketua BPD', villageId: 'sukamaju' }] },
+  { id: 'u-warga', name: 'Siti Rahma', email: 'warga@saksi.id', phone: '0812-5550-0142', roles: [{ id: 'r-warga', role: 'warga', title: 'Pelapor', villageId: 'sukamaju' }] },
   {
     id: 'u-insp',
     name: 'Dewi Lestari',

@@ -14,8 +14,10 @@ import Badge from '@/components/atoms/Badge'
 import Btn from '@/components/atoms/Btn'
 import { markPaid } from '@/lib/db/mark-paid'
 import Locked from '@/components/atoms/Locked'
+import { useConfirm } from '@/hooks/use-confirm'
 
 export default function TerminTab({ c, session }: TabProps) {
+  const confirm = useConfirm()
   const isDesa = session.role.role === 'perangkat_desa'
   const canPay = isDesa && (c.status === 'berjalan' || c.status === 'selesai')
   const paidPct = Math.round((paidOf(c) / Math.max(1, valueOf(c))) * 100)
@@ -69,18 +71,24 @@ export default function TerminTab({ c, session }: TabProps) {
                     <td>
                       <strong>{t.label}</strong>
                     </td>
-                    <td className="num">{t.percent}%</td>
-                    <td className="num">{formatRp(t.amount)}</td>
-                    <td className={overdue ? 'is-red' : ''}>{fmtDate(t.planDate)}</td>
-                    <td>
+                    <td className="num" data-label="Persen">{t.percent}%</td>
+                    <td className="num" data-label="Jumlah">{formatRp(t.amount)}</td>
+                    <td className={overdue ? 'is-red' : ''} data-label="Rencana">{fmtDate(t.planDate)}</td>
+                    <td data-label="Status">
                       {t.paidDate ? (
                         <Badge tone="done">Dibayar {fmtDate(t.paidDate)}</Badge>
                       ) : canPay ? (
                         <Btn
                           small
                           variant={overdue ? 'primary' : 'ghost'}
-                          onClick={() => {
-                            if (window.confirm(`Tandai ${t.label.toLowerCase()} sebesar ${formatRp(t.amount)} sudah dibayar?`)) markPaid(c.code, t.no, session)
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: `Tandai ${t.label.toLowerCase()} sudah dibayar?`,
+                              text: `Pembayaran sebesar ${formatRp(t.amount)} akan dicatat sebagai sudah dibayar dan tampil di riwayat kontrak.`,
+                              confirmLabel: 'Ya, sudah dibayar',
+                              art: 'all-checked_d3u6',
+                            })
+                            if (ok) markPaid(c.code, t.no, session)
                           }}
                         >
                           Tandai dibayar

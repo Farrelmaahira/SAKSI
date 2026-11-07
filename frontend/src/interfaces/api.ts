@@ -1,12 +1,12 @@
 export interface AuditClausePayload {
-  contractId: string
-  clauseText: string
-  clauseType: string
+  contractId: string;
+  clauseText: string;
+  clauseType: string;
 }
 
 export interface AuditClauseResponse {
-  isValid: boolean
-  score: number
-  missingClauses: string[]
-  recommendation: string
+  isValid: boolean;
+  score: number;
+  missingClauses: string[];
+  recommendation: string;
 }

@@ -7,7 +7,7 @@ export default function ThemeSection() {
       <div className="container">
         <div className="theme-head" data-reveal>
           <p className="label">Tema</p>
-          <h2 className="display">Satu kontrak, dua peran.</h2>
+          <h2 className="display" data-split>Satu kontrak, dua peran.</h2>
         </div>
         <div className="theme-grid" data-reveal>
           <article>

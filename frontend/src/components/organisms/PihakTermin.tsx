@@ -45,12 +45,12 @@ export default function PihakTermin({ contracts }: TerminLine) {
                           <strong>{c.title}</strong>
                         </Link>
                       </td>
-                      <td>
+                      <td data-label="Termin">
                         {t.label} · {t.percent}%
                       </td>
-                      <td className="num">{formatRp(t.amount)}</td>
-                      <td className={late ? 'is-red' : ''}>{fmtDate(t.planDate)}</td>
-                      <td>{t.paidDate ? <Badge tone="done">Dibayar {fmtDate(t.paidDate)}</Badge> : <Badge tone={late ? 'red' : 'muted'}>{late ? 'Lewat jatuh tempo' : 'Menunggu'}</Badge>}</td>
+                      <td className="num" data-label="Jumlah">{formatRp(t.amount)}</td>
+                      <td className={late ? 'is-red' : ''} data-label="Rencana">{fmtDate(t.planDate)}</td>
+                      <td data-label="Status">{t.paidDate ? <Badge tone="done">Dibayar {fmtDate(t.paidDate)}</Badge> : <Badge tone={late ? 'red' : 'muted'}>{late ? 'Lewat jatuh tempo' : 'Menunggu'}</Badge>}</td>
                     </tr>
                   )
                 })}

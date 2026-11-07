@@ -11,7 +11,7 @@ export default function Stat({ label, value, hint, tone = 'blue', to, icon }: Pr
         <span>{label}</span>
         {icon && <Icon name={icon} />}
       </div>
-      <strong>{value}</strong>
+      <strong data-long={typeof value === 'string' && value.length > 7 ? '' : undefined}>{value}</strong>
       {hint && <small>{hint}</small>}
     </>
   )
