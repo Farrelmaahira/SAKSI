@@ -644,7 +644,7 @@
           "response": []
         },
         {
-          "name": "List My Reports",
+          "name": "List Reports (Role-Aware: Warga / Kades / Inspektorat)",
           "request": {
             "auth": {
               "type": "bearer",
@@ -667,7 +667,37 @@
                 "reports"
               ]
             },
-            "description": "Mengambil seluruh riwayat laporan pengaduan yang diajukan oleh pengguna warga saat ini."
+            "description": "Mengambil daftar laporan pengaduan masyarakat secara adaptif. Warga melihat laporannya sendiri; Kades dan BPD melihat seluruh laporan di desanya (dengan penyamaran privasi 'Warga terverifikasi'); Inspektorat melihat laporan lintas desa."
+          },
+          "response": []
+        },
+        {
+          "name": "List Reports on Specific Contract (Kades / BPD)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/5/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "5",
+                "reports"
+              ]
+            },
+            "description": "Mengambil seluruh pengaduan warga pada kontrak tertentu milik desa kades bersangkutan (dilengkapi proteksi anti-IDOR dan privasi 'Warga terverifikasi')."
           },
           "response": []
         },
