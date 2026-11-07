@@ -1,17 +1,25 @@
-import type { SealedContract } from '@/interfaces/contract'
-import { formatRp } from '@/lib/contracts/format-rp'
-import { shortHash } from '@/lib/contracts/short-hash'
-import { cn } from '@/lib/utils'
+import type { SealedContract } from "@/interfaces/contract";
+import { formatRp } from "@/lib/contracts/format-rp";
+import { shortHash } from "@/lib/contracts/short-hash";
+import { cn } from "@/lib/utils";
 
 interface Props {
-  contract: SealedContract
-  active: boolean
-  onOpen: (code: string) => void
+  contract: SealedContract;
+  active: boolean;
+  onOpen: (code: string) => void;
 }
 
-export default function OpenContractCard({ contract: c, active, onOpen }: Props) {
+export default function OpenContractCard({
+  contract: c,
+  active,
+  onOpen,
+}: Props) {
   return (
-    <button type="button" className={cn('open-card', active && 'is-active')} onClick={() => onOpen(c.code)}>
+    <button
+      type="button"
+      className={cn("open-card", active && "is-active")}
+      onClick={() => onOpen(c.code)}
+    >
       <span className="open-top">
         <span className="tag">{c.type}</span>
         <span className="open-code">{c.code}</span>
@@ -28,5 +36,5 @@ export default function OpenContractCard({ contract: c, active, onOpen }: Props)
         <code>{shortHash(c.hash)}</code>
       </span>
     </button>
-  )
+  );
 }

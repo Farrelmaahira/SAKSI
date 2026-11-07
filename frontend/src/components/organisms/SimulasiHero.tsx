@@ -3,6 +3,7 @@ import CurvedArrow from '@/components/atoms/CurvedArrow'
 import HeroBg from '@/components/atoms/HeroBg'
 import PillButton from '@/components/atoms/PillButton'
 import Underline from '@/components/atoms/Underline'
+import ScrollLink from '@/components/molecules/ScrollLink'
 
 export default function SimulasiHero() {
   return (
@@ -10,7 +11,7 @@ export default function SimulasiHero() {
       <HeroBg />
       <div className="container page-hero-grid">
         <div className="ph-copy">
-          <p className="label">Simulasi SAKSI</p>
+          <p className="label">Simulasi dan tentang SAKSI</p>
           <h1 className="page-title">
             <span className="title-line">Coba buat kontrak desa,</span> langkah demi{' '}
             <span className="marked">
@@ -26,6 +27,7 @@ export default function SimulasiHero() {
           </p>
           <div className="hero-actions">
             <PillButton href="#simulasi">Mulai simulasi</PillButton>
+            <ScrollLink href="#tentang">Tentang SAKSI</ScrollLink>
           </div>
         </div>
         <div className="page-hero-art" aria-hidden="true">

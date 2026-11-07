@@ -1,6 +1,6 @@
-import AboutCard from '@/components/molecules/AboutCard'
-import FlowStep from '@/components/molecules/FlowStep'
-import { about, flow } from '@/data/simulasi'
+import AboutCard from "@/components/molecules/AboutCard";
+import FlowStep from "@/components/molecules/FlowStep";
+import { about, flow } from "@/data/simulasi";
 
 export default function AboutSection() {
   return (
@@ -8,7 +8,9 @@ export default function AboutSection() {
       <div className="container">
         <div className="about-head" data-reveal>
           <p className="label dark">Tentang</p>
-          <h2 className="display-md">SAKSI menjaga kontrak dari draf sampai diawasi warga.</h2>
+          <h2 className="display-md">
+            SAKSI menjaga kontrak dari draf sampai diawasi warga.
+          </h2>
         </div>
         <div className="about-cols">
           {about.map((item, i) => (
@@ -26,5 +28,5 @@ export default function AboutSection() {
         </ol>
       </div>
     </section>
-  )
+  );
 }

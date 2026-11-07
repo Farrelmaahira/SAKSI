@@ -1,44 +1,34 @@
-import Link from 'next/link'
-import Image from 'next/image'
-import PillButton from '@/components/atoms/PillButton'
-import type { NavLink } from '@/interfaces/content'
+import Link from "next/link";
+import Logo from "@/components/atoms/Logo";
+import PillButton from "@/components/atoms/PillButton";
+import NavSession from "@/components/molecules/NavSession";
+import type { NavLink } from "@/interfaces/content";
 
-export interface NavbarProps {
-  cta?: NavLink | null
-  onOpenMenu: () => void
+interface Props {
+  cta: NavLink;
+  onOpenMenu: () => void;
 }
 
-export default function Navbar({ cta, onOpenMenu }: NavbarProps) {
+export default function Navbar({ cta, onOpenMenu }: Props) {
   return (
     <header className="navbar">
       <Link className="navbar-logo" href="/" aria-label="SAKSI, ke beranda">
-        <Image
-          src="/logo-saksi.png"
-          alt="Logo SAKSI"
-          width={120}
-          height={120}
-          priority
-          style={{
-            height: '8.6rem',
-            width: 'auto',
-            filter: 'brightness(0) invert(1)',
-            objectFit: 'contain',
-            display: 'block',
-          }}
-        />
+        <Logo />
+        <span>SAKSI</span>
       </Link>
-      <div className="navbar-actions">
-        {cta && <PillButton href={cta.href}>{cta.label}</PillButton>}
+      <p className="navbar-caption">Sistem Audit Kontrak Segel Integritas</p>
+      <div className="navbar-right">
+        <PillButton to={cta.href}>{cta.label}</PillButton>
+        <NavSession />
         <button
-          className="navbar-burger"
-          type="button"
+          className="menu-toggle"
           onClick={onOpenMenu}
-          aria-label="Buka menu navigasi"
+          aria-label="Buka menu"
         >
           <span />
           <span />
         </button>
       </div>
     </header>
-  )
+  );
 }

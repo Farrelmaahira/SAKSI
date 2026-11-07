@@ -7,7 +7,7 @@ export default function FaqSection() {
       <div className="container faq-grid">
         <div data-reveal>
           <p className="label dark">Pertanyaan</p>
-          <h2 className="display-md">Yang sering ditanyakan.</h2>
+          <h2 className="display-md" data-split>Yang sering ditanyakan.</h2>
         </div>
         <div className="faq-list" data-reveal>
           {faq.map((entry) => (

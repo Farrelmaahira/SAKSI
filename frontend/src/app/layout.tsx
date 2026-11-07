@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import type React from 'react'
 import SiteLayout from '@/components/organisms/SiteLayout'
 import './globals.css'
@@ -23,7 +24,10 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body>
-        <SiteLayout>{children}</SiteLayout>
+        {/* usePathname needs a boundary for dynamic routes such as /dashboard/kontrak/[code]. */}
+        <Suspense>
+          <SiteLayout>{children}</SiteLayout>
+        </Suspense>
       </body>
     </html>
   )

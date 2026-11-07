@@ -7,6 +7,7 @@ import PhotoDrop from '@/components/molecules/PhotoDrop'
 import ReportReview from '@/components/molecules/ReportReview'
 import { formSteps, reportCategories } from '@/data/report-form'
 import type { Report, SealedContract } from '@/interfaces/contract'
+import { getSession } from '@/lib/auth/get-session'
 import { newReportId } from '@/lib/contracts/new-report-id'
 import { saveReport } from '@/lib/contracts/save-report'
 import { cn } from '@/lib/utils'
@@ -28,7 +29,7 @@ export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen
   const [location, setLocation] = useState('')
   const [photos, setPhotos] = useState<string[]>([])
   const [anonymous, setAnonymous] = useState(true)
-  const [name, setName] = useState('')
+  const [name, setName] = useState(() => getSession()?.name ?? '')
   const [ticket, setTicket] = useState<Report | null>(null)
 
   const contract = registry.find((c) => c.code === code)
@@ -46,6 +47,11 @@ export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen
     setPhotos((p) => [...p, ...urls].slice(0, 4))
   }
 
+
+  const removePhoto = (i: number) => {
+    URL.revokeObjectURL(photos[i])
+    setPhotos((p) => p.filter((_, j) => j !== i))
+  }
   const canNext = step === 0 ? Boolean(category && contract) : step === 1 ? Boolean(clause && text.trim().length >= 15) : true
 
   const submit = () => {
@@ -60,6 +66,7 @@ export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen
       status: 0,
       reporter,
       photos: photos.length,
+      owner: getSession()?.email,
     }
     saveReport(contract.code, report)
     setTicket(report)
@@ -144,7 +151,7 @@ export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen
             <span>Lokasi (opsional)</span>
             <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Contoh: Jalan Dusun Krajan, dekat masjid" />
           </label>
-          <PhotoDrop photos={photos} onFiles={addPhotos} />
+          <PhotoDrop photos={photos} onFiles={addPhotos} onRemove={removePhoto} />
           <label className="toggle">
             <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)} />
             <span className="toggle-track" aria-hidden="true" />

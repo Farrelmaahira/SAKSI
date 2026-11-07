@@ -15,10 +15,11 @@ import { cn } from '@/lib/utils'
 interface Props {
   registry: SealedContract[]
   onOpen: (code: string) => void
+  onResult?: (r: VerifyResult) => void
 }
 
 /* Drop any file: its SHA-256 is computed in the browser and compared with the registry. */
-export default function VerifyDoc({ registry, onOpen }: Props) {
+export default function VerifyDoc({ registry, onOpen, onResult }: Props) {
   const [over, setOver] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<VerifyResult | null>(null)
@@ -27,7 +28,9 @@ export default function VerifyDoc({ registry, onOpen }: Props) {
     if (!file) return
     setBusy(true)
     const hash = await sha256(await file.arrayBuffer())
-    setResult({ name: file.name, hash, match: registry.find((c) => c.hash === hash) })
+    const next = { name: file.name, hash, match: registry.find((c) => c.hash === hash) }
+    setResult(next)
+    onResult?.(next)
     setBusy(false)
   }
 

@@ -6,6 +6,7 @@ export const illustrations = {
   'digital-signature_ttti': { width: 960, height: 743 },
   'document-ready_o5d5': { width: 607, height: 720 },
   'document-warning_2es6': { width: 607, height: 720 },
+  'image-dropzone_zdre': { width: 960, height: 556 },
   'fingerprint_kdwq': { width: 924, height: 531 },
   'food-truck_my6o': { width: 960, height: 539 },
   'in-progress_2mox': { width: 960, height: 502 },
