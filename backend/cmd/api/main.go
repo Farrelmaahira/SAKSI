@@ -83,8 +83,9 @@ func main() {
 
 	// Citizen reports routes
 	mux.Handle("POST /api/v1/reports", authMiddleware(handlers.HandleCreateCitizenReport(deps)))
-	mux.Handle("GET /api/v1/reports", authMiddleware(handlers.HandleListMyReports(deps)))
+	mux.Handle("GET /api/v1/reports", authMiddleware(handlers.HandleListReports(deps)))
 	mux.Handle("GET /api/v1/reports/{id}", authMiddleware(handlers.HandleGetReportDetail(deps)))
+	mux.Handle("GET /api/v1/contracts/{id}/reports", authMiddleware(handlers.HandleListContractReports(deps)))
 
 
 	webOrigin := env("WEB_ORIGIN", "http://localhost:3000")

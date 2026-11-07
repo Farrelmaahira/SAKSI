@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"saksi-backend/internal/domain"
+	"saksi-backend/internal/usecase"
 )
 
 type CreateReportJSONRequest struct {
@@ -149,18 +150,99 @@ func HandleCreateCitizenReport(d *Deps) http.HandlerFunc {
 	}
 }
 
-// HandleListMyReports mengembalikan riwayat laporan pengaduan yang diajukan oleh pengguna saat ini.
-func HandleListMyReports(d *Deps) http.HandlerFunc {
+// HandleListReports mengembalikan daftar laporan pengaduan masyarakat secara adaptif sesuai peran pengguna:
+// - Warga: hanya laporan yang diajukan oleh pengguna tersebut
+// - Kades & BPD: seluruh laporan warga di desa terkait (dengan proteksi privasi pelapor)
+// - Inspektorat: seluruh laporan pengaduan lintas desa
+func HandleListReports(d *Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, _, _ := ClaimsFromContext(r.Context())
+		userID, role, userVillageID := ClaimsFromContext(r.Context())
 		if userID <= 0 {
 			WriteError(w, http.StatusUnauthorized, "pengguna tidak terautentikasi")
 			return
 		}
 
-		reports, err := d.Store.ListCitizenReportsByReporter(r.Context(), userID)
+		filter := usecase.ListReportsFilter{
+			RequesterRole:   role,
+			RequesterUserID: userID,
+			Search:          r.URL.Query().Get("q"),
+		}
+
+		if userVillageID != nil {
+			filter.VillageID = *userVillageID
+		} else if vParam := r.URL.Query().Get("villageId"); vParam != "" {
+			if vID, err := strconv.ParseInt(vParam, 10, 64); err == nil {
+				filter.VillageID = vID
+			}
+		}
+
+		if cParam := r.URL.Query().Get("contractId"); cParam != "" {
+			if cID, err := strconv.ParseInt(cParam, 10, 64); err == nil && cID > 0 {
+				filter.ContractID = &cID
+			}
+		}
+
+		if sParam := r.URL.Query().Get("status"); sParam != "" {
+			st := domain.ReportStatus(sParam)
+			filter.Status = &st
+		}
+
+		reports, err := d.Store.ListCitizenReports(r.Context(), filter)
 		if err != nil {
-			WriteError(w, http.StatusInternalServerError, "gagal memuat daftar laporan saya")
+			WriteError(w, http.StatusInternalServerError, "gagal memuat daftar laporan: "+err.Error())
+			return
+		}
+
+		WriteJSON(w, http.StatusOK, reports)
+	}
+}
+
+// HandleListMyReports adalah alias untuk kompatibilitas mundur.
+func HandleListMyReports(d *Deps) http.HandlerFunc {
+	return HandleListReports(d)
+}
+
+// HandleListContractReports mengembalikan seluruh laporan warga pada suatu kontrak untuk peran Kades/BPD/Inspektorat dengan validasi kepemilikan desa (anti-IDOR).
+func HandleListContractReports(d *Deps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		contractID, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			parts := strings.Split(idStr, "-")
+			if len(parts) > 0 {
+				contractID, _ = strconv.ParseInt(parts[len(parts)-1], 10, 64)
+			}
+		}
+		if contractID <= 0 {
+			WriteError(w, http.StatusBadRequest, "parameter ID kontrak tidak valid")
+			return
+		}
+
+		_, role, userVillageID := ClaimsFromContext(r.Context())
+		if role != domain.RoleKades && role != domain.RolePerangkatDesa && role != domain.RoleBPD && role != domain.RoleInspektorat {
+			WriteError(w, http.StatusForbidden, "hanya perangkat desa, BPD, atau inspektorat yang dapat melihat daftar laporan kontrak")
+			return
+		}
+
+		var villageID int64
+		if userVillageID != nil {
+			villageID = *userVillageID
+		} else if role != domain.RoleInspektorat {
+			WriteError(w, http.StatusBadRequest, "akun perangkat desa harus terikat dengan ID desa")
+			return
+		}
+
+		reports, err := d.Store.ListCitizenReportsByContract(r.Context(), contractID, villageID, role)
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				WriteError(w, http.StatusNotFound, "kontrak tidak ditemukan")
+				return
+			}
+			if errors.Is(err, domain.ErrForbidden) {
+				WriteError(w, http.StatusForbidden, "Anda tidak memiliki akses melihat laporan kontrak desa lain")
+				return
+			}
+			WriteError(w, http.StatusInternalServerError, "gagal memuat daftar laporan kontrak: "+err.Error())
 			return
 		}
 

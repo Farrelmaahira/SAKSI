@@ -74,6 +74,41 @@ func (m *reportsMockStore) SaveUploadedFile(ctx context.Context, key string, mim
 	return 555, nil
 }
 
+func (m *reportsMockStore) ListCitizenReportsByContract(ctx context.Context, contractID int64, villageID int64, requesterRole domain.UserRole) ([]domain.CitizenReport, error) {
+	if villageID != 1 && requesterRole != domain.RoleInspektorat {
+		return nil, domain.ErrForbidden
+	}
+	var list []domain.CitizenReport
+	for _, r := range m.reports {
+		if r.ContractID == contractID {
+			if requesterRole == domain.RoleKades || requesterRole == domain.RolePerangkatDesa {
+				r.PelaporNama = "Warga terverifikasi"
+			}
+			list = append(list, r)
+		}
+	}
+	return list, nil
+}
+
+func (m *reportsMockStore) ListCitizenReports(ctx context.Context, f usecase.ListReportsFilter) ([]domain.CitizenReport, error) {
+	var list []domain.CitizenReport
+	for _, r := range m.reports {
+		if f.RequesterRole == domain.RoleWarga {
+			if r.PelaporUserID == f.RequesterUserID {
+				list = append(list, r)
+			}
+		} else if f.RequesterRole == domain.RoleKades || f.RequesterRole == domain.RolePerangkatDesa || f.RequesterRole == domain.RoleBPD {
+			if f.VillageID == 1 {
+				r.PelaporNama = "Warga terverifikasi"
+				list = append(list, r)
+			}
+		} else if f.RequesterRole == domain.RoleInspektorat {
+			list = append(list, r)
+		}
+	}
+	return list, nil
+}
+
 func TestReports_Handlers(t *testing.T) {
 	mockStore := &reportsMockStore{
 		publicContracts: []domain.PublicContractSummary{
@@ -123,6 +158,7 @@ func TestReports_Handlers(t *testing.T) {
 	wargaToken, _ := usecase.IssueToken(3, domain.RoleWarga, func(i int64) *int64 { return &i }(1), secret, 1*time.Hour)
 	kadesToken, _ := usecase.IssueToken(1, domain.RoleKades, func(i int64) *int64 { return &i }(1), secret, 1*time.Hour)
 	otherWargaToken, _ := usecase.IssueToken(99, domain.RoleWarga, func(i int64) *int64 { return &i }(1), secret, 1*time.Hour)
+	otherKadesToken, _ := usecase.IssueToken(20, domain.RoleKades, func(i int64) *int64 { return &i }(2), secret, 1*time.Hour)
 
 	authMiddleware := handlers.RequireAuth(secret)
 
@@ -265,6 +301,90 @@ func TestReports_Handlers(t *testing.T) {
 		_ = json.NewDecoder(w.Body).Decode(&rep)
 		if rep.PelaporNama != "Warga terverifikasi" {
 			t.Errorf("expected masked name 'Warga terverifikasi', got '%s'", rep.PelaporNama)
+		}
+	})
+
+	// 6. Test HandleListReports (Role-Aware)
+	t.Run("ListReports_Kades", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/reports", nil)
+		req.Header.Set("Authorization", "Bearer "+kadesToken)
+		w := httptest.NewRecorder()
+
+		authMiddleware(handlers.HandleListReports(deps)).ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d", w.Code)
+		}
+
+		var list []domain.CitizenReport
+		_ = json.NewDecoder(w.Body).Decode(&list)
+		if len(list) == 0 {
+			t.Errorf("expected reports for kades")
+		}
+		if list[0].PelaporNama != "Warga terverifikasi" {
+			t.Errorf("expected masked PelaporNama 'Warga terverifikasi', got '%s'", list[0].PelaporNama)
+		}
+	})
+
+	t.Run("ListReports_Warga", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/reports", nil)
+		req.Header.Set("Authorization", "Bearer "+wargaToken)
+		w := httptest.NewRecorder()
+
+		authMiddleware(handlers.HandleListReports(deps)).ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d", w.Code)
+		}
+
+		var list []domain.CitizenReport
+		_ = json.NewDecoder(w.Body).Decode(&list)
+		if len(list) == 0 {
+			t.Errorf("expected reports for warga")
+		}
+	})
+
+	// 7. Test HandleListContractReports
+	t.Run("ListContractReports_Kades_Success", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/contracts/10/reports", nil)
+		req.SetPathValue("id", "10")
+		req.Header.Set("Authorization", "Bearer "+kadesToken)
+		w := httptest.NewRecorder()
+
+		authMiddleware(handlers.HandleListContractReports(deps)).ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status 200, got %d", w.Code)
+		}
+
+		var list []domain.CitizenReport
+		_ = json.NewDecoder(w.Body).Decode(&list)
+		if len(list) == 0 {
+			t.Errorf("expected reports for contract 10")
+		}
+		if list[0].PelaporNama != "Warga terverifikasi" {
+			t.Errorf("expected masked PelaporNama 'Warga terverifikasi', got '%s'", list[0].PelaporNama)
+		}
+	})
+
+	t.Run("ListContractReports_Kades_IDOR", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/contracts/10/reports", nil)
+		req.SetPathValue("id", "10")
+		req.Header.Set("Authorization", "Bearer "+otherKadesToken)
+		w := httptest.NewRecorder()
+
+		authMiddleware(handlers.HandleListContractReports(deps)).ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected status 403 Forbidden for kades of other village, got %d", w.Code)
+		}
+	})
+
+	t.Run("ListContractReports_Warga_Forbidden", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/v1/contracts/10/reports", nil)
+		req.SetPathValue("id", "10")
+		req.Header.Set("Authorization", "Bearer "+wargaToken)
+		w := httptest.NewRecorder()
+
+		authMiddleware(handlers.HandleListContractReports(deps)).ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected status 403 Forbidden for warga, got %d", w.Code)
 		}
 	})
 }
