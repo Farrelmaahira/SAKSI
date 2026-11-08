@@ -48,11 +48,19 @@ export async function login(emailInput: string, password: string): Promise<Login
       }
 
       const roleKey: RoleKey = roleMap[data.role] || 'warga'
+      const villageIdMap: Record<string, string> = {
+        '1': 'sukamaju',
+        '2': 'cibodas',
+        '3': 'mekarsari',
+      }
+      const rawVillageId = data.villageId ? String(data.villageId) : 'sukamaju'
+      const normalizedVillageId = villageIdMap[rawVillageId] || rawVillageId
+
       const userRole: UserRole = {
         id: `r-${data.userId}`,
         role: roleKey,
         title: titleMap[roleKey] || 'Pengguna',
-        villageId: data.villageId ? String(data.villageId) : 'sukamaju',
+        villageId: normalizedVillageId,
       }
 
       const storedUser: StoredUser = {

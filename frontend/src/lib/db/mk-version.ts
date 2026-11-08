@@ -9,7 +9,7 @@ import { applyFinding } from '@/lib/drafting/apply-finding'
 export function mkVersion(t: TemplateKey, a: Answers, villageId: string, cpId: string, apply: string[], at: string, clauses?: Clause[]): Version {
   let cl = clauses ?? draftClauses(t, a, draftContext(villageId, cpId))
   let answers = a
-  const regionId = villageById(villageId)!.regionId
+  const regionId = villageById(villageId)?.regionId ?? 'kab-cianjur'
   let audit = reaudit(t, answers, cl, regionId)
   for (const id of apply) {
     const next = applyFinding(t, answers, cl, id)

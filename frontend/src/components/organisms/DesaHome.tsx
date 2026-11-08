@@ -29,12 +29,27 @@ import TodoList from '@/components/molecules/TodoList'
 import Link from 'next/link'
 import Activity from '@/components/molecules/Activity'
 import { scopeLogs } from '@/lib/db/scope-logs'
+import { useEffect, useState } from 'react'
+import { fetchDashboardMetricsAPI, type DashboardMetricsResponse } from '@/lib/api/contracts'
 
 export default function DesaHome() {
   const { session } = useDash()
   const d = db.use()
   const logs = auditStore.use()
   const r = session.role
+  const [metrics, setMetrics] = useState<DashboardMetricsResponse | null>(null)
+
+  useEffect(() => {
+    let active = true
+    fetchDashboardMetricsAPI().then((res) => {
+      if (active && res) {
+        setMetrics(res)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [])
   const contracts = scopeContracts(d, r)
   const reports = scopeReports(d, r)
   const year = new Date().getFullYear()
@@ -79,11 +94,29 @@ export default function DesaHome() {
         }
       />
       <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(3,minmax(0,1fr))] lg:grid-cols-[repeat(5,minmax(0,1fr))] d-stats">
-        <Stat label="Kontrak aktif" value={active.length} hint={`${contracts.length} kontrak total`} icon="file" to="/dashboard/kontrak" />
-        <Stat label={`Nilai kontrak ${year}`} value={rpShort(yearValue)} hint="Kontrak yang sudah dikirim" icon="wallet" tone="ink" />
+        <Stat
+          label="Kontrak aktif"
+          value={metrics ? metrics.activeContractsCount : active.length}
+          hint={metrics ? `Real-time dari database (${metrics.sealedContractsCount} tersegel)` : `${contracts.length} kontrak total`}
+          icon="file"
+          to="/dashboard/kontrak"
+        />
+        <Stat
+          label={`Nilai kontrak ${year}`}
+          value={metrics ? rpShort(metrics.totalRealizationBudget) : rpShort(yearValue)}
+          hint="Realisasi anggaran aktif"
+          icon="wallet"
+          tone="ink"
+        />
         <Stat label="Termin jatuh tempo" value={due.length} hint="7 hari ke depan atau lewat" icon="clock" tone={due.some(({ t }) => daysUntil(t.planDate) < 0) ? 'red' : 'blue'} />
         <Stat label="Laporan belum ditanggapi" value={unanswered.length} hint="Dari warga" icon="flag" tone={unanswered.length ? 'red' : 'blue'} to="/dashboard/laporan" />
-        <Stat label="Temuan AI kritis" value={critical} hint="Di draf yang belum dikirim" icon="alert" tone={critical ? 'red' : 'blue'} />
+        <Stat
+          label="Indeks Integritas"
+          value={metrics ? `${metrics.integrityIndex}%` : critical}
+          hint={metrics ? 'Berdasarkan audit kepatuhan' : 'Di draf yang belum dikirim'}
+          icon="alert"
+          tone="blue"
+        />
       </div>
       <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
         <Panel title="Perlu tindakan" desc={todos.length ? `${todos.length} hal menunggu Anda` : undefined}>

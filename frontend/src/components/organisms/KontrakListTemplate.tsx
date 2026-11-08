@@ -31,6 +31,7 @@ import { statusLabels } from '@/data/db'
 import { isEditable } from '@/lib/db/is-editable'
 import { openCritical } from '@/lib/db/open-critical'
 import Empty from '@/components/molecules/Empty'
+import { fetchContractsAPI } from '@/lib/api/contracts'
 
 export default function KontrakListTemplate() {
   const { session } = useDash()
@@ -39,8 +40,8 @@ export default function KontrakListTemplate() {
   const [dbContracts, setDbContracts] = useState<DContract[] | null>(null)
 
   useEffect(() => {
+    let active = true
     if (role.role === 'warga') {
-      let active = true
       fetchPublicContracts().then((res) => {
         if (active && res && res.length > 0) {
           const mapped: DContract[] = res.map((c) => ({
@@ -78,13 +79,73 @@ export default function KontrakListTemplate() {
           setDbContracts(mapped)
         }
       })
-      return () => {
-        active = false
-      }
+    } else {
+      // Ambil daftar kontrak resmi dari Backend API Go PostgreSQL
+      fetchContractsAPI().then((apiList) => {
+        if (active && apiList && apiList.length > 0) {
+          const mapped: DContract[] = apiList.map((c) => {
+            const rawStatus = c.status || 'diaudit'
+            const normalizedStatus: any =
+              rawStatus === 'ditandatangani'
+                ? 'ditandatangani'
+                : rawStatus === 'ditinjau'
+                ? 'ditinjau'
+                : rawStatus === 'selesai'
+                ? 'selesai'
+                : rawStatus === 'berjalan'
+                ? 'berjalan'
+                : 'diaudit'
+
+            return {
+              code: c.contractNumber || `SKS-2026-${String(c.id).padStart(3, '0')}`,
+              title: c.title,
+              template: (c.category as any) || 'pengadaan',
+              counterpartyId: '1',
+              villageId: 'sukamaju',
+              status: normalizedStatus,
+              createdAt: c.createdAt ? c.createdAt.slice(0, 10) : '2026-11-08',
+              versions: [
+                {
+                  no: 1,
+                  at: c.createdAt ? c.createdAt.slice(0, 10) : '2026-11-08',
+                  answers: {
+                    work: c.title,
+                    value: c.amount,
+                    deadline: '2026-12-31',
+                    scheme: 'Termin',
+                    terms: 2,
+                    method: 'Pengadaan Langsung',
+                  },
+                  clauses: [],
+                  audit: { at: '2026-11-08', score: c.integrityScore || 100, findings: [] },
+                },
+              ],
+              reviews: [],
+              signatures: {},
+              seals: [],
+              terms: [],
+              progress: [],
+              history: [],
+              selfReport: false,
+            }
+          })
+          setDbContracts(mapped)
+        }
+      })
+    }
+    return () => {
+      active = false
     }
   }, [role.role])
 
-  const all = (role.role === 'warga' && dbContracts !== null) ? dbContracts : scopeContracts(d, role)
+  const scopedLocal = scopeContracts(d, role)
+  const all = useMemo(() => {
+    if (!dbContracts || dbContracts.length === 0) return scopedLocal
+    // Gabungkan kontrak API dengan kontrak lokal yang belum ada di API
+    const apiCodes = new Set(dbContracts.map((c) => c.code.toLowerCase()))
+    const uniqueLocal = scopedLocal.filter((c) => !apiCodes.has(c.code.toLowerCase()))
+    return [...dbContracts, ...uniqueLocal]
+  }, [dbContracts, scopedLocal])
   const [filter, setFilter] = useState<KontrakFilter>('semua')
   const [q, setQ] = useState('')
   const isDesa = role.role === 'perangkat_desa'

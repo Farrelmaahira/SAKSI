@@ -15,6 +15,7 @@ import { counterpartyById } from '@/lib/master/counterparty-by-id'
 import Panel from '@/components/molecules/Panel'
 import Icon from '@/components/atoms/Icon'
 import Btn from '@/components/atoms/Btn'
+import { signContractAPI } from '@/lib/api/contracts'
 
 export default function TandaTanganTab({ c, session }: TabProps) {
   const r = session.role.role
@@ -28,8 +29,14 @@ export default function TandaTanganTab({ c, session }: TabProps) {
       who: `Pemerintah ${villageById(c.villageId)?.name}`,
       done: s.desa ? `${s.desa.by} · ${fmtDateTime(s.desa.at)}` : null,
       can: r === 'perangkat_desa' && approved && !s.desa,
-      action: () => {
+      action: async () => {
+        const contractNumericId = parseInt(c.code.replace(/[^0-9]/g, '').slice(-3), 10) || 1
         sign(c.code, 'desa', session, image ?? undefined)
+        try {
+          await signContractAPI(contractNumericId, { metode: 'simulasi', referensi: image || `sig_desa_${session.name}` })
+        } catch (err) {
+          console.warn('Backend sign failed, using local:', err)
+        }
         setImage(null)
       },
       label: 'Tanda tangani',
@@ -51,8 +58,14 @@ export default function TandaTanganTab({ c, session }: TabProps) {
       who: counterpartyById(c.counterpartyId)?.name ?? 'Pihak kedua',
       done: s.pihak ? `${s.pihak.by} · ${fmtDateTime(s.pihak.at)}` : null,
       can: r === 'pihak_kedua' && approved && Boolean(s.desa && s.meterai) && !s.pihak,
-      action: () => {
+      action: async () => {
+        const contractNumericId = parseInt(c.code.replace(/[^0-9]/g, '').slice(-3), 10) || 1
         sign(c.code, 'pihak', session, image ?? undefined)
+        try {
+          await signContractAPI(contractNumericId, { metode: 'simulasi', referensi: image || `sig_vendor_${session.name}` })
+        } catch (err) {
+          console.warn('Backend sign failed, using local:', err)
+        }
         setImage(null)
       },
       label: 'Tanda tangani',

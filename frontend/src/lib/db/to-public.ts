@@ -14,7 +14,7 @@ import { pubFields } from '@/data/db'
 
 export function toPublic(c: DContract, reports: DReport[]): Contract {
   const seed = seedContracts.find((s) => s.code === c.code)
-  const v = villageById(c.villageId)!
+  const v = villageById(c.villageId) ?? { id: c.villageId || 'sukamaju', name: 'Desa Sukamaju', district: 'Kec. Cibeber', regionId: 'kab-cianjur', code: '3203152005' }
   const cp = counterpartyById(c.counterpartyId)
   const ver = latestVersion(c)
   const base: Contract = seed

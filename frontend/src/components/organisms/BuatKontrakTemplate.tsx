@@ -5,7 +5,7 @@ import { useDash } from '@/hooks/use-dash'
 import { counterpartyStore } from '@/lib/master/counterparty-store'
 import { useEffect, useMemo, useState } from 'react'
 import type { Answers, Clause, TemplateKey } from '@/interfaces/drafting'
-import type { CounterpartyType } from '@/interfaces/master'
+import type { Counterparty, CounterpartyType } from '@/interfaces/master'
 import { emptyAnswers } from '@/lib/dash/empty-answers'
 import { auditDraft } from '@/lib/drafting/audit-draft'
 import { villageById } from '@/lib/master/village-by-id'
@@ -37,6 +37,7 @@ import { titleFor } from '@/lib/db/title-for'
 import type { Meterai, Signature } from '@/interfaces/db'
 import LetterPreview from '@/components/organisms/LetterPreview'
 import SignaturePad from '@/components/molecules/SignaturePad'
+import { createContractAPI, fetchCounterparties, type CreateContractPayload } from '@/lib/api/contracts'
 
 export default function BuatKontrakTemplate() {
   const { session } = useDash()
@@ -63,6 +64,30 @@ export default function BuatKontrakTemplate() {
   const [letterDate, setLetterDate] = useState('')
   const [desaSig, setDesaSig] = useState<Signature | null>(null)
   const [meterai, setMeterai] = useState<Meterai | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  // Sinkronkan rekanan dari backend API saat pertama kali dimuat
+  useEffect(() => {
+    fetchCounterparties().then((apiList) => {
+      if (apiList && apiList.length > 0) {
+        counterpartyStore.set((list) => {
+          const existingIds = new Set(list.map((x) => x.id))
+          const additions: Counterparty[] = apiList
+            .filter((c) => !existingIds.has(String(c.id)))
+            .map((c) => ({
+              id: String(c.id),
+              name: c.nama,
+              type: c.jenis === 'penyedia' ? 'Penyedia' : 'UMKM',
+              email: `${c.nama.toLowerCase().replace(/[^a-z0-9]/g, '')}@rekanan.id`,
+              contact: c.nama,
+              address: c.alamat || '-',
+              invited: false,
+            }))
+          return [...list, ...additions]
+        })
+      }
+    })
+  }, [])
 
   const role = session.role
   const regionId = villageById(role.villageId)?.regionId ?? ''
@@ -148,13 +173,51 @@ export default function BuatKontrakTemplate() {
   }
 
   const critical = audit?.findings.filter((f) => f.severity === 'kritis' && !f.applied).length ?? 0
-  const finish = (send: boolean) => {
-    if (!template || !audit) return
-    const code = createContract(
+  const finish = async (send: boolean) => {
+    if (!template || !audit || submitting) return
+    setSubmitting(true)
+
+    // 1. Simpan di local store untuk persistensi UI instan
+    const localCode = createContract(
       { template, answers, counterpartyId: partyId, clauses, audit, send, signatures: desaSig ? { desa: desaSig, ...(meterai ? { meterai } : {}) } : undefined },
       session,
     )
-    router.push(`/dashboard/kontrak/${code}`)
+
+    // 2. Simpan ke Backend API PostgreSQL
+    const cpNumericId = parseInt(partyId, 10) || 1
+    const backendJenis =
+      template === 'pengadaan'
+        ? 'pengadaan'
+        : template === 'sewa'
+        ? 'sewa_aset'
+        : template === 'bumdes'
+        ? 'kerja_sama_bumdes'
+        : 'hibah'
+
+    const payload: CreateContractPayload = {
+      counterpartyId: cpNumericId,
+      jenis: backendJenis,
+      judul: titleFor(template, answers.work),
+      nilai: answers.value,
+      tenggat: answers.deadline,
+      skemaPembayaran: answers.scheme.toLowerCase(),
+      metodePemilihan: answers.method === 'Pengadaan langsung' ? 'pengadaan_langsung' : 'lelang_terbatas',
+      jawabanForm: {
+        ...answers,
+        work: answers.work,
+        clauses: clauses.map((c) => ({ key: c.key, title: c.title, text: c.text })),
+      },
+      drafTeksOverride: clauses.map((c) => `[${c.title}]\n${c.text}`).join('\n\n'),
+    }
+
+    try {
+      await createContractAPI(payload)
+    } catch (err) {
+      console.warn('Backend contract creation failed, using local copy:', err)
+    }
+
+    setSubmitting(false)
+    router.push(`/dashboard/kontrak/${localCode}`)
   }
 
   const party = parties.find((p) => p.id === partyId)
@@ -446,11 +509,11 @@ export default function BuatKontrakTemplate() {
             </Btn>
           ) : (
             <div className="items-center flex flex-wrap gap-10">
-              <Btn variant="ghost" onClick={() => finish(false)}>
-                Simpan sebagai draf
+              <Btn variant="ghost" onClick={() => finish(false)} disabled={submitting}>
+                {submitting ? 'Menyimpan...' : 'Simpan sebagai draf'}
               </Btn>
-              <Btn onClick={() => finish(true)} disabled={critical > 0}>
-                Simpan dan kirim ke pihak kedua
+              <Btn onClick={() => finish(true)} disabled={critical > 0 || submitting}>
+                {submitting ? 'Mengirim...' : 'Simpan dan kirim ke pihak kedua'}
               </Btn>
             </div>
           )}
