@@ -64,9 +64,33 @@ func main() {
 	authMiddleware := handlers.RequireAuth(secret)
 	mux.Handle("GET /api/v1/auth/me", authMiddleware(handlers.HandleMe(deps)))
 	mux.Handle("GET /api/v1/dashboard/metrics", authMiddleware(handlers.HandleDashboardMetrics(deps)))
+
+	// Master data & Wizard routes
+	mux.Handle("GET /api/v1/counterparties", authMiddleware(handlers.HandleListCounterparties(deps)))
+	mux.Handle("GET /api/v1/contracts/options", authMiddleware(handlers.HandleGetContractOptions(deps)))
+	mux.Handle("POST /api/v1/contracts/wizard/questions", authMiddleware(handlers.HandleWizardQuestions(deps)))
+	mux.Handle("POST /api/v1/contracts/wizard/preview", authMiddleware(handlers.HandleWizardPreview(deps)))
+
+	// Contract lifecycle routes
 	mux.Handle("GET /api/v1/contracts", authMiddleware(handlers.HandleListContracts(deps)))
+	mux.Handle("POST /api/v1/contracts", authMiddleware(handlers.HandleCreateContractWizard(deps)))
 	mux.Handle("GET /api/v1/contracts/{id}", authMiddleware(handlers.HandleGetContract(deps)))
 	mux.Handle("POST /api/v1/contracts/audit", authMiddleware(handlers.HandleAuditContract(deps)))
+	mux.Handle("PUT /api/v1/contracts/{id}", authMiddleware(handlers.HandleReviseContract(deps)))
+	mux.Handle("GET /api/v1/contracts/{id}/lifecycle", authMiddleware(handlers.HandleGetContractLifecycle(deps)))
+	mux.Handle("POST /api/v1/contracts/{id}/reviews", authMiddleware(handlers.HandleSubmitContractReview(deps)))
+	mux.Handle("POST /api/v1/contracts/{id}/sign", authMiddleware(handlers.HandleSignContract(deps)))
+
+	// Public contracts for citizens & tracking
+	mux.Handle("GET /api/v1/public/contracts", authMiddleware(handlers.HandleListPublicContracts(deps)))
+	mux.Handle("GET /api/v1/public/contracts/{id}", authMiddleware(handlers.HandleGetPublicContractDetail(deps)))
+
+	// Citizen reports routes
+	mux.Handle("POST /api/v1/reports", authMiddleware(handlers.HandleCreateCitizenReport(deps)))
+	mux.Handle("GET /api/v1/reports", authMiddleware(handlers.HandleListReports(deps)))
+	mux.Handle("GET /api/v1/reports/{id}", authMiddleware(handlers.HandleGetReportDetail(deps)))
+	mux.Handle("GET /api/v1/contracts/{id}/reports", authMiddleware(handlers.HandleListContractReports(deps)))
+
 
 	webOrigin := env("WEB_ORIGIN", "http://localhost:3000")
 

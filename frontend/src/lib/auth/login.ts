@@ -1,17 +1,98 @@
 import { MAX_ATTEMPTS, LOCK_MINUTES } from '@/data/auth'
-import type { LoginResult } from '@/interfaces/auth'
+import type { LoginResult, RoleKey, StoredUser, UserRole } from '@/interfaces/auth'
 import { addAudit } from '@/lib/audit/add-audit'
+import { setAuthToken } from '@/lib/api/reports'
 import { findUser } from './find-user'
-import { ensureSeedUsers } from './users-store'
+import { ensureSeedUsers, users } from './users-store'
 import { isEmail } from './is-email'
 import { passwordMatches } from './password-matches'
 import { startSession } from './start-session'
 import { updateUser } from './update-user'
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'
+
+const roleMap: Record<string, RoleKey> = {
+  kades: 'perangkat_desa',
+  perangkat_desa: 'perangkat_desa',
+  penyedia: 'pihak_kedua',
+  pihak_kedua: 'pihak_kedua',
+  bpd: 'bpd',
+  inspektorat: 'inspektorat',
+  warga: 'warga',
+}
+
+const titleMap: Record<RoleKey, string> = {
+  perangkat_desa: 'Kepala Desa',
+  pihak_kedua: 'Penyedia',
+  bpd: 'BPD',
+  inspektorat: 'Auditor Inspektorat',
+  warga: 'Pelapor',
+}
+
 export async function login(emailInput: string, password: string): Promise<LoginResult> {
   if (!isEmail(emailInput)) return { ok: false, field: 'email', error: 'Format email belum benar, contoh: nama@desa.id' }
   if (!password) return { ok: false, field: 'password', error: 'Masukkan kata sandi.' }
 
+  // 1. Coba autentikasi ke Backend API (Database PostgreSQL)
+  try {
+    const apiRes = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailInput, password }),
+    })
+
+    if (apiRes.ok) {
+      const data = await apiRes.json()
+      if (data.token) {
+        setAuthToken(data.token)
+      }
+
+      const roleKey: RoleKey = roleMap[data.role] || 'warga'
+      const userRole: UserRole = {
+        id: `r-${data.userId}`,
+        role: roleKey,
+        title: titleMap[roleKey] || 'Pengguna',
+        villageId: data.villageId ? String(data.villageId) : 'sukamaju',
+      }
+
+      const storedUser: StoredUser = {
+        id: `u-${data.userId}`,
+        name: data.nama || emailInput,
+        email: data.email || emailInput,
+        passwordHash: 'seed',
+        status: (data.status === 'aktif' || data.status === 'menunggu_verifikasi' || data.status === 'dikunci') ? data.status : 'aktif',
+        failedAttempts: 0,
+        createdAt: new Date().toISOString(),
+        roles: [userRole],
+      }
+
+      // Simpan / update di users store agar sinkron dengan state frontend
+      users.set((all) => {
+        const idx = all.findIndex((x) => x.email.toLowerCase() === storedUser.email.toLowerCase())
+        if (idx >= 0) {
+          const updated = [...all]
+          updated[idx] = { ...updated[idx], ...storedUser }
+          return updated
+        }
+        return [...all, storedUser]
+      })
+
+      startSession(storedUser, userRole)
+      return { ok: true, userId: storedUser.id, name: storedUser.name, roles: storedUser.roles }
+    }
+
+    if (apiRes.status === 401) {
+      return { ok: false, field: 'password', error: 'Email atau kata sandi salah.' }
+    }
+    if (apiRes.status === 403) {
+      const errData = await apiRes.json().catch(() => ({}))
+      return { ok: false, code: 'unverified', error: errData.error || 'Akun belum aktif atau dikunci.' }
+    }
+  } catch {
+    // Fallback bila backend API sedang tidak aktif
+  }
+
+  // 2. Fallback mock auth (bila backend tidak dapat dihubungi)
   ensureSeedUsers()
   const u = findUser(emailInput)
   if (!u) return { ok: false, field: 'email', error: 'Email belum terdaftar. Pihak kedua bisa mendaftar sendiri; akun desa, BPD, dan Inspektorat dibuat lewat undangan.' }

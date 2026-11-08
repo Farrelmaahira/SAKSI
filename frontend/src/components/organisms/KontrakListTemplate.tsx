@@ -3,7 +3,8 @@
 import { useDash } from '@/hooks/use-dash'
 import { db } from '@/lib/db/db'
 import { scopeContracts } from '@/lib/db/scope-contracts'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { fetchPublicContracts } from '@/lib/api/reports'
 import type { KontrakFilter } from '@/interfaces/dash'
 import type { DContract } from '@/interfaces/db'
 import { nextStep } from '@/lib/db/next-step'
@@ -35,7 +36,55 @@ export default function KontrakListTemplate() {
   const { session } = useDash()
   const d = db.use()
   const role = session.role
-  const all = scopeContracts(d, role)
+  const [dbContracts, setDbContracts] = useState<DContract[] | null>(null)
+
+  useEffect(() => {
+    if (role.role === 'warga') {
+      let active = true
+      fetchPublicContracts().then((res) => {
+        if (active && res && res.length > 0) {
+          const mapped: DContract[] = res.map((c) => ({
+            code: c.nomor,
+            title: c.judul,
+            template: (c.jenis as any) || 'pengadaan',
+            counterpartyId: 'cp-maju',
+            villageId: 'sukamaju',
+            status: c.status === 'selesai' ? 'selesai' : 'berjalan',
+            createdAt: '2026-11-06',
+            versions: [
+              {
+                no: 1,
+                at: '2026-11-06',
+                answers: {
+                  work: c.judul,
+                  value: c.nilai,
+                  deadline: c.tenggat || '2026-12-31',
+                  scheme: 'Sekaligus',
+                  terms: 1,
+                  method: 'Pengadaan Langsung',
+                },
+                clauses: [],
+                audit: { at: '2026-11-06', score: 100, findings: [] },
+              },
+            ],
+            reviews: [],
+            signatures: {},
+            seals: [],
+            terms: [],
+            progress: [],
+            history: [],
+            selfReport: false,
+          }))
+          setDbContracts(mapped)
+        }
+      })
+      return () => {
+        active = false
+      }
+    }
+  }, [role.role])
+
+  const all = (role.role === 'warga' && dbContracts !== null) ? dbContracts : scopeContracts(d, role)
   const [filter, setFilter] = useState<KontrakFilter>('semua')
   const [q, setQ] = useState('')
   const isDesa = role.role === 'perangkat_desa'
@@ -62,13 +111,13 @@ export default function KontrakListTemplate() {
     { key: 'selesai', label: 'Selesai', count: count('selesai') },
   ]
 
-  const title = { perangkat_desa: 'Kontrak desa', pihak_kedua: 'Kontrak saya', bpd: 'Kontrak diawasi', inspektorat: 'Kontrak diawasi', warga: 'Kontrak' }[role.role]
+  const title = { perangkat_desa: 'Kontrak desa', pihak_kedua: 'Kontrak saya', bpd: 'Kontrak diawasi', inspektorat: 'Kontrak diawasi', warga: 'Kontrak desa' }[role.role]
   const desc = {
     perangkat_desa: 'Semua kontrak desa dari draf sampai selesai.',
     pihak_kedua: 'Kontrak tempat usaha Anda menjadi pihak kedua. Draf yang belum dikirim desa tidak tampil di sini.',
     bpd: 'Kontrak desa yang sudah dikirim untuk ditinjau. Hanya bisa dibaca.',
     inspektorat: 'Kontrak semua desa di wilayah Anda. Hanya bisa dibaca.',
-    warga: 'Warga memantau kontrak lewat portal publik.',
+    warga: 'Kontrak desa yang sedang berjalan dan dapat dipantau oleh masyarakat.',
   }[role.role]
 
   return (

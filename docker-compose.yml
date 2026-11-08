@@ -36,6 +36,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - saksi_storage_data:/data/files
 
 volumes:
   saksi_postgres_data:
+  saksi_storage_data:

@@ -1,9 +1,12 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useDash } from '@/hooks/use-dash'
 import { db } from '@/lib/db/db'
 import { scopeContracts } from '@/lib/db/scope-contracts'
+import { fetchPublicContracts } from '@/lib/api/reports'
+import type { DContract } from '@/interfaces/db'
 import Empty from '@/components/molecules/Empty'
 import Btn from '@/components/atoms/Btn'
 import { allTabs } from '@/data/dash-tabs'
@@ -31,7 +34,57 @@ export default function KontrakDetailTemplate() {
   const params = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-  const c = scopeContracts(d, session.role).find((x) => x.code === code)
+  const [dbContract, setDbContract] = useState<DContract | null>(null)
+  const scopedC = scopeContracts(d, session.role).find((x) => x.code === code)
+
+  useEffect(() => {
+    if (session.role.role === 'warga' && !scopedC) {
+      let active = true
+      fetchPublicContracts().then((list) => {
+        if (!active || !list) return
+        const found = list.find((x) => x.nomor === code || String(x.id) === code)
+        if (found) {
+          setDbContract({
+            code: found.nomor,
+            title: found.judul,
+            template: (found.jenis as any) || 'pengadaan',
+            counterpartyId: 'cp-maju',
+            villageId: 'sukamaju',
+            status: found.status === 'selesai' ? 'selesai' : 'berjalan',
+            createdAt: '2026-11-06',
+            versions: [
+              {
+                no: 1,
+                at: '2026-11-06',
+                answers: {
+                  work: found.judul,
+                  value: found.nilai,
+                  deadline: found.tenggat || '2026-12-31',
+                  scheme: 'Sekaligus',
+                  terms: 1,
+                  method: 'Pengadaan Langsung',
+                },
+                clauses: [],
+                audit: { at: '2026-11-06', score: 100, findings: [] },
+              },
+            ],
+            reviews: [],
+            signatures: {},
+            seals: [],
+            terms: [],
+            progress: [],
+            history: [],
+            selfReport: false,
+          })
+        }
+      })
+      return () => {
+        active = false
+      }
+    }
+  }, [code, scopedC, session.role])
+
+  const c = scopedC || dbContract
 
   if (!c)
     return (

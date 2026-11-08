@@ -16,9 +16,9 @@ import (
 )
 
 type Claims struct {
-	UserID    string          `json:"uid"`
+	UserID    int64           `json:"uid"`
 	Role      domain.UserRole `json:"role"`
-	VillageID string          `json:"villageId"`
+	VillageID *int64          `json:"villageId,omitempty"`
 	ExpiresAt int64           `json:"exp"`
 }
 
@@ -39,7 +39,7 @@ func ValidEmail(address string) bool {
 	return err == nil && parsed.Address == address
 }
 
-func IssueToken(userID string, role domain.UserRole, villageID string, secret string, ttl time.Duration) (string, error) {
+func IssueToken(userID int64, role domain.UserRole, villageID *int64, secret string, ttl time.Duration) (string, error) {
 	claims := Claims{
 		UserID:    userID,
 		Role:      role,
