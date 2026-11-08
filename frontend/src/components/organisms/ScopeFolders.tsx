@@ -96,7 +96,7 @@ export default function ScopeFolders() {
   }, [])
 
   return (
-    <div className="folders" ref={root}>
+    <div className="grid [grid-auto-rows:1fr] gap-y-[14vh] lg:pb-0 lg:after:content-[''] lg:after:block lg:after:h-[28vh]" ref={root}>
       {scopeFolders.map((f, i) => (
         <ScopeFolder key={f.title} folder={f} index={i} />
       ))}

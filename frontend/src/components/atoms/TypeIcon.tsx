@@ -12,7 +12,7 @@ const paths: Record<string, string[]> = {
 /* Contract type icons, drawn as simple line marks. */
 export default function TypeIcon({ kind }: Props) {
   return (
-    <svg className="type-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="[fill:none] flex-none h-32 [stroke:var(--color-blue)] [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:1.6] w-32 [.desk-icon_&]:h-40 [.desk-icon_&]:[stroke:var(--color-white)] [.desk-icon_&]:w-40" viewBox="0 0 24 24" aria-hidden="true">
       {(paths[kind] ?? []).map((d) => (
         <path key={d} d={d} />
       ))}

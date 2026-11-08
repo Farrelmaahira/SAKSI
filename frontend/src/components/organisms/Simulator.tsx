@@ -27,11 +27,12 @@ import {
 import type { Contract } from "@/interfaces/contract";
 import type { SignedState } from "@/interfaces/simulator";
 import { contractText } from "@/lib/contracts/contract-text";
+import { getSession } from "@/lib/auth/get-session";
 import { saveSimContract } from "@/lib/contracts/save-sim-contract";
 import { sha256 } from "@/lib/contracts/sha256";
 import { buildSimContract } from "@/lib/simulator/build-sim-contract";
 import { randomHex } from "@/lib/simulator/random-hex";
-import { apiClient } from "@/lib/api-client";
+import { auditClause } from "@/lib/api/audit-clause";
 import SimSidebar from "./SimSidebar";
 import StepClauses from "./StepClauses";
 import StepHash from "./StepHash";
@@ -119,7 +120,7 @@ export default function Simulator() {
     const targetClause = clauses.find((c) => c.id === id);
     if (targetClause) {
       try {
-        await apiClient.auditClause({
+        await auditClause({
           contractId: code,
           clauseText: targetClause.text,
           clauseType: targetClause.title,
@@ -158,7 +159,7 @@ export default function Simulator() {
   };
 
   const publish = () => {
-    const c = buildSimContract(code, placed, BASE_VALUE);
+    const c = { ...buildSimContract(code, placed, BASE_VALUE), owner: getSession()?.email };
     saveSimContract(c);
     setValue(BASE_VALUE);
     setPublished(c);
@@ -194,21 +195,21 @@ export default function Simulator() {
   };
 
   return (
-    <div className="sim" ref={rootRef}>
+    <div className="[scroll-margin-top:2rem]" ref={rootRef}>
       <SimScenario />
 
-      <div className="sim-grid">
+      <div className="grid gap-16 grid-cols-[minmax(0,1fr)] lg:[align-items:start] lg:grid-cols-[34rem_minmax(0,1fr)]">
         <SimSidebar step={step} done={done} onStep={setStep} />
 
-        <section className="sim-stage" aria-live="polite">
-          <header className="stage-head">
-            <p className="stage-count">
+        <section className="bg-soft rounded-[2rem] min-w-0 p-24 md:p-40 lg:p-50" aria-live="polite">
+          <header className="mb-30 [&_h3]:text-[3.4rem] [&_h3]:font-[320] [&_h3]:tracking-[-0.03em] [&_h3]:leading-[1.05] [&_h3]:mt-8 [&_h3]:mx-0 [&_h3]:mb-12 md:[&_h3]:text-[4.6rem]">
+            <p className="text-blue text-[1.3rem] uppercase">
               Langkah {step + 1} dari {steps.length}
             </p>
             <h3>{steps[step].title}</h3>
-            <p className="stage-guide">{steps[step].guide}</p>
+            <p className="text-[1.7rem] leading-[1.5] max-w-720 md:text-[1.9rem]">{steps[step].guide}</p>
             {step < 3 && (
-              <p className="touch-hint">
+              <p className="text-[1.3rem] mt-10 opacity-[0.6] fine-hover:hidden">
                 Di ponsel, ketuk kartu untuk menaruhnya.
               </p>
             )}
@@ -275,10 +276,10 @@ export default function Simulator() {
             />
           )}
 
-          <footer className="sim-nav">
+          <footer className="items-center flex gap-20 justify-between mt-32">
             <button
               type="button"
-              className="text-btn"
+              className="items-center [background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] [color:inherit] inline-flex text-[1.4rem] gap-8 tracking-[0.02em] py-4 px-0 uppercase [transition:color_0.3s,_opacity_0.3s] [&:hover:not(:disabled)]:text-blue [&.light:hover:not(:disabled)]:[color:inherit] [&.light:hover:not(:disabled)]:opacity-[0.7] disabled:cursor-not-allowed disabled:opacity-[0.3] [.hash-actions_&:hover]:[color:inherit] [.hash-actions_&:hover]:opacity-[0.7] [.verify-samples_&]:mt-0 [.verify-samples_&]:mr-24 [.verify-samples_&]:mb-10 [.verify-samples_&]:ml-0 [.hash-status_&]:[grid-column:2] [.hash-status_&]:[justify-self:start] [.d-panel-ink_.verify-samples_&]:mt-0 [.d-panel-ink_.verify-samples_&]:mr-20 [.d-panel-ink_.verify-samples_&]:mb-10 [.d-panel-ink_.verify-samples_&]:ml-0"
               onClick={() => setStep((s) => Math.max(0, s - 1))}
               disabled={step === 0}
             >

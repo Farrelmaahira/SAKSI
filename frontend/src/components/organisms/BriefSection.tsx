@@ -56,26 +56,26 @@ export default function BriefSection() {
   }, [])
 
   return (
-    <section className="brief" id="masalah" ref={root}>
-      <div className="container narrow" data-reveal>
-        <p className="label">Masalahnya</p>
-        <p className="brief-text">
+    <section className="bg-blue text-white pt-120 px-0 pb-140 lg:pt-180 lg:px-0 lg:pb-220" id="masalah" ref={root}>
+      <div className="my-0 mx-auto py-0 px-20 relative w-full md:py-0 md:px-40 lg:py-0 lg:px-80 max-w-1500 [.auth>&]:relative [.auth>&]:z-1 [.page-hero>&]:relative [.page-hero>&]:z-1 container" data-reveal>
+        <p className="text-white text-[1.4rem] font-[350] tracking-[0.01em] leading-[1.6] mb-30 uppercase [&.dark]:text-blue md:text-[2rem] md:mb-40 [.flow-head_&]:mb-0 [.d-panel-ink_&]:text-[1.3rem] [.d-panel-ink_&]:tracking-[0.06em] [.d-panel-ink_&]:text-ink-dim [.d-panel-ink_&]:uppercase label">Masalahnya</p>
+        <p className="text-[3.6rem] font-[300] tracking-[-0.05em] leading-[1.1] md:text-[6rem] lg:text-[8rem] lg:leading-[1.18] brief-text">
           <span
             ref={whiteTextRef}
             className="brief-white"
             style={{ display: 'inline', willChange: 'opacity, transform' }}
           >
             Kontrak yang tidak jelas membuka ruang{' '}
-            <span className="marked">
+            <span className="inline-block relative [.auth-title_&]:whitespace-nowrap [.page-title_&]:whitespace-nowrap">
               penyimpangan.
               <span ref={loopRef} style={{ display: 'inline-block' }}>
-                <Loop className="brief-loop" />
+                <Loop className="h-[140%] left-[-8%] absolute top-[-15%] w-[116%]" />
               </span>
             </span>
           </span>{' '}
           <span
             ref={greyTextRef}
-            className="dim brief-grey"
+            className="[.brief-text_&]:text-[rgba(255,_255,_255,_0.5)] brief-grey"
             style={{ display: 'inline', willChange: 'opacity, transform' }}
           >
             Dana desa terus mengalir, sementara isi perjanjiannya jarang bisa diperiksa.

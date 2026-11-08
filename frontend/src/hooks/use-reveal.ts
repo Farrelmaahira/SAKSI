@@ -1,20 +1,20 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-/* Fades in elements marked with data-reveal as they enter the viewport. */
+gsap.registerPlugin(ScrollTrigger);
+
+/* Elements marked data-reveal slide up and fade in as they enter the viewport (CSS keeps them hidden until then). */
 export function useReveal() {
-  useEffect(() => {
-    const items = document.querySelectorAll("[data-reveal]:not(.is-in)");
-    const observer = new IntersectionObserver(
-      (entries) =>
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-in");
-            observer.unobserve(entry.target);
-          }
-        }),
-      { threshold: 0.15 },
-    );
-    items.forEach((item) => observer.observe(item));
-    return () => observer.disconnect();
+  useLayoutEffect(() => {
+    const mm = gsap.matchMedia();
+    mm.add("(prefers-reduced-motion: no-preference)", () => {
+      ScrollTrigger.batch("[data-reveal]", {
+        start: "top 88%",
+        once: true,
+        onEnter: (els) => gsap.fromTo(els, { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 2, stagger: 0.1, ease: "expo.out", overwrite: true }),
+      });
+    });
+    return () => mm.revert();
   }, []);
 }
