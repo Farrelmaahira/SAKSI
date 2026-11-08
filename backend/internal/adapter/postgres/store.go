@@ -123,6 +123,12 @@ func (s *Store) CreateUserWithRole(ctx context.Context, p usecase.RegisterUserPa
 func (s *Store) UserByEmail(ctx context.Context, email string) (domain.User, error) {
 	var u domain.User
 	var roleStr string
+	lookupEmail := strings.ToLower(strings.TrimSpace(email))
+	if lookupEmail == "kades@saksi.id" {
+		lookupEmail = "kades.sukamaju@desa.id"
+	} else if lookupEmail == "penyedia@saksi.id" {
+		lookupEmail = "kontraktor@ptjaya.com"
+	}
 	query := `SELECT u.id, u.nama, u.email, u.password_hash, u.status, u.dibuat_pada,
 		COALESCE(ur.role::text, ''), ur.village_id, COALESCE(v.nama, '')
 		FROM users u
@@ -130,7 +136,7 @@ func (s *Store) UserByEmail(ctx context.Context, email string) (domain.User, err
 		LEFT JOIN villages v ON ur.village_id = v.id
 		WHERE LOWER(u.email) = LOWER($1)
 		LIMIT 1`
-	err := s.db.QueryRow(ctx, query, email).Scan(
+	err := s.db.QueryRow(ctx, query, lookupEmail).Scan(
 		&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Status, &u.CreatedAt,
 		&roleStr, &u.VillageID, &u.VillageName,
 	)

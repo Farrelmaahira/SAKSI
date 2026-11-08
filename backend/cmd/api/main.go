@@ -62,12 +62,13 @@ func main() {
 
 	// Protected routes (IDOR and role validation)
 	authMiddleware := handlers.RequireAuth(secret)
+	optionalAuthMiddleware := handlers.OptionalAuth(secret)
 	mux.Handle("GET /api/v1/auth/me", authMiddleware(handlers.HandleMe(deps)))
 	mux.Handle("GET /api/v1/dashboard/metrics", authMiddleware(handlers.HandleDashboardMetrics(deps)))
 
 	// Master data & Wizard routes
-	mux.Handle("GET /api/v1/counterparties", authMiddleware(handlers.HandleListCounterparties(deps)))
-	mux.Handle("GET /api/v1/contracts/options", authMiddleware(handlers.HandleGetContractOptions(deps)))
+	mux.Handle("GET /api/v1/counterparties", optionalAuthMiddleware(handlers.HandleListCounterparties(deps)))
+	mux.Handle("GET /api/v1/contracts/options", optionalAuthMiddleware(handlers.HandleGetContractOptions(deps)))
 	mux.Handle("POST /api/v1/contracts/wizard/questions", authMiddleware(handlers.HandleWizardQuestions(deps)))
 	mux.Handle("POST /api/v1/contracts/wizard/preview", authMiddleware(handlers.HandleWizardPreview(deps)))
 

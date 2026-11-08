@@ -71,19 +71,26 @@ export default function BuatKontrakTemplate() {
     fetchCounterparties().then((apiList) => {
       if (apiList && apiList.length > 0) {
         counterpartyStore.set((list) => {
-          const existingIds = new Set(list.map((x) => x.id))
-          const additions: Counterparty[] = apiList
-            .filter((c) => !existingIds.has(String(c.id)))
-            .map((c) => ({
+          const apiIds = new Set(apiList.map((x) => String(x.id)))
+          const mappedApi: Counterparty[] = apiList.map((c) => {
+            let cpType: CounterpartyType = 'Penyedia'
+            const j = c.jenis?.toLowerCase()
+            if (j === 'umkm') cpType = 'UMKM'
+            else if (j === 'bumdes') cpType = 'BUMDes'
+            else if (j === 'penerima_hibah') cpType = 'Penerima hibah'
+            else if (j === 'penyewa') cpType = 'Penyewa'
+            return {
               id: String(c.id),
               name: c.nama,
-              type: c.jenis === 'penyedia' ? 'Penyedia' : 'UMKM',
+              type: cpType,
               email: `${c.nama.toLowerCase().replace(/[^a-z0-9]/g, '')}@rekanan.id`,
               contact: c.nama,
               address: c.alamat || '-',
               invited: false,
-            }))
-          return [...list, ...additions]
+            }
+          })
+          const remainingSeeds = list.filter((x) => !apiIds.has(x.id))
+          return [...mappedApi, ...remainingSeeds]
         })
       }
     })
@@ -189,10 +196,10 @@ export default function BuatKontrakTemplate() {
       template === 'pengadaan'
         ? 'pengadaan'
         : template === 'sewa'
-        ? 'sewa_aset'
-        : template === 'bumdes'
-        ? 'kerja_sama_bumdes'
-        : 'hibah'
+          ? 'sewa_aset'
+          : template === 'bumdes'
+            ? 'kerja_sama_bumdes'
+            : 'hibah'
 
     const payload: CreateContractPayload = {
       counterpartyId: cpNumericId,
@@ -258,8 +265,18 @@ export default function BuatKontrakTemplate() {
             <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">Untuk kontrak {t.label.toLowerCase()}, pihak kedua bertipe {t.partyTypes.join(' atau ')}.</p>
             <div className="grid gap-8 my-16 mx-0" role="radiogroup">
               {choices.map((p) => (
-                <label key={p.id} className={`items-center border-[0.15rem] border-[#dcdcd8] border-solid rounded-[1.4rem] cursor-pointer grid gap-12 grid-cols-[auto_minmax(0,1fr)_auto] py-12 px-14 [transition:border-color_0.2s,_box-shadow_0.2s] [&_input]:[accent-color:var(--color-blue)] [&_input]:h-18 [&_input]:w-18 [&_span]:grid [&_span]:gap-2 [&_span]:min-w-0 [&_strong]:font-[420] [&_small]:text-[1.25rem] [&_small]:text-dim [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap [&:hover]:border-ink [&.is-on]:border-blue! [&.is-on]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)] ${partyId === p.id ? '[.d-chips_button&]:bg-ink [.d-chips_button&]:border-ink [.d-chips_button&]:text-white [.d-tabs_button&]:border-blue! [.d-tabs_button&]:text-blue! [.d-seg_button&]:bg-white! [.d-seg_button&]:[box-shadow:0_0_0_0.15rem_var(--color-ink)] [.d-wizard-steps_li&]:text-blue! [.d-wizard-steps_li&_span]:bg-blue [.d-wizard-steps_li&_span]:border-blue [.d-wizard-steps_li&_span]:[box-shadow:0.2rem_0.2rem_0_var(--color-ink)] [.d-wizard-steps_li&_span]:text-white [.d-lifecycle_li&]:text-blue! [.d-lifecycle_li&_span]:bg-blue! [.d-lifecycle_li&_span]:border-blue! [.d-lifecycle_li&_span]:[box-shadow:0.2rem_0.2rem_0_var(--color-ink)]! [.d-lifecycle_li&_span]:text-white! [.d-sign_li&]:border-blue! [.d-sign_li&]:[box-shadow:0.4rem_0.4rem_0_var(--color-blue)]! [.d-chips_button&_span]:text-ink-dim! [.app-notif-tabs_button&]:border-blue! [.app-notif-tabs_button&]:text-blue! is-on' : ''}`}>
-                  <input type="radio" name="party" checked={partyId === p.id} onChange={() => setPartyId(p.id)} />
+                <label
+                  key={p.id}
+                  onClick={() => setPartyId(p.id)}
+                  className={`items-center border-[0.15rem] border-[#dcdcd8] border-solid rounded-[1.4rem] cursor-pointer grid gap-12 grid-cols-[auto_minmax(0,1fr)_auto] py-12 px-14 [transition:border-color_0.2s,_box-shadow_0.2s] [&_input]:[accent-color:var(--color-blue)] [&_input]:h-18 [&_input]:w-18 [&_span]:grid [&_span]:gap-2 [&_span]:min-w-0 [&_strong]:font-[420] [&_small]:text-[1.25rem] [&_small]:text-dim [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap [&:hover]:border-ink [&.is-on]:border-blue! [&.is-on]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)] ${partyId === p.id ? '[.d-chips_button&]:bg-ink [.d-chips_button&]:border-ink [.d-chips_button&]:text-white [.d-tabs_button&]:border-blue! [.d-tabs_button&]:text-blue! [.d-seg_button&]:bg-white! [.d-seg_button&]:[box-shadow:0_0_0_0.15rem_var(--color-ink)] [.d-wizard-steps_li&]:text-blue! [.d-wizard-steps_li&_span]:bg-blue [.d-wizard-steps_li&_span]:border-blue [.d-wizard-steps_li&_span]:[box-shadow:0.2rem_0.2rem_0_var(--color-ink)] [.d-wizard-steps_li&_span]:text-white [.d-lifecycle_li&]:text-blue! [.d-lifecycle_li&_span]:bg-blue! [.d-lifecycle_li&_span]:border-blue! [.d-lifecycle_li&_span]:[box-shadow:0.2rem_0.2rem_0_var(--color-ink)]! [.d-lifecycle_li&_span]:text-white! [.d-sign_li&]:border-blue! [.d-sign_li&]:[box-shadow:0.4rem_0.4rem_0_var(--color-blue)]! [.d-chips_button&_span]:text-ink-dim! [.app-notif-tabs_button&]:border-blue! [.app-notif-tabs_button&]:text-blue! is-on' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="party"
+                    value={p.id}
+                    checked={partyId === p.id}
+                    onChange={() => setPartyId(p.id)}
+                  />
                   <span>
                     <strong>{p.name}</strong>
                     <small>

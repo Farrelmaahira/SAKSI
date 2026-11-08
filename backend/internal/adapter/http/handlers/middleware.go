@@ -48,3 +48,24 @@ func RequireAuth(secret string) func(http.Handler) http.Handler {
 	}
 }
 
+// OptionalAuth memverifikasi token jika ada, tetapi tidak memblokir request jika token belum disertakan.
+func OptionalAuth(secret string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			token := strings.TrimPrefix(authHeader, "Bearer ")
+			if token != "" && token != authHeader {
+				claims, err := usecase.VerifyToken(strings.TrimSpace(token), secret)
+				if err == nil {
+					ctx := context.WithValue(r.Context(), ctxUserID, claims.UserID)
+					ctx = context.WithValue(ctx, ctxRole, claims.Role)
+					ctx = context.WithValue(ctx, ctxVillageID, claims.VillageID)
+					r = r.WithContext(ctx)
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+
