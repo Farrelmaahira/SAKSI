@@ -76,6 +76,10 @@ func main() {
 	mux.Handle("POST /api/v1/contracts", authMiddleware(handlers.HandleCreateContractWizard(deps)))
 	mux.Handle("GET /api/v1/contracts/{id}", authMiddleware(handlers.HandleGetContract(deps)))
 	mux.Handle("POST /api/v1/contracts/audit", authMiddleware(handlers.HandleAuditContract(deps)))
+	mux.Handle("PUT /api/v1/contracts/{id}", authMiddleware(handlers.HandleReviseContract(deps)))
+	mux.Handle("GET /api/v1/contracts/{id}/lifecycle", authMiddleware(handlers.HandleGetContractLifecycle(deps)))
+	mux.Handle("POST /api/v1/contracts/{id}/reviews", authMiddleware(handlers.HandleSubmitContractReview(deps)))
+	mux.Handle("POST /api/v1/contracts/{id}/sign", authMiddleware(handlers.HandleSignContract(deps)))
 
 	// Public contracts for citizens & tracking
 	mux.Handle("GET /api/v1/public/contracts", authMiddleware(handlers.HandleListPublicContracts(deps)))

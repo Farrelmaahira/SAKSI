@@ -8,10 +8,11 @@ import (
 const MaxUploadBytes = 5 * 1024 * 1024
 
 var (
-	ErrNotFound     = errors.New("domain: resource not found")
-	ErrUnauthorized = errors.New("domain: unauthorized")
-	ErrForbidden    = errors.New("domain: access forbidden")
-	ErrConflict     = errors.New("domain: resource conflict")
+	ErrNotFound            = errors.New("domain: resource not found")
+	ErrUnauthorized        = errors.New("domain: unauthorized")
+	ErrForbidden           = errors.New("domain: access forbidden")
+	ErrConflict            = errors.New("domain: resource conflict")
+	ErrContractNotEditable = errors.New("domain: contract is not editable in current status")
 )
 
 type UserRole string
@@ -144,11 +145,69 @@ type ContractDetail struct {
 type ContractStatus string
 
 const (
-	StatusDraft         ContractStatus = "draft"
-	StatusUnderReview   ContractStatus = "under_review"
-	StatusAuditComplete ContractStatus = "audit_complete"
-	StatusSealed        ContractStatus = "sealed"
+	StatusDraft       ContractStatus = "draf"
+	StatusAudited     ContractStatus = "diaudit"
+	StatusInReview    ContractStatus = "ditinjau"
+	StatusSigned      ContractStatus = "ditandatangani"
+	StatusPublished   ContractStatus = "dipublikasikan"
+	StatusCancelled   ContractStatus = "dibatalkan"
+
+	// Backward-compatibility aliases
+	StatusUnderReview   ContractStatus = "ditinjau"
+	StatusAuditComplete ContractStatus = "diaudit"
+	StatusSealed        ContractStatus = "ditandatangani"
 )
+
+type ContractVersion struct {
+	ID          int64          `json:"id"`
+	ContractID  int64          `json:"contractId"`
+	NomorVersi  int            `json:"nomorVersi"`
+	JawabanForm map[string]any `json:"jawabanForm,omitempty"`
+	Isi         string         `json:"isi"`
+	Sumber      string         `json:"sumber"` // "ai" | "manual"
+	DibuatOleh  int64          `json:"createdBy"`
+	CreatedAt   time.Time      `json:"createdAt"`
+}
+
+type ContractReview struct {
+	ID        int64     `json:"id"`
+	VersionID int64     `json:"versionId"`
+	PartyID   int64     `json:"partyId"`
+	ClauseID  *int64    `json:"clauseId,omitempty"`
+	Komentar  string    `json:"komentar"`
+	Status    string    `json:"status"` // "setuju" | "minta_revisi"
+	Waktu     time.Time `json:"waktu"`
+}
+
+type Signature struct {
+	ID           int64     `json:"id"`
+	VersionID    int64     `json:"versionId"`
+	PartyID      int64     `json:"partyId"`
+	SignerUserID int64     `json:"signerUserId"`
+	Metode       string    `json:"metode"` // "simulasi" | "psre"
+	Referensi    string    `json:"referensi"`
+	Waktu        time.Time `json:"waktu"`
+}
+
+type DocumentSeal struct {
+	ID                int64     `json:"id"`
+	VersionID         int64     `json:"versionId"`
+	FileID            int64     `json:"fileId"`
+	SHA256            string    `json:"sha256"`
+	WaktuSegel        time.Time `json:"waktuSegel"`
+	SegelSebelumnyaID *int64    `json:"segelSebelumnyaId,omitempty"`
+	Chain             string    `json:"chain,omitempty"`
+	TxHash            string    `json:"txHash,omitempty"`
+}
+
+type ContractLifecycleDetail struct {
+	Contract   ContractDetail    `json:"contract"`
+	Version    ContractVersion   `json:"currentVersion"`
+	Versions   []ContractVersion `json:"versions"`
+	Reviews    []ContractReview  `json:"reviews"`
+	Signatures []Signature       `json:"signatures"`
+	Seal       *DocumentSeal     `json:"seal,omitempty"`
+}
 
 type Contract struct {
 	ID                string         `json:"id"`

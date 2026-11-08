@@ -731,6 +731,174 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Contract Lifecycle",
+      "item": [
+        {
+          "name": "Revise Contract (Kades)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jawabanForm\": {\n    \"lingkup_pekerjaan\": \"Pembangunan jembatan beton penghubung antar dusun sepanjang 15 meter\",\n    \"lokasi_spesifik\": \"Dusun Sukamaju RT 02/01\",\n    \"spesifikasi_teknis\": \"Beton K-300 bertulang dengan pondasi bore pile\",\n    \"masa_pemeliharaan_bulan\": 6,\n    \"rekening_bank_vendor\": \"Bank BRI 1234-01-000123-50-1 an PT Maju Bersama\",\n    \"uang_muka_persen\": 20\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1"
+              ]
+            },
+            "description": "Kepala Desa merevisi draf kontrak (menghasilkan versi N+1 dan memicu audit otomatis rule-based)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Contract Lifecycle",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/lifecycle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "lifecycle"
+              ]
+            },
+            "description": "Mengambil seluruh jejak audit siklus hidup kontrak: riwayat versi N, review rekanan, tanda tangan para pihak, dan segel integritas dokumen (SHA-256)."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Contract Review (Penyedia)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"komentar\": \"Klausul spesifikasi teknis dan termin pembayaran telah kami pelajari dan disetujui tanpa catatan.\",\n  \"status\": \"setuju\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "reviews"
+              ]
+            },
+            "description": "Rekanan/Penyedia mengirimkan ulasan draf kontrak: menyetujui ('setuju') atau meminta perbaikan ('minta_revisi')."
+          },
+          "response": []
+        },
+        {
+          "name": "Sign Contract (Bilateral & Auto-Seal)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Signature recorded\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.signature.id).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metode\": \"simulasi\",\n  \"referensi\": \"simulasi-ttd-digital-2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/sign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "sign"
+              ]
+            },
+            "description": "Pembubuhan tanda tangan bilateral oleh Kades atau Penyedia (mendukung JSON simulasi atau upload multipart/form-data gambar TTD max 2MB). Jika kedua pihak telah menandatangani, sistem otomatis menyegel (auto-seal) dokumen kontrak."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [

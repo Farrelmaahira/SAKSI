@@ -46,6 +46,30 @@ type ListReportsFilter struct {
 	Search          string
 }
 
+type ReviseContractParams struct {
+	ContractID       int64
+	KadesUserID      int64
+	VillageID        int64
+	JawabanForm      map[string]any
+	DrafTeksOverride string
+}
+
+type SubmitReviewParams struct {
+	ContractID   int64
+	VendorUserID int64
+	ClauseID     *int64
+	Komentar     string
+	Status       string // "setuju" | "minta_revisi"
+}
+
+type SignContractParams struct {
+	ContractID int64
+	UserID     int64
+	CallerRole domain.UserRole
+	StorageKey string
+	Metode     string // "simulasi" | "psre"
+}
+
 type Store interface {
 	CreateUserWithRole(ctx context.Context, p RegisterUserParams) (domain.User, error)
 	UserByEmail(ctx context.Context, email string) (domain.User, error)
@@ -75,6 +99,12 @@ type Store interface {
 	ListCitizenReportsByContract(ctx context.Context, contractID int64, villageID int64, requesterRole domain.UserRole) ([]domain.CitizenReport, error)
 	ListCitizenReports(ctx context.Context, filter ListReportsFilter) ([]domain.CitizenReport, error)
 	SaveUploadedFile(ctx context.Context, key string, mime string, size int64, uploadedBy int64) (int64, error)
+
+	// Contract Lifecycle
+	ReviseContract(ctx context.Context, p ReviseContractParams) (domain.ContractVersion, error)
+	SubmitContractReview(ctx context.Context, p SubmitReviewParams) (domain.ContractReview, error)
+	SignContract(ctx context.Context, p SignContractParams) (domain.Signature, *domain.DocumentSeal, error)
+	GetContractLifecycleDetail(ctx context.Context, contractID int64, callerUserID int64, callerRole domain.UserRole, callerVillageID *int64) (domain.ContractLifecycleDetail, error)
 }
 
 type Storage interface {
