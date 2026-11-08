@@ -14,7 +14,7 @@ export default function RegisterAccountStep({ name, email, error, onName, onEmai
   const fieldError = (f: string) => (error?.field === f ? error.error : undefined)
 
   return (
-    <div className="auth-step" key="account">
+    <div className="[animation:pop_0.35s_ease-out] grid gap-20" key="account">
       <TextField
         id="reg-name"
         label="Nama lengkap"
@@ -36,7 +36,7 @@ export default function RegisterAccountStep({ name, email, error, onName, onEmai
         error={fieldError('email')}
         hint="Link aktivasi akan dikirim ke email ini."
       />
-      <div className="auth-actions is-end">
+      <div className="items-center flex gap-24 justify-between mt-8 [&.is-end]:justify-end auth-actions is-end">
         <PillButton type="submit" tone="blue">
           Lanjut
         </PillButton>

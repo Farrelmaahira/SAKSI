@@ -10,7 +10,12 @@ export interface ReviewReply { author: string; role: RoleKey; text: string; at: 
 
 export interface Review { id: string; versionNo: number; clauseKey: string; author: string; role: RoleKey; text: string; at: string; resolved?: boolean; replies: ReviewReply[] }
 
-export interface Signature { by: string; at: string }
+/* image: the handwritten signature as a PNG data URL (absent on seeded contracts) */
+export interface Signature { by: string; at: string; image?: string }
+
+export interface Meterai { serial: string; at: string }
+
+export interface ContractSignatures { desa?: Signature; pihak?: Signature; meterai?: Meterai }
 
 export interface Seal { hash: string; at: string; prev: string | null; versionNo: number }
 
@@ -32,7 +37,7 @@ export interface DContract {
   reviewDecision?: 'setuju' | 'revisi'
   reviewNote?: string
   reviews: Review[]
-  signatures: { desa?: Signature; pihak?: Signature; meterai?: { serial: string; at: string } }
+  signatures: ContractSignatures
   seals: Seal[]
   spk?: { number: string; date: string; start: string; end: string }
   terms: Term[]

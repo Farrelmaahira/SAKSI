@@ -6,7 +6,7 @@ interface Props {
 
 export default function FormAlert({ children }: Props) {
   return (
-    <p className="auth-alert" role="alert">
+    <p className="bg-red rounded-[1rem] text-white text-[1.5rem] py-12 px-16" role="alert">
       {children}
     </p>
   )

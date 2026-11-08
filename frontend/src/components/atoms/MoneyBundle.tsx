@@ -1,7 +1,7 @@
 export default function MoneyBundle() {
   return (
-    <svg className="money" viewBox="0 0 260 170" aria-hidden="true">
-      <g className="money-doodle">
+    <svg className="block h-auto mt-0 mx-auto mb-24 overflow-visible w-[min(24rem,_80%)] md:[.lore-side_&]:ml-0 md:[.lore-side.right_&]:ml-auto md:[.lore-side.right_&]:mr-0" viewBox="0 0 260 170" aria-hidden="true">
+      <g className="[&_path]:[fill:none] [&_path]:[stroke:var(--color-white)] [&_path]:[stroke-linecap:round] [&_path]:[stroke-width:2.2]">
         <path d="M14 158c50-3 120-4 232-1" />
         <path d="M128 70c4-22 20-38 44-40" />
       </g>

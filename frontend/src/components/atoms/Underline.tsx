@@ -7,7 +7,7 @@ interface Props {
 export default function Underline({ className }: Props) {
   return (
     <svg
-      className={cn("doodle", className)}
+      className={cn("[fill:none] overflow-visible pointer-events-none [stroke:currentColor] [stroke-linecap:round] [stroke-linejoin:round] [stroke-width:3] [&_path]:[vector-effect:non-scaling-stroke]", className)}
       viewBox="0 0 300 30"
       preserveAspectRatio="none"
       aria-hidden="true"

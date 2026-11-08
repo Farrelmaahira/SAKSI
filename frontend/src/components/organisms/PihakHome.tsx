@@ -45,19 +45,19 @@ export default function PihakHome() {
   return (
     <>
       <PageHead label={`Beranda · ${cp?.name ?? 'Pihak kedua'}`} title={`${greeting()}, ${session.name.split(' ')[0]}.`} desc="Kontrak yang menunggu tinjauan dan tanda tangan Anda ada di sini." />
-      <div className="d-stats d-stats-4">
+      <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(4,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))] d-stats">
         <Stat label="Menunggu tinjauan" value={toReview.length} icon="eye" tone={toReview.length ? 'red' : 'blue'} to="/dashboard/kontrak" />
         <Stat label="Menunggu tanda tangan" value={toSign.length} icon="sign" tone={toSign.length ? 'red' : 'blue'} />
         <Stat label="Kontrak berjalan" value={running.length} icon="file" />
         <Stat label="Termin akan cair" value={rpShort(upcoming.reduce((s, x) => s + x.t.amount, 0))} hint="30 hari ke depan" icon="wallet" tone="ink" to="/dashboard/termin" />
       </div>
-      <div className="d-grid-2">
+      <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
         <Panel title="Perlu tindakan">
           <TodoList items={todos} empty="Tidak ada undangan atau tanda tangan yang menunggu." />
         </Panel>
-        <Panel title="Termin akan cair" action={<Link className="d-link" href="/dashboard/termin">Semua termin</Link>}>
+        <Panel title="Termin akan cair" action={<Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" href="/dashboard/termin">Semua termin</Link>}>
           {upcoming.length ? (
-            <ul className="d-list">
+            <ul className="grid list-none list-outside [&_li]:items-center [&_li]:border-t-[0.1rem] [&_li]:border-t-[#ececea] [&_li]:[border-top-style:solid] [&_li]:flex [&_li]:gap-14 [&_li]:justify-between [&_li]:py-12 [&_li]:px-0 [&_li:first-child]:border-t-0 [&_li:first-child]:[border-top-style:none] [&_li:first-child]:pt-0 [&_li>div]:grid [&_li>div]:gap-2 [&_li>div]:min-w-0 [&_strong]:font-[420] [&_small]:text-[1.3rem] [&_small]:text-dim [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap">
               {upcoming.map(({ c, t }) => (
                 <li key={`${c.code}-${t.no}`}>
                   <div>
@@ -73,13 +73,13 @@ export default function PihakHome() {
               ))}
             </ul>
           ) : (
-            <p className="d-muted">Belum ada termin dalam 30 hari ke depan.</p>
+            <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">Belum ada termin dalam 30 hari ke depan.</p>
           )}
         </Panel>
       </div>
-      <div className="d-grid-2">
+      <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
         <Panel title="Kontrak berjalan">
-          {running.length ? <div className="d-minis">{running.map((c) => <ContractMini key={c.code} c={c} />)}</div> : <p className="d-muted">Belum ada kontrak berjalan.</p>}
+          {running.length ? <div className="grid gap-10">{running.map((c) => <ContractMini key={c.code} c={c} />)}</div> : <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">Belum ada kontrak berjalan.</p>}
         </Panel>
         <Panel title="Aktivitas terakhir">
           <Activity logs={scopeLogs(logs, r, d, session.name).slice(0, 6)} />

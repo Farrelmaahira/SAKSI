@@ -49,13 +49,13 @@ export default function VerifikasiSegelTemplate() {
   return (
     <>
       <PageHead label="Verifikasi segel" title="Periksa keaslian dokumen" desc="Unggah salinan kontrak yang Anda terima. SAKSI menghitung SHA-256 di peramban dan mencocokkannya dengan segel kontrak di wilayah Anda." />
-      <section className="d-panel d-panel-ink">
+      <section className="[align-content:start] rounded-[2rem] grid gap-16 bg-ink text-white py-30 px-24 md:p-40 d-panel-ink">
         <VerifyDoc registry={registry} onOpen={(code) => router.push(`/dashboard/kontrak/${code}?tab=segel`)} onResult={onResult} />
       </section>
-      <div className="d-grid-2">
+      <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
         <Panel title="Pemeriksaan sesi ini" desc="Setiap pemeriksaan juga tercatat di jejak audit.">
           {checks.length ? (
-            <ul className="d-list">
+            <ul className="grid list-none list-outside [&_li]:items-center [&_li]:border-t-[0.1rem] [&_li]:border-t-[#ececea] [&_li]:[border-top-style:solid] [&_li]:flex [&_li]:gap-14 [&_li]:justify-between [&_li]:py-12 [&_li]:px-0 [&_li:first-child]:border-t-0 [&_li:first-child]:[border-top-style:none] [&_li:first-child]:pt-0 [&_li>div]:grid [&_li>div]:gap-2 [&_li>div]:min-w-0 [&_strong]:font-[420] [&_small]:text-[1.3rem] [&_small]:text-dim [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap">
               {checks.map((x, i) => (
                 <li key={i}>
                   <div>
@@ -69,12 +69,12 @@ export default function VerifikasiSegelTemplate() {
               ))}
             </ul>
           ) : (
-            <p className="d-muted">Belum ada dokumen yang diperiksa.</p>
+            <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">Belum ada dokumen yang diperiksa.</p>
           )}
         </Panel>
         <Panel title="Kontrak tersegel" desc={`${sealed.length} kontrak di wilayah Anda`}>
           {sealed.length ? (
-            <ul className="d-list">
+            <ul className="grid list-none list-outside [&_li]:items-center [&_li]:border-t-[0.1rem] [&_li]:border-t-[#ececea] [&_li]:[border-top-style:solid] [&_li]:flex [&_li]:gap-14 [&_li]:justify-between [&_li]:py-12 [&_li]:px-0 [&_li:first-child]:border-t-0 [&_li:first-child]:[border-top-style:none] [&_li:first-child]:pt-0 [&_li>div]:grid [&_li>div]:gap-2 [&_li>div]:min-w-0 [&_strong]:font-[420] [&_small]:text-[1.3rem] [&_small]:text-dim [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap">
               {sealed.map((c) => {
                 const s = c.seals[c.seals.length - 1]
                 return (
@@ -85,7 +85,7 @@ export default function VerifikasiSegelTemplate() {
                         <code>{c.code}</code> · {villageById(c.villageId)?.name} · v{s.versionNo} · {fmtDate(s.at)}
                       </small>
                     </div>
-                    <code className="d-hash-short">{shortHash(s.hash)}</code>
+                    <code className="text-blue font-code text-[1.2rem]">{shortHash(s.hash)}</code>
                   </li>
                 )
               })}

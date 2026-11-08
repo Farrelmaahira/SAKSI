@@ -6,6 +6,7 @@ import { latestVersion } from '@/lib/db/latest-version'
 import { regionOfContract } from '@/lib/db/region-of-contract'
 import { reaudit } from '@/lib/drafting/reaudit'
 import { update } from '@/lib/db/update'
+import { unsign } from '@/lib/db/unsign'
 import { nowIso } from '@/lib/dates/now-iso'
 import { log } from '@/lib/db/log'
 
@@ -17,7 +18,7 @@ export function saveDraft(code: string, clauses: Clause[], s: Session, note?: st
   const regionId = regionOfContract(c)!
   const audit = reaudit(c.template, prev.answers, clauses, regionId, prev.audit)
   if (c.status === 'ditinjau' && c.reviewDecision === 'revisi') {
-    update(code, (x) => ({
+    update(code, (x) => unsign({
       ...x,
       reviewDecision: undefined,
       reviewNote: undefined,
@@ -25,7 +26,7 @@ export function saveDraft(code: string, clauses: Clause[], s: Session, note?: st
     }))
     log(s, `Mengirim versi ${prev.no + 1} untuk ditinjau ulang`, c)
   } else {
-    update(code, (x) => ({ ...x, versions: x.versions.map((v) => (v.no === prev.no ? { ...v, clauses, audit } : v)) }))
+    update(code, (x) => unsign({ ...x, versions: x.versions.map((v) => (v.no === prev.no ? { ...v, clauses, audit } : v)) }))
     log(s, 'Mengubah isi draf', c)
   }
 }

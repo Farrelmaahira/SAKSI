@@ -40,13 +40,13 @@ export default function LaporanSayaTemplate() {
         onChange={setFilter}
       />
       {list.length ? (
-        <div className="d-reports">
+        <div className="grid gap-14">
           {list.map((r) => (
             <WargaReportCard key={r.id} report={r} contractTitle={titleOf(r.contractCode)} />
           ))}
         </div>
       ) : (
-        <div className="d-panel">
+        <div className="[align-content:start] bg-white rounded-[2rem] grid gap-16 p-20 md:p-24">
           <Empty
             art="document-ready_o5d5"
             title={all.length ? 'Tidak ada laporan di kategori ini.' : 'Anda belum mengirim laporan.'}

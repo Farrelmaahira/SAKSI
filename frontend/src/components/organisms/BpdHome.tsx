@@ -34,16 +34,16 @@ export default function BpdHome() {
   return (
     <>
       <PageHead label={`Beranda · BPD ${wilayahLabel(r)}`} title={`${greeting()}, ${session.name.split(' ')[0]}.`} desc="Awasi kontrak desa dan tindak lanjuti laporan warga. Semua data kontrak hanya bisa dibaca." />
-      <div className="d-stats d-stats-4">
+      <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(4,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))] d-stats">
         <Stat label="Kontrak di desa" value={contracts.length} icon="file" to="/dashboard/kontrak" />
         <Stat label="Laporan warga baru" value={fresh.length} icon="flag" tone={fresh.length ? 'red' : 'blue'} to="/dashboard/laporan" />
         <Stat label="Kontrak terlambat" value={late.length} icon="clock" tone={late.length ? 'red' : 'blue'} />
         <Stat label="Menunggu klarifikasi desa" value={waitingDesa.length} icon="alert" tone="ink" />
       </div>
-      <div className="d-grid-2">
-        <Panel title="Laporan warga baru" action={<Link className="d-link" href="/dashboard/laporan">Buka laporan</Link>}>
+      <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
+        <Panel title="Laporan warga baru" action={<Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" href="/dashboard/laporan">Buka laporan</Link>}>
           {fresh.length ? (
-            <ul className="d-list">
+            <ul className="grid list-none list-outside [&_li]:items-center [&_li]:border-t-[0.1rem] [&_li]:border-t-[#ececea] [&_li]:[border-top-style:solid] [&_li]:flex [&_li]:gap-14 [&_li]:justify-between [&_li]:py-12 [&_li]:px-0 [&_li:first-child]:border-t-0 [&_li:first-child]:[border-top-style:none] [&_li:first-child]:pt-0 [&_li>div]:grid [&_li>div]:gap-2 [&_li>div]:min-w-0 [&_strong]:font-[420] [&_small]:text-[1.3rem] [&_small]:text-dim [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap">
               {fresh.map((x) => (
                 <li key={x.id}>
                   <div>
@@ -62,9 +62,9 @@ export default function BpdHome() {
             <Empty title="Tidak ada laporan baru." />
           )}
         </Panel>
-        <Panel title="Kontrak terlambat">{late.length ? <div className="d-minis">{late.map((c) => <ContractMini key={c.code} c={c} />)}</div> : <Empty title="Tidak ada kontrak yang terlambat." />}</Panel>
+        <Panel title="Kontrak terlambat">{late.length ? <div className="grid gap-10">{late.map((c) => <ContractMini key={c.code} c={c} />)}</div> : <Empty title="Tidak ada kontrak yang terlambat." />}</Panel>
       </div>
-      <Panel title="Aktivitas di desa" action={<Link className="d-link" href="/dashboard/jejak-audit">Jejak audit</Link>}>
+      <Panel title="Aktivitas di desa" action={<Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" href="/dashboard/jejak-audit">Jejak audit</Link>}>
         <Activity logs={scopeLogs(logs, r, d).slice(0, 6)} />
       </Panel>
     </>

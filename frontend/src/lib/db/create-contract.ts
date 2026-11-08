@@ -2,7 +2,7 @@ import type { Answers, Audit, Clause, TemplateKey } from '@/interfaces/drafting'
 import type { Session } from '@/interfaces/auth'
 import { db } from '@/lib/db/db'
 import { nowIso } from '@/lib/dates/now-iso'
-import type { DContract } from '@/interfaces/db'
+import type { ContractSignatures, DContract } from '@/interfaces/db'
 import { titleFor } from '@/lib/db/title-for'
 import { mkTerms } from '@/lib/db/mk-terms'
 import { daysFromNow } from '@/lib/dates/days-from-now'
@@ -10,7 +10,7 @@ import { withStatus } from '@/lib/db/with-status'
 import { log } from '@/lib/db/log'
 
 export function createContract(
-  input: { template: TemplateKey; answers: Answers; counterpartyId: string; clauses: Clause[]; audit: Audit; send: boolean },
+  input: { template: TemplateKey; answers: Answers; counterpartyId: string; clauses: Clause[]; audit: Audit; send: boolean; signatures?: ContractSignatures },
   s: Session,
 ) {
   const nums = db.get().contracts.map((c) => parseInt(c.code.slice(-3), 10)).filter((n) => !Number.isNaN(n))
@@ -26,7 +26,7 @@ export function createContract(
     createdAt: at,
     versions: [{ no: 1, at, answers: input.answers, clauses: input.clauses, audit: input.audit }],
     reviews: [],
-    signatures: {},
+    signatures: input.signatures ?? {},
     seals: [],
     terms: mkTerms(input.answers, daysFromNow(0)),
     progress: [],

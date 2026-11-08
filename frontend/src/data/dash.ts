@@ -50,7 +50,7 @@ export const placeholderFor: Partial<Record<string, string>> = {
   inspektorat: 'Tulis hasil pemeriksaan atau alasan penutupan.',
 }
 
-export const buatKontrakSteps = ['Jenis kontrak', 'Pihak kedua', 'Pertanyaan', 'Draf & audit AI', 'Simpan']
+export const buatKontrakSteps = ['Jenis kontrak', 'Pihak kedua', 'Pertanyaan', 'Draf & audit AI', 'Pratinjau & simpan']
 
 /* Pihak kedua only needs the tabs that concern its obligations */
 

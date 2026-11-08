@@ -33,7 +33,7 @@ export default function ConfirmDialog({ open, title, text, confirmLabel, cancelL
   return (
     <dialog
       ref={ref}
-      className="d-dialog"
+      className="[--muted:#6b6b73] bg-white border-0 border-none rounded-[2.4rem] [box-shadow:0.8rem_0.8rem_0_var(--color-ink)] text-ink text-[1.5rem] inset-0 m-auto max-h-[calc(100svh_-_3.2rem)] max-w-480 overflow-y-auto p-0 w-[calc(100%_-_3.2rem)] [&::backdrop]:bg-[rgba(15,_15,_23,_0.6)] [&_h2]:text-[2.6rem] [&_h2]:font-[350] [&_h2]:tracking-[-0.02em] [&_h2]:leading-[1.15] [&_p]:text-dim [&_p]:leading-[1.5]! [&_p]:max-w-360 motion-safe:[&[open]]:[animation:d-dialog-in_0.35s_var(--ease-saksi)]"
       aria-labelledby="d-dialog-title"
       aria-describedby="d-dialog-text"
       onCancel={(e) => {
@@ -44,18 +44,18 @@ export default function ConfirmDialog({ open, title, text, confirmLabel, cancelL
         if (e.target === e.currentTarget) onCancel()
       }}
     >
-      <div className="d-dialog-body">
-        <button type="button" className="d-dialog-close" aria-label="Tutup" onClick={onCancel}>
+      <div className="grid gap-12 justify-items-center pt-32 px-24 pb-24 relative text-center">
+        <button type="button" className="items-center bg-soft border-0 border-none rounded-[50%] text-ink cursor-pointer flex h-36 justify-center p-0 absolute right-14 top-14 [transition:background_0.2s,_color_0.2s] w-36 [&:hover]:bg-ink [&:hover]:text-white" aria-label="Tutup" onClick={onCancel}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>
-        <div className="d-dialog-art">
+        <div className="mb-8 w-[min(26rem,_70%)] [&_img]:h-auto [&_img]:w-full">
           <Illustration name={art} loading="lazy" />
         </div>
         <h2 id="d-dialog-title">{title}</h2>
         <p id="d-dialog-text">{text}</p>
-        <div className="d-dialog-actions">
+        <div className="flex flex-wrap gap-10 justify-center mt-12">
           <Btn variant="ghost" onClick={onCancel}>
             {cancelLabel}
           </Btn>

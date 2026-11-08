@@ -4,9 +4,10 @@ import { completeSigning } from "@/lib/db/complete-signing";
 import { nowIso } from "@/lib/dates/now-iso";
 import { log } from "@/lib/db/log";
 import { find } from "@/lib/db/find";
+import { newMeteraiSerial } from "@/lib/db/new-meterai-serial";
 
 export function applyMeterai(code: string, s: Session) {
-  const serial = `SIM-10000-${String(Math.floor(1000 + Math.random() * 9000))}`;
+  const serial = newMeteraiSerial();
   update(code, (c) =>
     completeSigning(
       {

@@ -34,26 +34,26 @@ export default function InspHome() {
   return (
     <>
       <PageHead label={`Beranda · Inspektorat ${wilayahLabel(r)}`} title={`${greeting()}, ${session.name.split(' ')[0]}.`} desc="Pantau risiko kontrak lintas desa dan tindak lanjuti laporan yang diteruskan BPD." />
-      <div className="d-stats d-stats-4">
+      <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(4,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))] d-stats">
         <Stat label="Desa dipantau" value={regionVillages.length} icon="map" />
         <Stat label="Kontrak diawasi" value={contracts.length} icon="eye" to="/dashboard/kontrak" />
         <Stat label="Laporan eskalasi terbuka" value={openEsc.length} icon="flag" tone={openEsc.length ? 'red' : 'blue'} to="/dashboard/laporan" />
         <Stat label="Kontrak risiko tinggi" value={risky.filter((x) => x.score >= 3).length} icon="alert" tone="ink" />
       </div>
-      <div className="d-grid-2 d-grid-wide">
+      <div className="items-stretch grid gap-20 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] [&>*]:min-w-0">
         <Panel title="Kontrak dengan risiko tertinggi" desc="Skor dari keterlambatan, laporan terbuka, selisih termin dan progres, serta jumlah versi.">
           {risky.length ? (
-            <ul className="d-risk">
+            <ul className="grid gap-6 list-none list-outside [&_a]:items-start [&_a]:border-[0.15rem] [&_a]:border-[#ececea] [&_a]:border-solid [&_a]:rounded-[1.4rem] [&_a]:grid [&_a]:gap-14 [&_a]:grid-cols-[auto_minmax(0,1fr)] [&_a]:py-12 [&_a]:px-14 [&_a]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_a:hover]:border-ink [&_a:hover]:[box-shadow:0.3rem_0.3rem_0_var(--color-ink)]">
               {risky.slice(0, 5).map(({ c, score, reasons }) => (
                 <li key={c.code}>
                   <Link href={`/dashboard/kontrak/${c.code}`}>
-                    <span className={`d-risk-score ${score >= 5 ? 'is-high' : score >= 3 ? 'is-mid' : ''}`}>{score}</span>
-                    <span className="d-risk-body">
+                    <span className={`items-center bg-gray rounded-[1rem] text-white flex text-[2rem] font-[400] h-44 justify-center w-44 [&.is-mid]:bg-ink [&.is-high]:bg-red! ${score >= 5 ? 'is-high' : score >= 3 ? 'is-mid' : ''}`}>{score}</span>
+                    <span className="grid gap-3 [&_strong]:font-[420] [&_small]:text-[1.25rem] [&_small]:text-dim">
                       <strong>{c.title}</strong>
                       <small>
                         <code>{c.code}</code> · {villageById(c.villageId)?.name}
                       </small>
-                      <span className="d-risk-tags">
+                      <span className="flex flex-wrap gap-4 mt-4">
                         {reasons.length ? reasons.map((t) => <Badge key={t} tone="outline">{t}</Badge>) : <Badge tone="done">Tidak ada catatan</Badge>}
                       </span>
                     </span>
@@ -66,7 +66,7 @@ export default function InspHome() {
           )}
         </Panel>
         <Panel title={`Desa di ${wilayahLabel(r)}`}>
-          <ul className="d-villages">
+          <ul className="grid gap-10 list-none list-outside [&_li]:bg-soft [&_li]:rounded-[1.4rem] [&_li]:grid [&_li]:gap-12 [&_li]:p-14 [&_li>div]:grid [&_li>div]:gap-2 [&_strong]:text-[1.7rem] [&_strong]:font-[420] [&_small]:text-[1.25rem]! [&_small]:text-dim [&_dl]:grid! [&_dl]:gap-8! [&_dl]:grid-cols-[repeat(4,minmax(0,1fr))] [&_dt]:text-[1.15rem]! [&_dt]:text-dim! [&_dd]:text-[1.7rem]!">
             {regionVillages.map((v) => {
               const vc = contracts.filter((c) => c.villageId === v.id)
               const vr = scopeAllReports(d, v.id).filter((x) => !isClosed(x))
@@ -89,11 +89,11 @@ export default function InspHome() {
                     </div>
                     <div>
                       <dt>Laporan</dt>
-                      <dd className={vr.length ? 'is-red' : ''}>{vr.length}</dd>
+                      <dd className={vr.length ? '[.app_&]:text-red [.app_em&]:text-[1.2rem] [.app_em&]:not-italic' : ''}>{vr.length}</dd>
                     </div>
                     <div>
                       <dt>Terlambat</dt>
-                      <dd className={vc.some(isLate) ? 'is-red' : ''}>{vc.filter(isLate).length}</dd>
+                      <dd className={vc.some(isLate) ? '[.app_&]:text-red [.app_em&]:text-[1.2rem] [.app_em&]:not-italic' : ''}>{vc.filter(isLate).length}</dd>
                     </div>
                   </dl>
                 </li>

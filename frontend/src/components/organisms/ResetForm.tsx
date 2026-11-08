@@ -38,29 +38,29 @@ export default function ResetForm({ token }: Props) {
     <>
       <StepIndicator steps={resetSteps} current={done ? 3 : 2} />
       {!check.ok ? (
-        <div className="auth-step">
-          <h2 className="auth-card-title">Link tidak bisa dipakai</h2>
+        <div className="[animation:pop_0.35s_ease-out] grid gap-20">
+          <h2 className="text-[3rem] font-[350] tracking-[-0.03em] leading-[1.1] md:text-[3.6rem]">Link tidak bisa dipakai</h2>
           <FormAlert>{check.error}</FormAlert>
           <PillButton to="/lupa-sandi" tone="blue">
             Minta link baru
           </PillButton>
         </div>
       ) : done ? (
-        <div className="auth-step">
-          <div className="auth-success">
+        <div className="[animation:pop_0.35s_ease-out] grid gap-20">
+          <div className="grid gap-10 justify-items-start">
             <SuccessMark />
-            <h2 className="auth-card-title">Kata sandi sudah diganti</h2>
-            <p className="auth-card-sub">Silakan masuk dengan kata sandi baru Anda.</p>
+            <h2 className="text-[3rem] font-[350] tracking-[-0.03em] leading-[1.1] md:text-[3.6rem]">Kata sandi sudah diganti</h2>
+            <p className="text-[1.5rem] mt-8 mx-0 mb-28 [&_a]:border-b-[0.1rem] [&_a]:border-b-current [&_a]:[border-bottom-style:solid] [&_a]:text-blue">Silakan masuk dengan kata sandi baru Anda.</p>
           </div>
           <PillButton to="/masuk" tone="blue">
             Masuk sekarang
           </PillButton>
         </div>
       ) : (
-        <form className="auth-form" onSubmit={submit} noValidate>
-          <div className="auth-step">
-            <h2 className="auth-card-title">Kata sandi baru</h2>
-            <p className="auth-card-sub">
+        <form className="grid gap-20 auth-form" onSubmit={submit} noValidate>
+          <div className="[animation:pop_0.35s_ease-out] grid gap-20">
+            <h2 className="text-[3rem] font-[350] tracking-[-0.03em] leading-[1.1] md:text-[3.6rem]">Kata sandi baru</h2>
+            <p className="text-[1.5rem] mt-8 mx-0 mb-28 [&_a]:border-b-[0.1rem] [&_a]:border-b-current [&_a]:[border-bottom-style:solid] [&_a]:text-blue">
               Untuk akun <strong>{check.email}</strong>
             </p>
             {error && !error.field && <FormAlert>{error.error}</FormAlert>}

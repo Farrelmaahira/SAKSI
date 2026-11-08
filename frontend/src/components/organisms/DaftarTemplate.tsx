@@ -89,14 +89,14 @@ export default function DaftarTemplate() {
         <RegisterDone email={done.email} token={done.token} firstName={name.split(' ')[0]} type={type ?? ''} business={business} />
       ) : (
         <>
-          <h2 className="auth-card-title">Daftar akun pihak kedua</h2>
-          <p className="auth-card-sub">
+          <h2 className="text-[3rem] font-[350] tracking-[-0.03em] leading-[1.1] md:text-[3.6rem]">Daftar akun pihak kedua</h2>
+          <p className="text-[1.5rem] mt-8 mx-0 mb-28 [&_a]:border-b-[0.1rem] [&_a]:border-b-current [&_a]:[border-bottom-style:solid] [&_a]:text-blue">
             Sudah punya akun? <Link href={withFrom('/masuk', fromParam)}>Masuk di sini</Link>
           </p>
-          <p className="auth-info">Akun perangkat desa, BPD, dan Inspektorat tidak bisa didaftarkan sendiri. Akun tersebut dibuat lewat undangan Admin Daerah.</p>
+          <p className="bg-soft rounded-[1.2rem] text-[1.4rem] leading-[1.5] py-14 px-16 [.auth-card>&]:mb-32">Akun perangkat desa, BPD, dan Inspektorat tidak bisa didaftarkan sendiri. Akun tersebut dibuat lewat undangan Admin Daerah.</p>
           <StepIndicator steps={registerSteps} current={step} />
 
-          <form className="auth-form" onSubmit={submit} noValidate>
+          <form className="grid gap-20 auth-form" onSubmit={submit} noValidate>
             {step === 0 && <RegisterAccountStep name={name} email={email} error={error} onName={setName} onEmail={setEmail} />}
             {step === 1 && (
               <RegisterBusinessStep

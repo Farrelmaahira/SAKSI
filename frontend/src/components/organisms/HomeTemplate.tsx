@@ -22,7 +22,7 @@ export default function HomeTemplate() {
   return (
     <main>
       <HomeHero />
-      <div className="home-sheet">
+      <div className="bg-white overflow-clip relative z-1">
         <BriefSection />
         <LoreSection />
         <PatternSection />

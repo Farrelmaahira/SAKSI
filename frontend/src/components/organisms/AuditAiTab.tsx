@@ -13,10 +13,10 @@ import Locked from '@/components/atoms/Locked'
 export default function AuditAiTab({ c, session }: TabProps) {
   const canApply = session.role.role === 'perangkat_desa' && isEditable(c)
   return (
-    <div className="d-grid-2 d-grid-wide">
+    <div className="items-stretch grid gap-20 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] [&>*]:min-w-0">
       <AuditPanel audit={latestVersion(c).audit} onApply={canApply ? (id) => applySuggestion(c.code, id, session) : undefined} readOnly={!canApply} />
       <Panel title="Skor per versi" desc="Setiap versi diaudit ulang secara otomatis.">
-        <ul className="d-list">
+        <ul className="grid list-none list-outside [&_li]:items-center [&_li]:border-t-[0.1rem] [&_li]:border-t-[#ececea] [&_li]:[border-top-style:solid] [&_li]:flex [&_li]:gap-14 [&_li]:justify-between [&_li]:py-12 [&_li]:px-0 [&_li:first-child]:border-t-0 [&_li:first-child]:[border-top-style:none] [&_li:first-child]:pt-0 [&_li>div]:grid [&_li>div]:gap-2 [&_li>div]:min-w-0 [&_strong]:font-[420] [&_small]:text-[1.3rem] [&_small]:text-dim [&_small]:overflow-hidden [&_small]:text-ellipsis [&_small]:whitespace-nowrap">
           {c.versions.map((v) => (
             <li key={v.no}>
               <div>

@@ -64,30 +64,30 @@ export default function KontrakDetailTemplate() {
 
   return (
     <>
-      <nav className="d-back">
+      <nav className="[&_a]:items-center [&_a]:inline-flex [&_a]:text-[1.3rem] [&_a]:gap-8 [&_a]:tracking-[0.04em] [&_a]:text-dim [&_a]:pt-10 [&_a]:uppercase [&_a:hover]:text-blue">
         <Link href="/dashboard/kontrak">
           <Icon name="arrow" className="flip" />
           Kontrak
         </Link>
       </nav>
-      <header className="d-detail-head">
+      <header className="items-center flex flex-wrap gap-y-16 gap-x-24 justify-between px-0 pb-4 pt-0">
         <div>
-          <p className="d-label">
+          <p className="text-[1.25rem] tracking-[0.06em] text-dim uppercase [&_code]:font-code [&_code]:tracking-[0]">
             <code>{c.code}</code> · {templates[c.template].label} · {villageById(c.villageId)?.name}
           </p>
-          <h1 className="d-title">{c.title}</h1>
-          <div className="d-detail-meta">
+          <h1 className="text-[3.6rem] font-[320] tracking-[-0.035em] leading-[1.05] mt-6 max-w-800 md:text-[4.4rem]">{c.title}</h1>
+          <div className="items-center flex flex-wrap text-[1.4rem] gap-y-6 gap-x-16 mt-14">
             <StatusBadge status={c.status} />
             <span>{counterpartyById(c.counterpartyId)?.name}</span>
             <span>{formatRp(valueOf(c))}</span>
             {readOnly && (
-              <span className="d-readonly">
+              <span className="items-center inline-flex gap-6 text-dim">
                 <Icon name="eye" /> Hanya baca
               </span>
             )}
           </div>
         </div>
-        <div className="d-head-actions">
+        <div className="items-center flex flex-wrap gap-10">
           {isPublic(c) && (
             <Btn variant="ghost" icon="globe" to={`/lacak?q=${c.code}`}>
               Lihat di portal
@@ -101,7 +101,7 @@ export default function KontrakDetailTemplate() {
         </div>
       </header>
       <Tabs items={items} value={tab} onChange={go} />
-      <div className="d-tab-body" role="tabpanel">
+      <div className="[animation:pop_0.3s_ease-out] grid gap-20" role="tabpanel">
         <Active c={c} session={session} go={go} />
       </div>
     </>

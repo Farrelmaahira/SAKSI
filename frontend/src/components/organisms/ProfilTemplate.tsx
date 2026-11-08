@@ -16,7 +16,7 @@ export default function ProfilTemplate() {
   return (
     <>
       <PageHead label="Profil" title={title} desc={`${roleLabels[r]} · ${wilayahLabel(session.role)}`} />
-      <div className="d-stack">
+      <div className="grid gap-20 [&>*]:min-w-0">
         {r === 'perangkat_desa' && <ProfilDesa />}
         {r === 'pihak_kedua' && <ProfilUsaha />}
         {r === 'warga' && <ProfilWarga />}

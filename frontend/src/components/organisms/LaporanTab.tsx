@@ -11,7 +11,7 @@ export default function LaporanTab({ c, session }: TabProps) {
   if (!visible.length)
     return <Empty title={session.role.role === 'inspektorat' ? 'Tidak ada laporan yang diteruskan untuk kontrak ini.' : 'Belum ada laporan warga untuk kontrak ini.'} text="Warga bisa melapor lewat portal publik dengan kode kontrak." />
   return (
-    <div className="d-reports">
+    <div className="grid gap-14">
       {visible.map((r) => (
         <ReportCard key={r.id} report={r} contract={c} session={session} />
       ))}

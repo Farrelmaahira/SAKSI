@@ -24,11 +24,11 @@ export default function LoginCredentialsStep({ email, password, error, busy, res
   const fieldError = (f: string) => (error?.field === f ? error.error : undefined)
 
   return (
-    <div className="auth-step" key="credentials">
+    <div className="[animation:pop_0.35s_ease-out] grid gap-20" key="credentials">
       {error?.code === 'unverified' && (
         <FormAlert>
           {error.error}{' '}
-          <button type="button" className="auth-alert-action" onClick={onResend}>
+          <button type="button" className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] [color:inherit] font-[500] p-0" onClick={onResend}>
             Kirim ulang link
           </button>
         </FormAlert>
@@ -36,7 +36,7 @@ export default function LoginCredentialsStep({ email, password, error, busy, res
       {error?.code === 'locked' && (
         <FormAlert>
           {error.error}{' '}
-          <Link className="auth-alert-action" href="/lupa-sandi" onClick={() => rememberEmail(email)}>
+          <Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] [color:inherit] font-[500] p-0" href="/lupa-sandi" onClick={() => rememberEmail(email)}>
             Atur ulang kata sandi
           </Link>
         </FormAlert>
@@ -71,7 +71,7 @@ export default function LoginCredentialsStep({ email, password, error, busy, res
           onChange={(e) => onPassword(e.target.value)}
           error={fieldError('password')}
         />
-        <Link className="auth-forgot" href="/lupa-sandi" onClick={() => rememberEmail(email)}>
+        <Link className="border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue table text-[1.3rem] mt-12 mr-0 mb-0 ml-auto [&:hover]:text-ink" href="/lupa-sandi" onClick={() => rememberEmail(email)}>
           Lupa kata sandi?
         </Link>
       </div>

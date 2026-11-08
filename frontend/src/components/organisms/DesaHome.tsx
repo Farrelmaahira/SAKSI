@@ -78,18 +78,18 @@ export default function DesaHome() {
           </Btn>
         }
       />
-      <div className="d-stats">
+      <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(3,minmax(0,1fr))] lg:grid-cols-[repeat(5,minmax(0,1fr))] d-stats">
         <Stat label="Kontrak aktif" value={active.length} hint={`${contracts.length} kontrak total`} icon="file" to="/dashboard/kontrak" />
         <Stat label={`Nilai kontrak ${year}`} value={rpShort(yearValue)} hint="Kontrak yang sudah dikirim" icon="wallet" tone="ink" />
         <Stat label="Termin jatuh tempo" value={due.length} hint="7 hari ke depan atau lewat" icon="clock" tone={due.some(({ t }) => daysUntil(t.planDate) < 0) ? 'red' : 'blue'} />
         <Stat label="Laporan belum ditanggapi" value={unanswered.length} hint="Dari warga" icon="flag" tone={unanswered.length ? 'red' : 'blue'} to="/dashboard/laporan" />
         <Stat label="Temuan AI kritis" value={critical} hint="Di draf yang belum dikirim" icon="alert" tone={critical ? 'red' : 'blue'} />
       </div>
-      <div className="d-grid-2">
+      <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
         <Panel title="Perlu tindakan" desc={todos.length ? `${todos.length} hal menunggu Anda` : undefined}>
           <TodoList items={todos} empty="Semua beres. Tidak ada yang menunggu Anda." />
         </Panel>
-        <Panel title="Aktivitas terakhir" action={<Link className="d-link" href="/dashboard/jejak-audit">Lihat semua</Link>}>
+        <Panel title="Aktivitas terakhir" action={<Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" href="/dashboard/jejak-audit">Lihat semua</Link>}>
           <Activity logs={scopeLogs(logs, r, d).slice(0, 7)} />
         </Panel>
       </div>

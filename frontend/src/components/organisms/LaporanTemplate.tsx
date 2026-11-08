@@ -49,7 +49,7 @@ export default function LaporanTemplate() {
   return (
     <>
       <PageHead label="Laporan warga" title={head.title} desc={head.desc} />
-      <div className="d-toolbar">
+      <div className="items-center flex flex-wrap gap-12 justify-between">
         <Chips
           items={[
             { key: 'perlu', label: 'Perlu tindakan', count: counts.perlu },
@@ -60,20 +60,20 @@ export default function LaporanTemplate() {
           value={filter}
           onChange={setFilter}
         />
-        <label className="d-search">
+        <label className="items-center bg-white border-[0.15rem] border-[#dcdcd8] border-solid rounded-[3rem] flex flex-[1_1_26rem] gap-8 max-w-400 min-h-42 py-0 px-14 [transition:border-color_0.2s,_box-shadow_0.2s] focus-within:border-blue focus-within:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)] [&_input]:[background:none] [&_input]:border-0 [&_input]:border-none [&_input]:flex-1 [&_input]:text-[1.4rem] [&_input]:min-w-0 [&_input]:[outline:0]">
           <Icon name="search" />
-          <span className="sr-only">Cari laporan</span>
+          <span className="[clip:rect(0_0_0_0)] h-[1px] overflow-hidden absolute whitespace-nowrap w-[1px] sr-only">Cari laporan</span>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari kode laporan, kontrak, atau isi" />
         </label>
       </div>
       {list.length ? (
-        <div className="d-reports">
+        <div className="grid gap-14">
           {list.map((x) => (
             <ReportCard key={x.id} report={x} contract={contracts.find((c) => c.code === x.contractCode)} session={session} />
           ))}
         </div>
       ) : (
-        <div className="d-panel">
+        <div className="[align-content:start] bg-white rounded-[2rem] grid gap-16 p-20 md:p-24">
           <Empty title={filter === 'perlu' ? 'Tidak ada laporan yang menunggu Anda.' : 'Tidak ada laporan yang cocok.'} text="Laporan baru dari portal warga muncul di sini secara otomatis." />
         </div>
       )}

@@ -8,7 +8,7 @@ interface Props {
 export default function AboutCard({ item, index }: Props) {
   return (
     <article data-reveal>
-      <span className="about-no">0{index + 1}</span>
+      <span className="text-blue text-[1.4rem]">0{index + 1}</span>
       <h3>{item.title}</h3>
       <p>{item.text}</p>
     </article>
