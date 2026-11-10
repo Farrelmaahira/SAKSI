@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -78,11 +76,13 @@ type VerifyContractRequest struct {
 }
 
 type AuditResponse struct {
-	IntegrityScore     float64 `json:"integrityScore"`
-	MandatoryFulfilled int     `json:"mandatoryFulfilled"`
-	TotalMandatory     int     `json:"totalMandatory"`
-	SHA256Hash         string  `json:"sha256Hash"`
-	Summary            string  `json:"summary"`
+	IntegrityScore     float64               `json:"integrityScore"`
+	MandatoryFulfilled int                   `json:"mandatoryFulfilled"`
+	TotalMandatory     int                   `json:"totalMandatory"`
+	SHA256Hash         string                `json:"sha256Hash"`
+	Summary            string                `json:"summary"`
+	Model              string                `json:"model"`
+	Findings           []domain.AuditFinding `json:"findings"`
 }
 
 // Handlers untuk modul kontrak
@@ -221,7 +221,7 @@ func HandleWizardPreview(d *Deps) http.HandlerFunc {
 			}
 		}
 
-		score, fulfilled, total, summary, hash := usecase.AuditContractDraft(draftText)
+		audit := usecase.RunAudit(r.Context(), d.AIEngine, draftText)
 
 		_ = vID
 		WriteJSON(w, http.StatusOK, domain.ContractDraftPreview{
@@ -229,11 +229,13 @@ func HandleWizardPreview(d *Deps) http.HandlerFunc {
 			Jenis:              string(jenis),
 			Nilai:              req.Nilai,
 			TeksDraf:           draftText,
-			SHA256Hash:         hash,
-			IntegrityScore:     score,
-			MandatoryFulfilled: fulfilled,
-			TotalMandatory:     total,
-			Summary:            summary,
+			SHA256Hash:         usecase.HashText(draftText),
+			IntegrityScore:     audit.Score,
+			MandatoryFulfilled: audit.Fulfilled,
+			TotalMandatory:     audit.Total,
+			Summary:            audit.Summary,
+			AuditModel:         audit.Model,
+			Findings:           audit.Findings,
 		})
 	}
 }
@@ -326,7 +328,7 @@ func HandleCreateContractWizard(d *Deps) http.HandlerFunc {
 			}
 		}
 
-		score, _, _, _, hash := usecase.AuditContractDraft(draftText)
+		audit := usecase.RunAudit(r.Context(), d.AIEngine, draftText)
 
 		createParams := usecase.CreateContractParams{
 			VillageID:       *vID,
@@ -340,8 +342,10 @@ func HandleCreateContractWizard(d *Deps) http.HandlerFunc {
 			JawabanForm:     req.JawabanForm,
 			IsiTeks:         draftText,
 			CreatedBy:       uid,
-			IntegrityScore:  score,
-			SHA256Hash:      hash,
+			IntegrityScore:  audit.Score,
+			SHA256Hash:      usecase.HashText(draftText),
+			AuditModel:      audit.Model,
+			AuditFindings:   audit.Findings,
 		}
 
 		detail, err := d.Store.CreateContractWithDetails(r.Context(), createParams)
@@ -403,31 +407,20 @@ func HandleAuditContract(d *Deps) http.HandlerFunc {
 			return
 		}
 
-		var score float64
-		var fulfilled, total int
-		var summary, hash string
-
-		if d.AIEngine != nil {
-			var err error
-			score, fulfilled, total, summary, err = d.AIEngine.AuditClauses(r.Context(), req.ContractText)
-			if err != nil {
-				// Fallback to rule auditor if AI fails
-				score, fulfilled, total, summary, hash = usecase.AuditContractDraft(req.ContractText)
-			} else {
-				hasher := sha256.New()
-				hasher.Write([]byte(req.ContractText))
-				hash = hex.EncodeToString(hasher.Sum(nil))
-			}
-		} else {
-			score, fulfilled, total, summary, hash = usecase.AuditContractDraft(req.ContractText)
+		if strings.TrimSpace(req.ContractText) == "" || len(req.ContractText) > 50_000 {
+			WriteError(w, http.StatusBadRequest, "contractText wajib diisi (maks. 50.000 karakter)")
+			return
 		}
 
+		audit := usecase.RunAudit(r.Context(), d.AIEngine, req.ContractText)
 		WriteJSON(w, http.StatusOK, AuditResponse{
-			IntegrityScore:     score,
-			MandatoryFulfilled: fulfilled,
-			TotalMandatory:     total,
-			SHA256Hash:         hash,
-			Summary:            summary,
+			IntegrityScore:     audit.Score,
+			MandatoryFulfilled: audit.Fulfilled,
+			TotalMandatory:     audit.Total,
+			SHA256Hash:         usecase.HashText(req.ContractText),
+			Summary:            audit.Summary,
+			Model:              audit.Model,
+			Findings:           audit.Findings,
 		})
 	}
 }

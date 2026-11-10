@@ -525,7 +525,7 @@
                 "audit"
               ]
             },
-            "description": "Mengirim draf teks kontrak ke AI Engine untuk audit kesesuaian pasal, skor integritas, dan hash SHA-256."
+            "description": "Mengirim draf teks kontrak ke AI Engine (Groq, cadangan Gemini) untuk audit klausul wajib. Respons: integrityScore, mandatoryFulfilled, totalMandatory, sha256Hash, summary, model (penyedia/model, atau saksi-rule-auditor-v1 bila AI tidak tersedia), dan findings [{kodePasal, tingkat: kritis|saran, pesan}]. contractText wajib diisi, maks. 50.000 karakter (400 bila tidak)."
           },
           "response": []
         }

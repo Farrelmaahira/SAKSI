@@ -1,7 +1,7 @@
-import Check from '@/components/atoms/Check'
+import Check from "@/components/atoms/Check";
 
 interface Props {
-  points: string[]
+  points: string[];
 }
 
 export default function AuthPoints({ points }: Props) {
@@ -16,5 +16,5 @@ export default function AuthPoints({ points }: Props) {
         </li>
       ))}
     </ul>
-  )
+  );
 }

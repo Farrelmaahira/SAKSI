@@ -1,7 +1,7 @@
-import { DEMO_PASSWORD, seedAccounts } from '@/data/auth'
+import { DEMO_PASSWORD, seedAccounts } from "@/data/auth";
 
 interface Props {
-  onPick: (email: string, password: string) => void
+  onPick: (email: string, password: string) => void;
 }
 
 /* Seed accounts that stand in for invitations during the demo */
@@ -14,7 +14,10 @@ export default function DemoAccounts({ onPick }: Props) {
       <ul>
         {seedAccounts.map((a) => (
           <li key={a.email}>
-            <button type="button" onClick={() => onPick(a.email, DEMO_PASSWORD)}>
+            <button
+              type="button"
+              onClick={() => onPick(a.email, DEMO_PASSWORD)}
+            >
               <strong>{a.label}</strong>
               <code>{a.email}</code>
               <small>{a.note}</small>
@@ -23,5 +26,5 @@ export default function DemoAccounts({ onPick }: Props) {
         ))}
       </ul>
     </details>
-  )
+  );
 }

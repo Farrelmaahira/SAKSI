@@ -109,15 +109,34 @@ type WizardQuestion struct {
 }
 
 type ContractDraftPreview struct {
-	Judul              string  `json:"judul"`
-	Jenis              string  `json:"jenis"`
-	Nilai              float64 `json:"nilai"`
-	TeksDraf           string  `json:"teksDraf"`
-	SHA256Hash         string  `json:"sha256Hash"`
-	IntegrityScore     float64 `json:"integrityScore"`
-	MandatoryFulfilled int     `json:"mandatoryFulfilled"`
-	TotalMandatory     int     `json:"totalMandatory"`
-	Summary            string  `json:"summary"`
+	Judul              string         `json:"judul"`
+	Jenis              string         `json:"jenis"`
+	Nilai              float64        `json:"nilai"`
+	TeksDraf           string         `json:"teksDraf"`
+	SHA256Hash         string         `json:"sha256Hash"`
+	IntegrityScore     float64        `json:"integrityScore"`
+	MandatoryFulfilled int            `json:"mandatoryFulfilled"`
+	TotalMandatory     int            `json:"totalMandatory"`
+	Summary            string         `json:"summary"`
+	AuditModel         string         `json:"auditModel"`
+	Findings           []AuditFinding `json:"findings"`
+}
+
+// AuditFinding adalah satu temuan audit klausul (tabel ai_audit_findings).
+type AuditFinding struct {
+	KodePasal *string `json:"kodePasal"`
+	Tingkat   string  `json:"tingkat"` // kritis | saran
+	Pesan     string  `json:"pesan"`
+}
+
+// AuditResult adalah hasil audit dari AI Engine atau rule auditor; Model mencatat siapa yang mengaudit.
+type AuditResult struct {
+	Score     float64        `json:"score"`
+	Fulfilled int            `json:"fulfilled"`
+	Total     int            `json:"total"`
+	Summary   string         `json:"summary"`
+	Model     string         `json:"model"`
+	Findings  []AuditFinding `json:"findings"`
 }
 
 type ContractDetail struct {
@@ -145,12 +164,12 @@ type ContractDetail struct {
 type ContractStatus string
 
 const (
-	StatusDraft       ContractStatus = "draf"
-	StatusAudited     ContractStatus = "diaudit"
-	StatusInReview    ContractStatus = "ditinjau"
-	StatusSigned      ContractStatus = "ditandatangani"
-	StatusPublished   ContractStatus = "dipublikasikan"
-	StatusCancelled   ContractStatus = "dibatalkan"
+	StatusDraft     ContractStatus = "draf"
+	StatusAudited   ContractStatus = "diaudit"
+	StatusInReview  ContractStatus = "ditinjau"
+	StatusSigned    ContractStatus = "ditandatangani"
+	StatusPublished ContractStatus = "dipublikasikan"
+	StatusCancelled ContractStatus = "dibatalkan"
 
 	// Backward-compatibility aliases
 	StatusUnderReview   ContractStatus = "ditinjau"
@@ -210,25 +229,25 @@ type ContractLifecycleDetail struct {
 }
 
 type Contract struct {
-	ID                string         `json:"id"`
-	ContractNumber    string         `json:"contractNumber"`
-	VillageID         string         `json:"villageId"`
-	VillageName       string         `json:"villageName"`
-	Title             string         `json:"title"`
-	Category          string         `json:"category"`
-	VendorName        string         `json:"vendorName"`
-	Amount            int64          `json:"amount"`
-	Status            ContractStatus `json:"status"`
-	SHA256Hash        string         `json:"sha256Hash"`
-	IntegrityScore    float64        `json:"integrityScore"`
-	Rating            float64        `json:"rating"`
-	Volume            string         `json:"volume"`
-	FiscalYear        int            `json:"fiscalYear"`
-	ClausesCount      int            `json:"clausesCount"`
-	MandatoryFulfilled int           `json:"mandatoryFulfilled"`
-	CreatedBy         string         `json:"createdBy"`
-	CreatedAt         time.Time      `json:"createdAt"`
-	UpdatedAt         time.Time      `json:"updatedAt"`
+	ID                 string         `json:"id"`
+	ContractNumber     string         `json:"contractNumber"`
+	VillageID          string         `json:"villageId"`
+	VillageName        string         `json:"villageName"`
+	Title              string         `json:"title"`
+	Category           string         `json:"category"`
+	VendorName         string         `json:"vendorName"`
+	Amount             int64          `json:"amount"`
+	Status             ContractStatus `json:"status"`
+	SHA256Hash         string         `json:"sha256Hash"`
+	IntegrityScore     float64        `json:"integrityScore"`
+	Rating             float64        `json:"rating"`
+	Volume             string         `json:"volume"`
+	FiscalYear         int            `json:"fiscalYear"`
+	ClausesCount       int            `json:"clausesCount"`
+	MandatoryFulfilled int            `json:"mandatoryFulfilled"`
+	CreatedBy          string         `json:"createdBy"`
+	CreatedAt          time.Time      `json:"createdAt"`
+	UpdatedAt          time.Time      `json:"updatedAt"`
 }
 
 type EvidenceFile struct {
@@ -259,12 +278,12 @@ type DashboardMetrics struct {
 type ReportStatus string
 
 const (
-	ReportStatusDiterima       ReportStatus = "diterima"
-	ReportStatusDiverifikasi   ReportStatus = "diverifikasi"
+	ReportStatusDiterima        ReportStatus = "diterima"
+	ReportStatusDiverifikasi    ReportStatus = "diverifikasi"
 	ReportStatusDitindaklanjuti ReportStatus = "ditindaklanjuti"
-	ReportStatusDiteruskan     ReportStatus = "diteruskan"
-	ReportStatusSelesai        ReportStatus = "selesai"
-	ReportStatusDitolak        ReportStatus = "ditolak"
+	ReportStatusDiteruskan      ReportStatus = "diteruskan"
+	ReportStatusSelesai         ReportStatus = "selesai"
+	ReportStatusDitolak         ReportStatus = "ditolak"
 )
 
 type ReportAttachment struct {
@@ -287,20 +306,20 @@ type ReportAction struct {
 }
 
 type CitizenReport struct {
-	ID              int64              `json:"id"`
-	ContractID      int64              `json:"contractId"`
-	ContractTitle   string             `json:"contractTitle,omitempty"`
-	PelaporUserID   int64              `json:"pelaporUserId"`
-	PelaporNama     string             `json:"pelaporNama,omitempty"`
-	KodePelacakan   string             `json:"kodePelacakan"`
-	Kategori        string             `json:"kategori"`
-	Deskripsi       string             `json:"deskripsi"`
-	LokasiLat       *float64           `json:"lokasiLat,omitempty"`
-	LokasiLng       *float64           `json:"lokasiLng,omitempty"`
-	Status          ReportStatus       `json:"status"`
-	DibuatPada      time.Time          `json:"dibuatPada"`
-	Attachments     []ReportAttachment `json:"attachments,omitempty"`
-	Actions         []ReportAction     `json:"actions,omitempty"`
+	ID            int64              `json:"id"`
+	ContractID    int64              `json:"contractId"`
+	ContractTitle string             `json:"contractTitle,omitempty"`
+	PelaporUserID int64              `json:"pelaporUserId"`
+	PelaporNama   string             `json:"pelaporNama,omitempty"`
+	KodePelacakan string             `json:"kodePelacakan"`
+	Kategori      string             `json:"kategori"`
+	Deskripsi     string             `json:"deskripsi"`
+	LokasiLat     *float64           `json:"lokasiLat,omitempty"`
+	LokasiLng     *float64           `json:"lokasiLng,omitempty"`
+	Status        ReportStatus       `json:"status"`
+	DibuatPada    time.Time          `json:"dibuatPada"`
+	Attachments   []ReportAttachment `json:"attachments,omitempty"`
+	Actions       []ReportAction     `json:"actions,omitempty"`
 }
 
 type PublicContractSummary struct {
@@ -323,5 +342,3 @@ type PublicContractDetail struct {
 	IntegrityScore float64  `json:"integrityScore"`
 	SHA256Hash     string   `json:"sha256Hash"`
 }
-
-

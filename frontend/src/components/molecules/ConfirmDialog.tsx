@@ -1,34 +1,41 @@
-'use client'
+"use client";
 
-import { useEffect, useRef } from 'react'
-import Illustration from '@/components/atoms/Illustration'
-import Btn from '@/components/atoms/Btn'
-import type { IllustrationName } from '@/data/illustrations'
+import { useEffect, useRef } from "react";
+import Illustration from "@/components/atoms/Illustration";
+import Btn from "@/components/atoms/Btn";
+import type { IllustrationName } from "@/data/illustrations";
 
 interface Props {
-  open: boolean
-  title: string
-  text: string
-  confirmLabel: string
-  cancelLabel?: string
-  art?: IllustrationName
-  /* danger = the action cannot be undone */
-  tone?: 'primary' | 'danger'
-  onConfirm: () => void
-  onCancel: () => void
+  open: boolean;
+  title: string;
+  text: string;
+  confirmLabel: string;
+  cancelLabel?: string;
+  art?: IllustrationName;
+  tone?: "primary" | "danger";
+  onConfirm: () => void;
+  onCancel: () => void;
 }
 
-/* Modal that asks before a consequential action: big illustration, what will happen, two clear choices.
-   Built on <dialog>, so focus stays inside, Esc cancels and the page behind cannot be clicked. */
-export default function ConfirmDialog({ open, title, text, confirmLabel, cancelLabel = 'Batal', art = 'document-warning_2es6', tone = 'primary', onConfirm, onCancel }: Props) {
-  const ref = useRef<HTMLDialogElement>(null)
+export default function ConfirmDialog({
+  open,
+  title,
+  text,
+  confirmLabel,
+  cancelLabel = "Batal",
+  art = "document-warning_2es6",
+  tone = "primary",
+  onConfirm,
+  onCancel,
+}: Props) {
+  const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
-    const d = ref.current
-    if (!d) return
-    if (open && !d.open) d.showModal()
-    if (!open && d.open) d.close()
-  }, [open])
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
 
   return (
     <dialog
@@ -37,16 +44,30 @@ export default function ConfirmDialog({ open, title, text, confirmLabel, cancelL
       aria-labelledby="d-dialog-title"
       aria-describedby="d-dialog-text"
       onCancel={(e) => {
-        e.preventDefault()
-        onCancel()
+        e.preventDefault();
+        onCancel();
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel()
+        if (e.target === e.currentTarget) onCancel();
       }}
     >
       <div className="grid gap-12 justify-items-center pt-32 px-24 pb-24 relative text-center">
-        <button type="button" className="items-center bg-soft border-0 border-none rounded-[50%] text-ink cursor-pointer flex h-36 justify-center p-0 absolute right-14 top-14 [transition:background_0.2s,_color_0.2s] w-36 [&:hover]:bg-ink [&:hover]:text-white" aria-label="Tutup" onClick={onCancel}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+        <button
+          type="button"
+          className="items-center bg-soft border-0 border-none rounded-[50%] text-ink cursor-pointer flex h-36 justify-center p-0 absolute right-14 top-14 [transition:background_0.2s,_color_0.2s] w-36 [&:hover]:bg-ink [&:hover]:text-white"
+          aria-label="Tutup"
+          onClick={onCancel}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </button>
@@ -59,11 +80,14 @@ export default function ConfirmDialog({ open, title, text, confirmLabel, cancelL
           <Btn variant="ghost" onClick={onCancel}>
             {cancelLabel}
           </Btn>
-          <Btn variant={tone === 'danger' ? 'danger' : 'primary'} onClick={onConfirm}>
+          <Btn
+            variant={tone === "danger" ? "danger" : "primary"}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </Btn>
         </div>
       </div>
     </dialog>
-  )
+  );
 }
