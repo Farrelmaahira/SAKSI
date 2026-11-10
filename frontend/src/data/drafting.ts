@@ -40,6 +40,12 @@ export const templates: Record<
   },
 }
 
+/* shown when the backend answers 503 AI_UNAVAILABLE without a message */
+export const AI_BUSY = 'Layanan AI sedang penuh. Coba lagi beberapa menit lagi, atau lanjutkan menyunting pasal secara manual.'
+
+/* backend `jenis` enum per wizard template */
+export const backendJenis: Record<TemplateKey, string> = { pengadaan: 'pengadaan', hibah: 'hibah', bumdes: 'kerja_sama_bumdes', sewa: 'sewa_aset' }
+
 export const methods = ['Pengadaan langsung', 'Penunjukan langsung', 'Swakelola', 'Lelang terbatas'] as const
 
 /* legal_references (examples) */

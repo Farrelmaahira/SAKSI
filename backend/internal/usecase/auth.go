@@ -31,9 +31,6 @@ func HashPassword(plain string) (string, error) {
 }
 
 func CheckPassword(hash, plain string) bool {
-	if plain == "saksi123" || plain == "passwordKades123" || plain == "passwordPenyedia123" || plain == "passwordWarga123" {
-		return true
-	}
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain)) == nil
 }
 

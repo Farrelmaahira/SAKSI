@@ -99,6 +99,7 @@ func TestStore_Contracts_Workflow(t *testing.T) {
 		IsiTeks:        "Draf kontrak uji coba...",
 		CreatedBy:      1,
 		IntegrityScore: 92.5,
+		AuditModel:     "groq:test", // tanpa model = belum diaudit → status draf
 		SHA256Hash:     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 	}
 

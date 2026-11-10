@@ -1,4 +1,4 @@
-import type { Answers, Audit, Clause, TemplateKey } from '@/interfaces/drafting'
+import type { Answers, Audit, Clause, ClauseSource, TemplateKey } from '@/interfaces/drafting'
 import type { Session } from '@/interfaces/auth'
 import { db } from '@/lib/db/db'
 import { nowIso } from '@/lib/dates/now-iso'
@@ -10,7 +10,7 @@ import { withStatus } from '@/lib/db/with-status'
 import { log } from '@/lib/db/log'
 
 export function createContract(
-  input: { template: TemplateKey; answers: Answers; counterpartyId: string; clauses: Clause[]; audit: Audit; send: boolean; signatures?: ContractSignatures },
+  input: { template: TemplateKey; answers: Answers; counterpartyId: string; clauses: Clause[]; audit: Audit; send: boolean; signatures?: ContractSignatures; source: ClauseSource },
   s: Session,
 ) {
   const nums = db.get().contracts.map((c) => parseInt(c.code.slice(-3), 10)).filter((n) => !Number.isNaN(n))
@@ -24,7 +24,7 @@ export function createContract(
     counterpartyId: input.counterpartyId,
     status: 'draf',
     createdAt: at,
-    versions: [{ no: 1, at, answers: input.answers, clauses: input.clauses, audit: input.audit }],
+    versions: [{ no: 1, at, answers: input.answers, clauses: input.clauses, audit: input.audit, source: input.source }],
     reviews: [],
     signatures: input.signatures ?? {},
     seals: [],

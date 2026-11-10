@@ -43,9 +43,11 @@ export default function TrackHero({ registry, input, onInput, onSearch, onOpen }
                 {c.code}
               </button>
             ))}
-            <button type="button" onClick={() => onOpen(registry[registry.length - 1].hash.slice(0, 12))}>
-              hash {registry[registry.length - 1].hash.slice(0, 12)}
-            </button>
+            {registry[registry.length - 1].hash && (
+              <button type="button" onClick={() => onOpen(registry[registry.length - 1].hash.slice(0, 12))}>
+                hash {registry[registry.length - 1].hash.slice(0, 12)}
+              </button>
+            )}
           </div>
         )}
         <p className="text-[1.3rem] mt-30 opacity-[0.7]">Data di halaman ini adalah contoh untuk keperluan desain.</p>

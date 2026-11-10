@@ -163,7 +163,7 @@
                 "login"
               ]
             },
-            "description": "Login pengguna. Token otomatis disimpan ke variabel koleksi `authToken` untuk request terproteksi berikutnya."
+            "description": "Login pengguna. Token otomatis disimpan ke variabel koleksi `authToken` untuk request terproteksi berikutnya. Rate limit 20 percobaan / 15 menit per IP → 429 {\"code\":\"RATE_LIMITED\"}."
           },
           "response": []
         },
@@ -299,16 +299,22 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/contracts/options",
+              "raw": "{{baseUrl}}/contracts/options?jenis=pengadaan",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "contracts",
                 "options"
+              ],
+              "query": [
+                {
+                  "key": "jenis",
+                  "value": "pengadaan"
+                }
               ]
             },
-            "description": "Mengambil daftar pilihan jenis kontrak (pengadaan, hibah, kerja_sama_bumdes, sewa_aset, umkm), metode pemilihan, dan skema termin pembayaran."
+            "description": "Opsi wizard + `legalReferences` (daftar dasar hukum sah, juga yang dikirim ke AI) + `clauses` (template clause_library untuk ?jenis=, kosong bila tidak ada). Cache Redis `saksi:options:{region_id}` 1 jam."
           },
           "response": []
         },
@@ -379,7 +385,8 @@
                 "preview"
               ]
             },
-            "description": "Menghasilkan pratinjau draf teks SPK dan skor audit integritas awal sebelum kontrak disimpan ke database."
+            "description": "Memanggil DraftContract (gRPC) lalu AuditContract. Respons: `clauses[]` ({kodePasal, judul, isi, urutan, legalReferenceId}), `model` (model draf), `teksDraf` (kepala SPK + pasal + penutup), skor & `findings` audit. Tidak disimpan. legalReferenceId di luar daftar dibuang. Bila semua model AI gagal: 503 {\"error\":\"<pesan>\",\"code\":\"AI_UNAVAILABLE\"}.",
+            "method": "POST"
           },
           "response": []
         },
@@ -405,7 +412,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"counterpartyId\": 1,\n  \"jenis\": \"pengadaan\",\n  \"judul\": \"Pembangunan Jalan Usaha Tani RT 03\",\n  \"nilai\": 65000000,\n  \"tenggat\": \"2026-12-31\",\n  \"skemaPembayaran\": \"termin\",\n  \"metodePemilihan\": \"pengadaan_langsung\",\n  \"jawabanForm\": {\n    \"lingkup_pekerjaan\": \"Pengaspalan jalan 400 meter tebal 5 cm\",\n    \"jadwal_mulai\": \"2026-12-01\",\n    \"denda_keterlambatan\": \"1_per_mil\"\n  }\n}"
+              "raw": "{\n  \"counterpartyId\": 1,\n  \"jenis\": \"pengadaan\",\n  \"judul\": \"Pembangunan Jalan Usaha Tani RT 03\",\n  \"nilai\": 65000000,\n  \"tenggat\": \"2026-12-31\",\n  \"skemaPembayaran\": \"termin\",\n  \"metodePemilihan\": \"pengadaan_langsung\",\n  \"jawabanForm\": {\n    \"lingkup_pekerjaan\": \"Pengaspalan jalan 400 meter tebal 5 cm\",\n    \"jadwal_mulai\": \"2026-12-01\",\n    \"denda_keterlambatan\": \"1_per_mil\"\n  },\n  \"sumber\": \"ai\",\n  \"clauses\": [\n    {\n      \"kodePasal\": \"P-01\",\n      \"judul\": \"Ruang Lingkup Pekerjaan\",\n      \"isi\": \"PIHAK KEDUA melaksanakan pengaspalan jalan 400 meter.\",\n      \"urutan\": 1,\n      \"legalReferenceId\": 0\n    },\n    {\n      \"kodePasal\": \"P-07\",\n      \"judul\": \"Sanksi Keterlambatan\",\n      \"isi\": \"Denda 1/1000 dari nilai kontrak per hari keterlambatan.\",\n      \"urutan\": 2,\n      \"legalReferenceId\": 12\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/contracts",
@@ -416,7 +423,44 @@
                 "contracts"
               ]
             },
-            "description": "Menyimpan kontrak baru secara atomik ke PostgreSQL (contracts, contract_parties, contract_versions, ai_audits, contract_status_history). Khusus role kades."
+            "description": "Menyimpan kontrak (contracts, contract_parties, contract_versions, contract_clauses, ai_audits+findings, contract_status_history, audit_logs). `sumber`: ai|manual (default ai). `clauses[]` dari pratinjau/editor; urutan dinormalisasi 1..n. Bila audit AI tidak tersedia kontrak tetap tersimpan berstatus `draf` tanpa audit. Respons ContractDetail ({id, nomorVersi, sumber, clauses, ...}). Khusus kades."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Contract - Manual (Kades)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/contracts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts"
+              ]
+            },
+            "description": "Jalur tulis manual: tidak butuh AI. `clauses` boleh kosong (mulai dari template kosong). Audit dijalankan terpisah lewat POST /contracts/:id/audit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"counterpartyId\": 1,\n  \"jenis\": \"pengadaan\",\n  \"judul\": \"Pembangunan Jalan Usaha Tani RT 03\",\n  \"nilai\": 65000000,\n  \"tenggat\": \"2026-12-31\",\n  \"skemaPembayaran\": \"termin\",\n  \"metodePemilihan\": \"pengadaan_langsung\",\n  \"sumber\": \"manual\",\n  \"clauses\": [\n    {\n      \"kodePasal\": \"P-01\",\n      \"judul\": \"Ruang Lingkup Pekerjaan\",\n      \"isi\": \"PIHAK KEDUA melaksanakan pengaspalan jalan 400 meter.\",\n      \"urutan\": 1,\n      \"legalReferenceId\": 0\n    }\n  ]\n}"
+            }
           },
           "response": []
         },
@@ -525,7 +569,7 @@
                 "audit"
               ]
             },
-            "description": "Mengirim draf teks kontrak ke AI Engine (Groq, cadangan Gemini) untuk audit klausul wajib. Respons: integrityScore, mandatoryFulfilled, totalMandatory, sha256Hash, summary, model (penyedia/model, atau saksi-rule-auditor-v1 bila AI tidak tersedia), dan findings [{kodePasal, tingkat: kritis|saran, pesan}]. contractText wajib diisi, maks. 50.000 karakter (400 bila tidak)."
+            "description": "Audit naskah bebas (dipecah per 'Pasal N:'). Cache `saksi:ai:audit:{sha256}` 24 jam. Bila semua model AI gagal: 503 {\"error\":\"<pesan>\",\"code\":\"AI_UNAVAILABLE\"}."
           },
           "response": []
         }
@@ -566,7 +610,7 @@
                 }
               ]
             },
-            "description": "Mengambil daftar kontrak desa yang telah berstatus dipublikasikan, berjalan, atau selesai."
+            "description": "Mengambil daftar kontrak desa yang telah berstatus dipublikasikan, berjalan, atau selesai. Token opsional: tanpa token boleh (portal publik); warga login otomatis dibatasi ke desanya. Detail kini memuat sha256Hash segel terakhir dan ringkasan progres (progres)."
           },
           "response": []
         },
@@ -596,7 +640,7 @@
                 "1"
               ]
             },
-            "description": "Mengambil ringkasan detail kontrak beserta daftar klausul pasal yang diekstraksi dari naskah SPK."
+            "description": "Mengambil ringkasan detail kontrak beserta daftar klausul pasal yang diekstraksi dari naskah SPK. Token opsional: tanpa token boleh (portal publik); warga login otomatis dibatasi ke desanya. Detail kini memuat sha256Hash segel terakhir dan ringkasan progres (progres)."
           },
           "response": []
         }
@@ -639,7 +683,7 @@
                 "reports"
               ]
             },
-            "description": "Warga mengajukan laporan pengaduan kejanggalan pelaksanaan kontrak desa."
+            "description": "Warga mengajukan laporan pengaduan kejanggalan pelaksanaan kontrak desa. Rate limit 5 laporan / jam per warga → 429 {\"code\":\"RATE_LIMITED\"}."
           },
           "response": []
         },
@@ -757,7 +801,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"jawabanForm\": {\n    \"lingkup_pekerjaan\": \"Pembangunan jembatan beton penghubung antar dusun sepanjang 15 meter\",\n    \"lokasi_spesifik\": \"Dusun Sukamaju RT 02/01\",\n    \"spesifikasi_teknis\": \"Beton K-300 bertulang dengan pondasi bore pile\",\n    \"masa_pemeliharaan_bulan\": 6,\n    \"rekening_bank_vendor\": \"Bank BRI 1234-01-000123-50-1 an PT Maju Bersama\",\n    \"uang_muka_persen\": 20\n  }\n}"
+              "raw": "{\n  \"clauses\": [\n    {\n      \"kodePasal\": \"P-01\",\n      \"judul\": \"Ruang Lingkup Pekerjaan\",\n      \"isi\": \"PIHAK KEDUA melaksanakan pengaspalan jalan 400 meter.\",\n      \"urutan\": 1,\n      \"legalReferenceId\": 0\n    },\n    {\n      \"kodePasal\": \"P-07\",\n      \"judul\": \"Sanksi Keterlambatan\",\n      \"isi\": \"Denda 1/1000 dari nilai kontrak per hari keterlambatan.\",\n      \"urutan\": 2,\n      \"legalReferenceId\": 12\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/contracts/1",
@@ -769,7 +813,7 @@
                 "1"
               ]
             },
-            "description": "Kepala Desa merevisi draf kontrak (menghasilkan versi N+1 dan memicu audit otomatis rule-based)."
+            "description": "Membuat versi N+1 (sumber='manual'). Kirim `clauses[]` dari editor pasal (tambah/hapus/urut ulang; minimal 1 pasal) — atau `jawabanForm`/`drafTeksOverride` (jalur lama). Status kembali ke `draf` (belum diaudit). 409 {\"code\":\"CONTRACT_LOCKED\"} bila status ≥ ditandatangani atau dibatalkan. Respons ContractVersion ({id: id versi, contractId, nomorVersi, sumber, clauses})."
           },
           "response": []
         },
@@ -895,6 +939,1101 @@
               ]
             },
             "description": "Pembubuhan tanda tangan bilateral oleh Kades atau Penyedia (mendukung JSON simulasi atau upload multipart/form-data gambar TTD max 2MB). Jika kedua pihak telah menandatangani, sistem otomatis menyegel (auto-seal) dokumen kontrak."
+          },
+          "response": []
+        },
+        {
+          "name": "Audit Latest Version (AI)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/audit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "audit"
+              ]
+            },
+            "description": "Mengaudit versi terakhir (AI atau manual) dan menyimpan ai_audits + ai_audit_findings; status draf → diaudit. Role: kades/perangkat_desa/bpd (desa sendiri), inspektorat. Respons {auditId, versionId, nomorVersi, sumber, findings[{kodePasal|null, tingkat, pesan}], skor, model, summary, mandatoryFulfilled, totalMandatory}. Bila semua model AI gagal: 503 {\"error\":\"<pesan>\",\"code\":\"AI_UNAVAILABLE\"}."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Latest Audit",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/audit/latest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "audit",
+                "latest"
+              ]
+            },
+            "description": "Audit terakhir kontrak. 404 bila belum pernah diaudit. Otorisasi sama dengan GET /contracts/:id (desa sendiri; inspektorat lintas desa)."
+          },
+          "response": []
+        },
+        {
+          "name": "Publish Contract (Kades)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "publish"
+              ]
+            },
+            "description": "Hanya untuk status `ditandatangani`. Naskah disaring lewat RedactText (gRPC) lalu disimpan ke publications.isi_tersaring; status → dipublikasikan; cache publik desa itu dihapus. Redaksi gagal = publikasi ditolak (503 AI_UNAVAILABLE / 502 AI_ERROR). Respons {id, contractId, versionId, isiTersaring, redactedKinds, waktu}."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Termin & Progres",
+      "item": [
+        {
+          "name": "List Termin (Scoped)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/termin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "termin"
+              ]
+            },
+            "description": "Ringkasan termin kontrak berstatus ditandatangani/dipublikasikan/berjalan/selesai dalam cakupan pemanggil (kades/perangkat_desa/bpd/inspektorat/penyedia)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Contract Termin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/termin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "termin"
+              ]
+            },
+            "description": "SPK, jadwal termin, dan riwayat progres satu kontrak."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Payment Terms (Kades)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"terms\": [\n    {\n      \"persen\": 50,\n      \"jatuhTempo\": \"2026-12-01\"\n    },\n    {\n      \"persen\": 50,\n      \"jatuhTempo\": \"2027-01-15\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/termin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "termin"
+              ]
+            },
+            "description": "Ganti jadwal termin. Total persen 100; nominal dihitung server. 409 INVALID_STATE bila ada termin dibayar atau kontrak sudah ditandatangani dan jadwal sudah ada."
+          },
+          "response": []
+        },
+        {
+          "name": "Set SPK (Kades)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nomor\": \"027/SPK/2026\",\n  \"tanggal\": \"2026-11-01\",\n  \"mulai\": \"2026-11-02\",\n  \"selesai\": \"2027-01-31\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/spk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "spk"
+              ]
+            },
+            "description": "Simpan SPK. Kontrak dipublikasikan otomatis menjadi berjalan."
+          },
+          "response": []
+        },
+        {
+          "name": "Report Progress (Penyedia / Desa)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"persenSelesai\": 40,\n  \"catatan\": \"Pondasi selesai\",\n  \"termId\": 1,\n  \"fileIds\": [],\n  \"buktiUrl\": [\n    \"https://example.com/foto-progres.jpg\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/progress",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "progress"
+              ]
+            },
+            "description": "Laporkan progres fisik. Termin rujukan menjadi jatuh_tempo; 100% menutup kontrak (selesai)."
+          },
+          "response": []
+        },
+        {
+          "name": "Pay Term (Kades)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"realisasiNominal\": 37500000,\n  \"tanggalRealisasi\": \"2026-12-02\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/termin/1/bayar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "termin",
+                "1",
+                "bayar"
+              ]
+            },
+            "description": "Tandai termin dibayar. Body opsional. 409 ALREADY_PAID bila sudah dibayar."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Segel Dokumen",
+      "item": [
+        {
+          "name": "Verify Seal by Hash (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/public/seals/verify?hash=0000000000000000000000000000000000000000000000000000000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "public",
+                "seals",
+                "verify"
+              ],
+              "query": [
+                {
+                  "key": "hash",
+                  "value": "0000000000000000000000000000000000000000000000000000000000000000"
+                }
+              ]
+            },
+            "description": "Publik, token opsional. Hash SHA-256 64 heksadesimal. Rate limit 30/menit per IP."
+          },
+          "response": []
+        },
+        {
+          "name": "List Seals (Scoped)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/seals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "seals"
+              ]
+            },
+            "description": "Daftar segel kontrak dalam cakupan pemanggil."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifikasi",
+      "item": [
+        {
+          "name": "List My Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications?unread=false&limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "unread",
+                  "value": "false"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Notifikasi milik sendiri, terbaru dulu. Paginasi dengan before=<nextBefore>."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications/1/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "1",
+                "read"
+              ]
+            },
+            "description": "204; 404 bila bukan milik sendiri."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark All Notifications Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "notifications",
+                "read-all"
+              ]
+            },
+            "description": "Mengembalikan {\"updated\": n}."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Jejak Audit & LHP",
+      "item": [
+        {
+          "name": "List Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs?contractId=1&from=2026-11-01&to=2026-11-30&limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-logs"
+              ],
+              "query": [
+                {
+                  "key": "contractId",
+                  "value": "1"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-11-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-11-30"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Jejak audit dalam cakupan kontrak pemanggil, ditambah log miliknya sendiri. Filter opsional: contractId, actorId, from, to, before."
+          },
+          "response": []
+        },
+        {
+          "name": "Create LHP (Inspektorat)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contractId\": 1,\n  \"jenis\": \"lhp\",\n  \"ringkasan\": \"Pembayaran termin 1 mendahului progres fisik.\",\n  \"terbit\": false,\n  \"findings\": [\n    {\n      \"objek\": \"termin\",\n      \"temuan\": \"Termin 1 dibayar saat progres 20%\",\n      \"tingkat\": \"kritis\",\n      \"rekomendasi\": \"Tahan termin 2 sampai progres diverifikasi\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/audit-reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-reports"
+              ]
+            },
+            "description": "Inspektorat menyusun LHP/uji petik untuk kontrak dalam wilayahnya."
+          },
+          "response": []
+        },
+        {
+          "name": "List LHP",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/audit-reports?status=terbit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-reports"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "terbit"
+                }
+              ]
+            },
+            "description": "Inspektorat: semua dalam wilayah. Kades/perangkat_desa/BPD: hanya terbit di desanya."
+          },
+          "response": []
+        },
+        {
+          "name": "Get LHP Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/audit-reports/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-reports",
+                "1"
+              ]
+            },
+            "description": "Detail LHP beserta temuan."
+          },
+          "response": []
+        },
+        {
+          "name": "Publish LHP (Inspektorat)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/audit-reports/1/terbit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-reports",
+                "1",
+                "terbit"
+              ]
+            },
+            "description": "Hanya penyusun. Mengirim notifikasi lhp_terbit ke pembuat kontrak."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tindak Lanjut Laporan",
+      "item": [
+        {
+          "name": "List Report Actions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reports/1/actions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "1",
+                "actions"
+              ]
+            },
+            "description": "Riwayat tindak lanjut laporan. Warga: hanya laporan sendiri. Petugas: dalam cakupan desa/wilayah."
+          },
+          "response": []
+        },
+        {
+          "name": "Add Report Action (Kades / BPD / Inspektorat)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tindakan\": \"klarifikasi\",\n  \"catatan\": \"Sedang dicek ke lapangan\",\n  \"status\": \"diverifikasi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reports/1/actions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                "1",
+                "actions"
+              ]
+            },
+            "description": "tindakan: klarifikasi | eskalasi | selesai. eskalasi memakai diteruskanKeRole (bpd/inspektorat, default inspektorat). Notifikasi dikirim ke pelapor."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin Daerah",
+      "item": [
+        {
+          "name": "List Region Rules",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/region-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "region-rules"
+              ]
+            },
+            "description": "admin_daerah dan inspektorat: aturan ambang pengadaan di wilayahnya."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Region Rule (Admin Daerah)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"regionId\": 1,\n  \"ambangPembelianLangsung\": 200000000,\n  \"ambangPenawaran\": 1000000000,\n  \"dasarHukum\": \"Perbup Banyumas No. 12 Tahun 2026\",\n  \"berlakuSejak\": \"2027-01-01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/region-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "region-rules"
+              ]
+            },
+            "description": "Aturan baru = baris baru; riwayat tidak ditimpa."
+          },
+          "response": []
+        },
+        {
+          "name": "List Pengawas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/pengawas?jenis=inspektorat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "pengawas"
+              ],
+              "query": [
+                {
+                  "key": "jenis",
+                  "value": "inspektorat"
+                }
+              ]
+            },
+            "description": "Akun BPD/inspektorat di wilayah admin, untuk dipilih sebagai pengawas."
+          },
+          "response": []
+        },
+        {
+          "name": "List Oversight Assignments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/oversight-assignments?contractId=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "oversight-assignments"
+              ],
+              "query": [
+                {
+                  "key": "contractId",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Penugasan pengawas kontrak di wilayah admin."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Oversight Assignment (Admin Daerah)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contractId\": 1,\n  \"pengawasUserId\": 4,\n  \"jenis\": \"inspektorat\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/oversight-assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "oversight-assignments"
+              ]
+            },
+            "description": "Pengawas harus punya role = jenis di wilayah kontrak. 409 CONFLICT bila sudah ditugaskan."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Profil & Kata Sandi",
+      "item": [
+        {
+          "name": "Update Profile - Warga",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Siti Aminah\",\n  \"noHp\": \"081234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Perbarui nama dan no HP warga."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile - Penyedia",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Budi Santoso\",\n  \"usaha\": {\n    \"nama\": \"CV Maju Jaya\",\n    \"npwp\": \"01.234.567.8-405.000\",\n    \"alamat\": \"Jl. Raya Sukamaju No. 1\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Perbarui nama akun dan profil usaha (counterparties)."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"passwordLama\": \"rahasia123\",\n  \"passwordBaru\": \"rahasiaBaru123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/password/change",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "password",
+                "change"
+              ]
+            },
+            "description": "204. 400 WRONG_PASSWORD bila sandi lama salah."
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"kades@sukamaju.desa.id\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/password/forgot",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "password",
+                "forgot"
+              ]
+            },
+            "description": "Selalu 202 dengan pesan sama. devToken hanya muncul bila APP_ENV=development/local/test (belum ada layanan email)."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<devToken dari Forgot Password>\",\n  \"password\": \"rahasiaBaru123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/password/reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "password",
+                "reset"
+              ]
+            },
+            "description": "204; 400 TOKEN_INVALID bila token salah/kedaluwarsa/terpakai."
           },
           "response": []
         }

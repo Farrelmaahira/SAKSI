@@ -2,78 +2,37 @@
 
 import { useState, useEffect } from 'react'
 import { useDash } from '@/hooks/use-dash'
-import { db } from '@/lib/db/db'
-import { myReports } from '@/lib/db/my-reports'
 import { isClosed } from '@/lib/db/is-closed'
-import { seedContracts } from '@/data/seed-contracts'
-import { fetchMyReports, type CreatedReportResponse } from '@/lib/api/reports'
-import type { DReport, ReportFlow } from '@/interfaces/db'
+import { listReports } from '@/lib/api/list-reports'
+import { toDReport } from '@/lib/api/to-dreport'
+import type { ApiResult } from '@/interfaces/api'
+import type { CreatedReportResponse } from '@/lib/api/reports'
 import PageHead from '@/components/molecules/PageHead'
 import Chips from '@/components/molecules/Chips'
 import Empty from '@/components/molecules/Empty'
 import Btn from '@/components/atoms/Btn'
+import FormAlert from '@/components/atoms/FormAlert'
 import WargaReportCard from '@/components/organisms/WargaReportCard'
 
 type Filter = 'semua' | 'proses' | 'selesai'
 
-function mapDbReportToDReport(r: CreatedReportResponse, email: string, name: string): DReport {
-  let flow: ReportFlow = 'baru'
-  if (r.status === 'diverifikasi') flow = 'diverifikasi'
-  else if (r.status === 'ditindaklanjuti') flow = 'ditindaklanjuti'
-  else if (r.status === 'diteruskan') flow = 'diteruskan'
-  else if (r.status === 'selesai' || r.status === 'ditolak') flow = 'ditutup'
-
-  return {
-    id: r.kodePelacakan,
-    contractCode: `SPK-1-${String(r.contractId).padStart(4, '0')}`,
-    category: r.kategori.replace(/_/g, ' '),
-    clause: 'Klausul Pengadaan',
-    text: r.deskripsi,
-    location: r.lokasiLat ? `Koordinat (${r.lokasiLat.toFixed(4)}, ${r.lokasiLng?.toFixed(4) ?? 0})` : undefined,
-    date: r.dibuatPada ? new Date(r.dibuatPada).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Hari ini',
-    reporter: 'Warga terverifikasi',
-    owner: email,
-    reporterName: name,
-    photos: r.attachments?.length || 0,
-    flow,
-    actions: (r.actions || []).map((a) => ({
-      id: String(a.id),
-      at: a.waktu,
-      by: a.aktorNama || 'BPD / Tim Pengawas',
-      role: 'bpd',
-      kind: 'klarifikasi',
-      text: a.catatan || a.tindakan,
-    })),
-  }
-}
-
 export default function LaporanSayaTemplate() {
   const { session } = useDash()
-  const d = db.use()
   const [filter, setFilter] = useState<Filter>('semua')
-  const [dbReports, setDbReports] = useState<DReport[] | null>(null)
+  const [res, setRes] = useState<ApiResult<CreatedReportResponse[]> | null>(null)
 
   useEffect(() => {
     let active = true
-    async function load() {
-      const res = await fetchMyReports()
-      if (active && res && res.length > 0) {
-        const mapped = res.map((item) => mapDbReportToDReport(item, session.email, session.name))
-        setDbReports(mapped)
-      } else if (active) {
-        setDbReports([])
-      }
-    }
-    load()
+    listReports().then((r) => active && setRes(r))
     return () => {
       active = false
     }
-  }, [session])
+  }, [session.userId])
 
-  // Gunakan data dari database bila ada
-  const all = (dbReports !== null && dbReports.length > 0) ? dbReports : (dbReports !== null ? [] : myReports(d, session.email))
-  const list = all.filter((r) => filter === 'semua' || (filter === 'selesai' ? isClosed(r) : !isClosed(r)))
-  const titleOf = (code: string) => d.contracts.find((c) => c.code === code)?.title ?? seedContracts.find((c) => c.code === code)?.title
+  // contractCode = server id: /lacak resolves it to the published contract
+  const rows = res?.ok ? res.data.map((x) => ({ r: toDReport(x), title: x.contractTitle })) : []
+  const all = rows.map((x) => x.r)
+  const list = rows.filter(({ r }) => filter === 'semua' || (filter === 'selesai' ? isClosed(r) : !isClosed(r)))
 
   return (
     <>
@@ -92,10 +51,14 @@ export default function LaporanSayaTemplate() {
         value={filter}
         onChange={setFilter}
       />
-      {list.length ? (
+      {!res ? (
+        <p className="text-[1.4rem] text-dim" role="status">Memuat laporan…</p>
+      ) : !res.ok ? (
+        <FormAlert>{res.error}</FormAlert>
+      ) : list.length ? (
         <div className="grid gap-14">
-          {list.map((r) => (
-            <WargaReportCard key={r.id} report={r} contractTitle={titleOf(r.contractCode)} />
+          {list.map(({ r, title }) => (
+            <WargaReportCard key={r.id} report={r} contractTitle={title} />
           ))}
         </div>
       ) : (

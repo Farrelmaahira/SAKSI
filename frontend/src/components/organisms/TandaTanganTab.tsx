@@ -16,10 +16,24 @@ import Panel from '@/components/molecules/Panel'
 import Icon from '@/components/atoms/Icon'
 import Btn from '@/components/atoms/Btn'
 import { signContractAPI } from '@/lib/api/contracts'
+import FormAlert from '@/components/atoms/FormAlert'
 
 export default function TandaTanganTab({ c, session }: TabProps) {
   const r = session.role.role
   const [image, setImage] = useState<string | null>(null)
+  const [signError, setSignError] = useState('')
+  const [signing, setSigning] = useState(false)
+  // signatures are stored on the server first; the local copy only follows a confirmed save
+  const signOnServer = async (who: 'desa' | 'pihak') => {
+    if (!c.apiId) return
+    setSigning(true)
+    setSignError('')
+    const res = await signContractAPI(c.apiId, { metode: 'simulasi', referensi: image || `sig_${who === 'desa' ? 'desa' : 'vendor'}_${session.name}` })
+    setSigning(false)
+    if (!res) return setSignError('Tanda tangan belum tersimpan di server. Periksa koneksi lalu coba lagi.')
+    sign(c.code, who, session, image ?? undefined)
+    setImage(null)
+  }
   const approved = c.reviewDecision === 'setuju' || statusOrder.indexOf(c.status) >= statusOrder.indexOf('ditandatangani')
   const s = c.signatures
   const steps = [
@@ -29,16 +43,7 @@ export default function TandaTanganTab({ c, session }: TabProps) {
       who: `Pemerintah ${villageById(c.villageId)?.name}`,
       done: s.desa ? `${s.desa.by} · ${fmtDateTime(s.desa.at)}` : null,
       can: r === 'perangkat_desa' && approved && !s.desa,
-      action: async () => {
-        const contractNumericId = parseInt(c.code.replace(/[^0-9]/g, '').slice(-3), 10) || 1
-        sign(c.code, 'desa', session, image ?? undefined)
-        try {
-          await signContractAPI(contractNumericId, { metode: 'simulasi', referensi: image || `sig_desa_${session.name}` })
-        } catch (err) {
-          console.warn('Backend sign failed, using local:', err)
-        }
-        setImage(null)
-      },
+      action: () => signOnServer('desa'),
       label: 'Tanda tangani',
       wait: approved ? null : 'Menunggu persetujuan pihak kedua',
     },
@@ -58,16 +63,7 @@ export default function TandaTanganTab({ c, session }: TabProps) {
       who: counterpartyById(c.counterpartyId)?.name ?? 'Pihak kedua',
       done: s.pihak ? `${s.pihak.by} · ${fmtDateTime(s.pihak.at)}` : null,
       can: r === 'pihak_kedua' && approved && Boolean(s.desa && s.meterai) && !s.pihak,
-      action: async () => {
-        const contractNumericId = parseInt(c.code.replace(/[^0-9]/g, '').slice(-3), 10) || 1
-        sign(c.code, 'pihak', session, image ?? undefined)
-        try {
-          await signContractAPI(contractNumericId, { metode: 'simulasi', referensi: image || `sig_vendor_${session.name}` })
-        } catch (err) {
-          console.warn('Backend sign failed, using local:', err)
-        }
-        setImage(null)
-      },
+      action: () => signOnServer('pihak'),
       label: 'Tanda tangani',
       wait: s.desa && s.meterai ? null : 'Setelah desa menandatangani dan e-meterai dibubuhkan',
     },
@@ -91,9 +87,11 @@ export default function TandaTanganTab({ c, session }: TabProps) {
                 <div className="w-full max-w-520">
                   <SignaturePad name={session.name} onChange={setImage} />
                 </div>
-                <Btn onClick={x.action} disabled={!image}>
-                  {x.label}
+                <Btn onClick={x.action} disabled={!image || !c.apiId || signing}>
+                  {signing ? 'Menyimpan...' : x.label}
                 </Btn>
+                {!c.apiId && <p className="text-[1.35rem] leading-[1.5] text-dim">Kontrak ini hanya tersimpan di perangkat ini, belum di server SAKSI, jadi tanda tangan elektronik belum bisa dibubuhkan.</p>}
+                {signError && <FormAlert>{signError}</FormAlert>}
               </section>
             )}
           </li>

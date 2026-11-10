@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"saksi-backend/internal/domain"
+	"saksi-backend/internal/usecase"
 )
 
 // HandleListPublicContracts mengembalikan daftar kontrak publik yang berjalan atau selesai.
@@ -26,10 +27,20 @@ func HandleListPublicContracts(d *Deps) http.HandlerFunc {
 			villageID = *userVillageID
 		}
 
+		// shortcut: hanya daftar tanpa pencarian yang di-cache (page 0 = semua); tambah pagination bila daftar membesar.
+		key := usecase.KeyPublicContracts(villageID, 0)
+		var list []domain.PublicContractSummary
+		if search == "" && usecase.CacheGetJSON(r.Context(), d.Cache, key, &list) {
+			WriteJSON(w, http.StatusOK, list)
+			return
+		}
 		list, err := d.Store.ListPublicContracts(r.Context(), villageID, search)
 		if err != nil {
 			WriteError(w, http.StatusInternalServerError, "gagal memuat daftar kontrak publik")
 			return
+		}
+		if search == "" {
+			usecase.CacheSetJSON(r.Context(), d.Cache, key, list, usecase.TTLPublicList)
 		}
 
 		WriteJSON(w, http.StatusOK, list)
@@ -52,13 +63,24 @@ func HandleGetPublicContractDetail(d *Deps) http.HandlerFunc {
 			villageID = *userVillageID
 		}
 
-		detail, err := d.Store.GetPublicContractDetail(r.Context(), villageID, contractID)
-		if err != nil {
-			if errors.Is(err, domain.ErrNotFound) {
-				WriteError(w, http.StatusNotFound, "kontrak tidak ditemukan atau belum dipublikasikan")
+		// Cache berisi detail publik yang sudah diredaksi, dibaca tanpa filter desa; cakupan desa warga
+		// tetap ditegakkan setelah baca (cache maupun DB).
+		key := usecase.KeyPublicContract(contractID)
+		var detail domain.PublicContractDetail
+		if !usecase.CacheGetJSON(r.Context(), d.Cache, key, &detail) {
+			detail, err = d.Store.GetPublicContractDetail(r.Context(), 0, contractID)
+			if err != nil {
+				if errors.Is(err, domain.ErrNotFound) {
+					WriteError(w, http.StatusNotFound, "kontrak tidak ditemukan atau belum dipublikasikan")
+					return
+				}
+				WriteError(w, http.StatusInternalServerError, "gagal mengambil detail kontrak")
 				return
 			}
-			WriteError(w, http.StatusInternalServerError, "gagal mengambil detail kontrak")
+			usecase.CacheSetJSON(r.Context(), d.Cache, key, detail, usecase.TTLPublicDetail)
+		}
+		if villageID != 0 && detail.VillageID != villageID {
+			WriteError(w, http.StatusNotFound, "kontrak tidak ditemukan atau belum dipublikasikan")
 			return
 		}
 

@@ -118,16 +118,13 @@ export default function Simulator() {
     setAiIds((a) => [...a, id]);
     addClause(id);
     const targetClause = clauses.find((c) => c.id === id);
+    // fire-and-forget: the simulator's own feedback does not depend on the server audit
     if (targetClause) {
-      try {
-        await auditClause({
-          contractId: code,
-          clauseText: targetClause.text,
-          clauseType: targetClause.title,
-        });
-      } catch {
-        // Fallback handled
-      }
+      await auditClause({
+        contractId: code,
+        clauseText: targetClause.text,
+        clauseType: targetClause.title,
+      });
     }
   };
 

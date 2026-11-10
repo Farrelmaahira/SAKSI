@@ -10,23 +10,27 @@ import { unsign } from '@/lib/db/unsign'
 import { nowIso } from '@/lib/dates/now-iso'
 import { log } from '@/lib/db/log'
 
-/* Edit clause text while the contract is still editable. During a revision, saving creates a new version. */
-export function saveDraft(code: string, clauses: Clause[], s: Session, note?: string) {
+/* Edit clauses while the contract is still editable. A revision, or a server that created a new version
+   (serverNo from PUT /contracts/{id}), adds a version; otherwise the latest one is edited in place. Returns the version number. */
+export function saveDraft(code: string, clauses: Clause[], s: Session, note?: string, serverNo?: number) {
   const c = find(code)
   if (!c || !isEditable(c)) return
   const prev = latestVersion(c)
   const regionId = regionOfContract(c)!
   const audit = reaudit(c.template, prev.answers, clauses, regionId, prev.audit)
-  if (c.status === 'ditinjau' && c.reviewDecision === 'revisi') {
-    update(code, (x) => unsign({
+  const revising = c.status === 'ditinjau' && c.reviewDecision === 'revisi'
+  // never reuse or go below an existing local number, even if an older local-only save put us ahead of the server
+  const no = Math.max(serverNo ?? 0, revising ? prev.no + 1 : prev.no)
+  update(code, (x) =>
+    unsign({
       ...x,
-      reviewDecision: undefined,
-      reviewNote: undefined,
-      versions: [...x.versions, { no: prev.no + 1, at: nowIso(), answers: prev.answers, clauses, audit, note }],
-    }))
-    log(s, `Mengirim versi ${prev.no + 1} untuk ditinjau ulang`, c)
-  } else {
-    update(code, (x) => unsign({ ...x, versions: x.versions.map((v) => (v.no === prev.no ? { ...v, clauses, audit } : v)) }))
-    log(s, 'Mengubah isi draf', c)
-  }
+      ...(revising && { reviewDecision: undefined, reviewNote: undefined }),
+      versions:
+        no === prev.no
+          ? x.versions.map((v) => (v.no === prev.no ? { ...v, clauses, audit, source: 'manual' as const } : v))
+          : [...x.versions, { no, at: nowIso(), answers: prev.answers, clauses, audit, note, source: 'manual' as const }],
+    }),
+  )
+  log(s, revising ? `Mengirim versi ${no} untuk ditinjau ulang` : no === prev.no ? 'Mengubah isi draf' : `Menyimpan versi ${no}`, c)
+  return no
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -23,6 +24,10 @@ type ContractOptionsResponse struct {
 	JenisKontrak    []ContractOptionItem `json:"jenisKontrak"`
 	MetodePemilihan []ContractOptionItem `json:"metodePemilihan"`
 	SkemaPembayaran []ContractOptionItem `json:"skemaPembayaran"`
+	// LegalReferences: daftar dasar hukum yang sah (juga yang dikirim ke AI).
+	LegalReferences []domain.LegalReference `json:"legalReferences"`
+	// Clauses: template pasal clause_library untuk ?jenis= (kosong bila jenis tidak diisi/tidak ada template).
+	Clauses []domain.LibraryClause `json:"clauses"`
 }
 
 type WizardQuestionsRequest struct {
@@ -58,6 +63,8 @@ type CreateContractPayload struct {
 	MetodePemilihan  string         `json:"metodePemilihan"`
 	JawabanForm      map[string]any `json:"jawabanForm"`
 	DrafTeksOverride string         `json:"drafTeksOverride,omitempty"`
+	Sumber           string          `json:"sumber,omitempty"` // "ai" (default) | "manual"
+	Clauses          []domain.Clause `json:"clauses,omitempty"`
 }
 
 type CreateContractRequest struct {
@@ -111,6 +118,19 @@ func HandleGetContractOptions(d *Deps) http.HandlerFunc {
 			},
 		}
 
+		_, _, vID := ClaimsFromContext(r.Context())
+		opts, err := loadDraftingOptions(r, d, vID)
+		if err != nil {
+			slog.Error("gagal memuat opsi drafting", "err", err)
+			WriteError(w, http.StatusInternalServerError, "gagal memuat opsi kontrak")
+			return
+		}
+		res.LegalReferences = opts.LegalReferences
+		res.Clauses = []domain.LibraryClause{}
+		if jenis := domain.ContractJenis(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("jenis")))); jenis.Valid() {
+			res.Clauses = opts.Template(jenis).Clauses
+		}
+
 		WriteJSON(w, http.StatusOK, res)
 	}
 }
@@ -156,6 +176,7 @@ func HandleWizardPreview(d *Deps) http.HandlerFunc {
 			return
 		}
 
+		r.Body = http.MaxBytesReader(w, r.Body, maxDraftBody)
 		var req WizardPreviewRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			WriteError(w, http.StatusBadRequest, "invalid request body")
@@ -180,50 +201,41 @@ func HandleWizardPreview(d *Deps) http.HandlerFunc {
 			return
 		}
 
-		kadesName := "Kepala Desa"
-		villageName := "Desa"
-		if u, err := d.Store.UserByID(r.Context(), uid); err == nil {
-			if u.Name != "" {
-				kadesName = u.Name
-			}
-			if u.VillageName != "" {
-				villageName = u.VillageName
-			}
-		}
-
 		tenggat, _ := time.Parse("2006-01-02", req.Tenggat)
 		if tenggat.IsZero() {
 			tenggat = time.Now().AddDate(0, 1, 0)
 		}
+		params := draftParams(r, d, uid, jenis, req.Judul, cp, req.Nilai, tenggat, req.SkemaPembayaran, req.MetodePemilihan, req.JawabanForm)
 
-		params := usecase.CreateContractDraftParams{
-			Jenis:           jenis,
-			Judul:           req.Judul,
-			KadesName:       kadesName,
-			VillageName:     villageName,
-			VendorName:      cp.Nama,
-			VendorNPWP:      cp.NPWP,
-			VendorAddress:   cp.Alamat,
-			Nilai:           req.Nilai,
-			Tenggat:         tenggat,
-			SkemaPembayaran: req.SkemaPembayaran,
-			MetodePemilihan: req.MetodePemilihan,
-			JawabanForm:     req.JawabanForm,
+		opts, err := loadDraftingOptions(r, d, vID)
+		if err != nil {
+			slog.Error("gagal memuat opsi drafting", "err", err)
+			WriteError(w, http.StatusInternalServerError, "gagal memuat template kontrak")
+			return
 		}
+		tpl := opts.Template(jenis)
 
-		draftText := req.DrafTeksOverride
-		if draftText == "" {
-			var err error
-			draftText, err = usecase.RenderContractDraft(params)
+		var clauses []domain.Clause
+		draftModel := "manual"
+		draftText := strings.TrimSpace(req.DrafTeksOverride)
+		if draftText != "" {
+			clauses = usecase.ClausesFromText(draftText)
+		} else {
+			out, err := usecase.DraftClauses(r.Context(), d.AIEngine, draftInput(jenis, params, tpl, opts.LegalReferences), tpl)
 			if err != nil {
-				WriteError(w, http.StatusInternalServerError, "failed to render draft: "+err.Error())
+				WriteAIError(w, err)
 				return
 			}
+			clauses, draftModel = out.Clauses, out.Model
+			draftText = usecase.ComposeContractText(params, clauses)
 		}
 
-		audit := usecase.RunAudit(r.Context(), d.AIEngine, draftText)
+		audit, err := usecase.AuditClauses(r.Context(), d.AIEngine, d.Cache, auditInput(jenis, clauses, tpl, opts))
+		if err != nil {
+			WriteAIError(w, err)
+			return
+		}
 
-		_ = vID
 		WriteJSON(w, http.StatusOK, domain.ContractDraftPreview{
 			Judul:              req.Judul,
 			Jenis:              string(jenis),
@@ -236,6 +248,8 @@ func HandleWizardPreview(d *Deps) http.HandlerFunc {
 			Summary:            audit.Summary,
 			AuditModel:         audit.Model,
 			Findings:           audit.Findings,
+			Clauses:            clauses,
+			DraftModel:         draftModel,
 		})
 	}
 }
@@ -253,6 +267,7 @@ func HandleCreateContractWizard(d *Deps) http.HandlerFunc {
 			return
 		}
 
+		r.Body = http.MaxBytesReader(w, r.Body, maxDraftBody)
 		var req CreateContractPayload
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			WriteError(w, http.StatusBadRequest, "invalid request body")
@@ -293,42 +308,50 @@ func HandleCreateContractWizard(d *Deps) http.HandlerFunc {
 			tenggat = time.Now().AddDate(0, 1, 0)
 		}
 
-		kadesName := "Kepala Desa"
-		villageName := "Desa"
-		if u, err := d.Store.UserByID(r.Context(), uid); err == nil {
-			if u.Name != "" {
-				kadesName = u.Name
-			}
-			if u.VillageName != "" {
-				villageName = u.VillageName
-			}
+		sumber := strings.ToLower(strings.TrimSpace(req.Sumber))
+		if sumber == "" {
+			sumber = "ai"
+		}
+		if sumber != "ai" && sumber != "manual" {
+			WriteError(w, http.StatusBadRequest, "sumber harus 'ai' atau 'manual'")
+			return
 		}
 
-		draftParams := usecase.CreateContractDraftParams{
-			Jenis:           jenis,
-			Judul:           judul,
-			KadesName:       kadesName,
-			VillageName:     villageName,
-			VendorName:      cp.Nama,
-			VendorNPWP:      cp.NPWP,
-			VendorAddress:   cp.Alamat,
-			Nilai:           req.Nilai,
-			Tenggat:         tenggat,
-			SkemaPembayaran: req.SkemaPembayaran,
-			MetodePemilihan: req.MetodePemilihan,
-			JawabanForm:     req.JawabanForm,
+		opts, err := loadDraftingOptions(r, d, vID)
+		if err != nil {
+			slog.Error("gagal memuat opsi drafting", "err", err)
+			WriteError(w, http.StatusInternalServerError, "gagal memuat template kontrak")
+			return
 		}
+		tpl := opts.Template(jenis)
+		params := draftParams(r, d, uid, jenis, judul, cp, req.Nilai, tenggat, req.SkemaPembayaran, req.MetodePemilihan, req.JawabanForm)
 
+		// Pasal dari editor/wizard (jalur manual boleh kosong = mulai dari template kosong).
+		var clauses []domain.Clause
 		draftText := strings.TrimSpace(req.DrafTeksOverride)
-		if draftText == "" {
-			draftText, err = usecase.RenderContractDraft(draftParams)
-			if err != nil {
-				WriteError(w, http.StatusInternalServerError, "failed to render draft: "+err.Error())
+		switch {
+		case len(req.Clauses) > 0 || sumber == "manual":
+			if clauses, err = usecase.NormalizeClauses(req.Clauses, usecase.LegalRefIDs(opts.LegalReferences)); err != nil {
+				writeInvalid(w, err)
 				return
 			}
+			draftText = usecase.ComposeContractText(params, clauses)
+		case draftText == "":
+			clauses = usecase.RuleDraftClauses(params)
+			draftText = usecase.ComposeContractText(params, clauses)
+		}
+		auditClauses := clauses
+		if auditClauses == nil {
+			auditClauses = usecase.ClausesFromText(draftText)
 		}
 
-		audit := usecase.RunAudit(r.Context(), d.AIEngine, draftText)
+		// Jalur manual tidak bergantung pada AI: bila audit gagal, kontrak tetap tersimpan sebagai draf tanpa audit
+		// (tidak ada skor pengganti dari rule engine); FE menjalankan "Audit ulang" lewat POST /contracts/{id}/audit.
+		audit, err := usecase.AuditClauses(r.Context(), d.AIEngine, d.Cache, auditInput(jenis, auditClauses, tpl, opts))
+		if err != nil {
+			slog.Warn("audit AI gagal saat membuat kontrak, disimpan tanpa audit", "err", err)
+			audit = domain.AuditResult{Findings: []domain.AuditFinding{}}
+		}
 
 		createParams := usecase.CreateContractParams{
 			VillageID:       *vID,
@@ -346,11 +369,15 @@ func HandleCreateContractWizard(d *Deps) http.HandlerFunc {
 			SHA256Hash:      usecase.HashText(draftText),
 			AuditModel:      audit.Model,
 			AuditFindings:   audit.Findings,
+			Sumber:          sumber,
+			Clauses:         clauses,
+			ActorIP:         ClientIP(r, d.TrustedProxies),
 		}
 
 		detail, err := d.Store.CreateContractWithDetails(r.Context(), createParams)
 		if err != nil {
-			WriteError(w, http.StatusInternalServerError, "failed to create contract: "+err.Error())
+			slog.Error("gagal membuat kontrak", "err", err)
+			WriteError(w, http.StatusInternalServerError, "gagal menyimpan kontrak")
 			return
 		}
 
@@ -401,6 +428,7 @@ func HandleGetContract(d *Deps) http.HandlerFunc {
 // HandleAuditContract menjalankan audit teks kontrak melalui AI Engine atau fallback.
 func HandleAuditContract(d *Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxDraftBody)
 		var req VerifyContractRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			WriteError(w, http.StatusBadRequest, "invalid request body")
@@ -412,7 +440,11 @@ func HandleAuditContract(d *Deps) http.HandlerFunc {
 			return
 		}
 
-		audit := usecase.RunAudit(r.Context(), d.AIEngine, req.ContractText)
+		audit, err := usecase.AuditText(r.Context(), d.AIEngine, d.Cache, "", req.ContractText)
+		if err != nil {
+			WriteAIError(w, err)
+			return
+		}
 		WriteJSON(w, http.StatusOK, AuditResponse{
 			IntegrityScore:     audit.Score,
 			MandatoryFulfilled: audit.Fulfilled,

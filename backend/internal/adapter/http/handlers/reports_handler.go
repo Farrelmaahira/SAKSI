@@ -11,10 +11,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"saksi-backend/internal/domain"
 	"saksi-backend/internal/usecase"
 )
+
+const maxReportDeskripsi = 5000
 
 type CreateReportJSONRequest struct {
 	ContractID int64    `json:"contractId"`
@@ -103,6 +106,7 @@ func HandleCreateCitizenReport(d *Deps) http.HandlerFunc {
 		} else {
 			// Fallback ke JSON payload
 			var req CreateReportJSONRequest
+			r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				WriteError(w, http.StatusBadRequest, "invalid request body")
 				return
@@ -124,6 +128,22 @@ func HandleCreateCitizenReport(d *Deps) http.HandlerFunc {
 		}
 		if len(deskripsi) < 15 {
 			WriteError(w, http.StatusBadRequest, "deskripsi laporan minimal 15 karakter")
+			return
+		}
+		// FE menggabungkan "[pasal] teks - Lokasi: ..." ke deskripsi (tidak ada kolom pasal/lokasi teks), jadi batasnya longgar.
+		if utf8.RuneCountInString(deskripsi) > maxReportDeskripsi {
+			WriteErrorCode(w, http.StatusBadRequest, "INVALID_INPUT", "deskripsi laporan maksimal 5000 karakter")
+			return
+		}
+		if utf8.RuneCountInString(kategori) > 255 {
+			WriteErrorCode(w, http.StatusBadRequest, "INVALID_INPUT", "kategori maksimal 255 karakter")
+			return
+		}
+
+		// Anti-spam laporan warga per akun (SWOT #2). Tanpa Redis tetap dibatasi in-memory.
+		if !usecase.Allow(r.Context(), d.Limiter, usecase.KeyRLReport(userID), usecase.LimitReportPerHr, usecase.WindowReportRL) {
+			w.Header().Set("Retry-After", strconv.Itoa(int(usecase.WindowReportRL.Seconds())))
+			WriteErrorCode(w, http.StatusTooManyRequests, "RATE_LIMITED", "batas laporan tercapai (maks. 5 per jam), coba lagi nanti")
 			return
 		}
 
@@ -260,18 +280,10 @@ func HandleGetReportDetail(d *Deps) http.HandlerFunc {
 			return
 		}
 
-		userID, role, _ := ClaimsFromContext(r.Context())
-		report, err := d.Store.GetCitizenReportByID(r.Context(), reportID, userID, role)
+		report, err := d.Store.GetCitizenReportByID(r.Context(), reportID, scopeOf(r))
 		if err != nil {
-			if errors.Is(err, domain.ErrNotFound) {
-				WriteError(w, http.StatusNotFound, "laporan pengaduan tidak ditemukan")
-				return
-			}
-			if errors.Is(err, domain.ErrForbidden) {
-				WriteError(w, http.StatusForbidden, "Anda tidak memiliki akses melihat laporan ini")
-				return
-			}
-			WriteError(w, http.StatusInternalServerError, "gagal memuat detail laporan")
+			// Laporan di luar cakupan juga 404 (bukan 403) agar id tidak bisa ditebak.
+			writeDomainErr(w, err, "laporan pengaduan tidak ditemukan")
 			return
 		}
 

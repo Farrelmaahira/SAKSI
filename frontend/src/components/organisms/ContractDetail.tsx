@@ -80,6 +80,7 @@ export default function ContractDetail({
             </div>
           </dl>
 
+          {c.hash && (
           <div className="bg-ink rounded-[1.6rem] text-white mt-20 p-28 [&_code]:block [&_code]:font-code [&_code]:text-[1.5rem] [&_code]:tracking-[0.03em] [&_code]:leading-[1.6] [&_code]:break-all">
             <p className="text-[1.2rem] mb-12 opacity-[0.6] uppercase">Sidik digital SHA‑256</p>
             <code>{c.hash}</code>
@@ -99,6 +100,7 @@ export default function ContractDetail({
               </button>
             </div>
           </div>
+          )}
 
           {hides('pasal') ? (
             <p className="border-b-[rgba(15,_15,_23,_0.15)] [&_summary]:items-center [&_summary]:[background:none] [&_summary]:[border:none] [&_summary]:[color:inherit] [&_summary]:cursor-pointer [&_summary]:flex [&_summary]:[font-family:inherit] [&_summary]:font-[350] [&_summary]:gap-20 [&_summary]:justify-between [&_summary]:list-none [&_summary]:list-outside [&_summary]:py-26 [&_summary]:px-0 [&_summary]:text-left [&_summary]:[transition:opacity_0.2s] [&_summary]:w-full [&_summary:hover]:opacity-[0.85] [&_summary::-webkit-details-marker]:hidden bg-soft border-b-0 [border-bottom-style:none] rounded-[1.6rem] mt-20 py-0 px-24 [&_summary]:text-[1.8rem] [&_ol]:grid [&_ol]:gap-18 [&_ol]:list-none [&_ol]:list-outside [&_ol]:pb-26 [&_strong]:text-[1.5rem] [&_strong]:font-[500] [&_li_p]:text-[1.6rem] [&_li_p]:leading-[1.5] [&_li_p]:mt-4 [&_li_p]:opacity-[0.8] text-[1.5rem] leading-[1.5] opacity-[0.75]">Isi pasal tidak dipublikasikan desa. Keaslian dokumen tetap bisa dicek lewat hash di atas.</p>

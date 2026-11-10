@@ -9,6 +9,7 @@ import Panel from '@/components/molecules/Panel'
 import { fmtDate } from '@/lib/dates/fmt-date'
 import Badge from '@/components/atoms/Badge'
 import Locked from '@/components/atoms/Locked'
+import SourceBadge from '@/components/atoms/SourceBadge'
 
 export default function AuditAiTab({ c, session }: TabProps) {
   const canApply = session.role.role === 'perangkat_desa' && isEditable(c)
@@ -20,7 +21,7 @@ export default function AuditAiTab({ c, session }: TabProps) {
           {c.versions.map((v) => (
             <li key={v.no}>
               <div>
-                <strong>Versi {v.no}</strong>
+                <strong>Versi {v.no} <SourceBadge source={v.source} /></strong>
                 <small>
                   {fmtDate(v.at)} · {v.audit.findings.filter((f) => !f.applied).length} temuan terbuka
                 </small>

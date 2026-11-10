@@ -1,11 +1,9 @@
 package usecase
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -227,107 +225,85 @@ func formatRupiah(amount float64) string {
 	return sb.String()
 }
 
-// RenderContractDraft menghasilkan draf teks SPK lengkap berlandaskan kaidah hukum kontrak pengadaan desa.
+// RenderContractDraft menghasilkan draf teks SPK lengkap berlandaskan kaidah hukum kontrak pengadaan desa (rule engine).
 func RenderContractDraft(p CreateContractDraftParams) (string, error) {
-	kades := strings.TrimSpace(p.KadesName)
-	if kades == "" {
-		kades = "Kepala Desa"
-	}
-	desa := strings.TrimSpace(p.VillageName)
-	if desa == "" {
-		desa = "Pemerintah Desa"
-	}
-	vendor := strings.TrimSpace(p.VendorName)
-	if vendor == "" {
-		vendor = "Pihak Kedua / Rekanan"
-	}
+	return ComposeContractText(p, RuleDraftClauses(p)), nil
+}
 
-	npwp := p.VendorNPWP
-	if npwp == "" {
-		npwp = "-"
-	}
-	alamat := p.VendorAddress
-	if alamat == "" {
-		alamat = "Sesuai domisili badan usaha"
-	}
-
-	lingkup, _ := p.JawabanForm["lingkup_pekerjaan"].(string)
-	if lingkup == "" {
-		lingkup = p.Judul
-	}
-	tenggatStr := p.Tenggat.Format("02 January 2006")
-	nowStr := time.Now().Format("02 January 2006")
-
-	skema := p.SkemaPembayaran
-	if skema == "" {
-		skema = "Sekaligus setelah pekerjaan selesai 100%"
-	}
-	metode := p.MetodePemilihan
-	if metode == "" {
-		metode = "Pengadaan Langsung"
-	}
-
+// ComposeContractText menyusun naskah lengkap: kepala SPK (identitas para pihak) + pasal + penutup.
+func ComposeContractText(p CreateContractDraftParams, clauses []domain.Clause) string {
+	p = withDraftDefaults(p)
 	var sb strings.Builder
 	sb.WriteString("================================================================================\n")
 	sb.WriteString("                  SURAT PERJANJIAN KERJA (SPK) PEMERINTAH DESA                  \n")
 	sb.WriteString("================================================================================\n\n")
 
 	sb.WriteString(fmt.Sprintf("TENTANG: %s\n", strings.ToUpper(p.Judul)))
-	sb.WriteString(fmt.Sprintf("JENIS KONTRAK: %s | METODE PEMILIHAN: %s\n\n", strings.ToUpper(string(p.Jenis)), strings.ToUpper(metode)))
+	sb.WriteString(fmt.Sprintf("JENIS KONTRAK: %s | METODE PEMILIHAN: %s\n\n", strings.ToUpper(string(p.Jenis)), strings.ToUpper(p.MetodePemilihan)))
 
-	sb.WriteString(fmt.Sprintf("Pada hari ini, tanggal %s, bertempat di Kantor Desa %s, kami yang bertanda tangan di bawah ini:\n\n", nowStr, desa))
+	sb.WriteString(fmt.Sprintf("Pada hari ini, tanggal %s, bertempat di Kantor Desa %s, kami yang bertanda tangan di bawah ini:\n\n", time.Now().Format("02 January 2006"), p.VillageName))
 
-	sb.WriteString(fmt.Sprintf("1. NAMA        : %s\n", kades))
-	sb.WriteString(fmt.Sprintf("   JABATAN     : Kepala Desa %s\n", desa))
+	sb.WriteString(fmt.Sprintf("1. NAMA        : %s\n", p.KadesName))
+	sb.WriteString(fmt.Sprintf("   JABATAN     : Kepala Desa %s\n", p.VillageName))
 	sb.WriteString("   ALAMAT      : Kantor Pemerintah Desa Setempat\n")
 	sb.WriteString("   Bertindak untuk dan atas nama Pemerintah Desa, selanjutnya disebut sebagai PIHAK PERTAMA.\n\n")
 
-	sb.WriteString(fmt.Sprintf("2. REKANAN     : %s\n", vendor))
-	sb.WriteString(fmt.Sprintf("   NPWP        : %s\n", npwp))
-	sb.WriteString(fmt.Sprintf("   ALAMAT      : %s\n", alamat))
+	sb.WriteString(fmt.Sprintf("2. REKANAN     : %s\n", p.VendorName))
+	sb.WriteString(fmt.Sprintf("   NPWP        : %s\n", p.VendorNPWP))
+	sb.WriteString(fmt.Sprintf("   ALAMAT      : %s\n", p.VendorAddress))
 	sb.WriteString("   Bertindak secara sah untuk dan atas nama badan usaha/pribadi, selanjutnya disebut sebagai PIHAK KEDUA.\n\n")
 
 	sb.WriteString("Kedua belah pihak secara bersama-sama telah sepakat mengikatkan diri dalam Perjanjian Kerja dengan ketentuan sebagai berikut:\n\n")
 
-	sb.WriteString("Pasal 1: RUANG LINGKUP PEKERJAAN\n")
-	sb.WriteString(fmt.Sprintf("PIHAK KEDUA berkewajiban melaksanakan dan menyelesaikan pekerjaan: %s, sesuai dengan rincian teknis dan penawaran yang telah disepakati.\n\n", lingkup))
-
-	sb.WriteString("Pasal 2: NILAI KONTRAK DAN PEMBIAYAAN\n")
-	sb.WriteString(fmt.Sprintf("1. Total nilai pekerjaan yang disepakati adalah sebesar %s (termasuk pajak sesuai ketentuan peraturan perundang-undangan yang berlaku).\n", formatRupiah(p.Nilai)))
-	sb.WriteString("2. Sumber pembiayaan dibebankan pada Anggaran Pendapatan dan Belanja Desa (APBDes) tahun anggaran berjalan.\n\n")
-
-	sb.WriteString("Pasal 3: JANGKA WAKTU PELAKSANAAN\n")
-	sb.WriteString(fmt.Sprintf("Pekerjaan wajib diselesaikan secara menyeluruh paling lambat tanggal %s, dibuktikan dengan Berita Acara Serah Terima (BAST).\n\n", tenggatStr))
-
-	sb.WriteString("Pasal 4: SISTEM DAN TATA CARA PEMBAYARAN\n")
-	sb.WriteString(fmt.Sprintf("1. Skema pembayaran dilaksanakan secara: %s.\n", skema))
-	sb.WriteString("2. Pembayaran ditransfer ke rekening resmi PIHAK KEDUA setelah verifikasi kelengkapan berkas fisik dan administrasi oleh Tim Pelaksana Kegiatan.\n\n")
-
-	sb.WriteString("Pasal 5: HAK DAN KEWAJIBAN\n")
-	sb.WriteString("1. PIHAK PERTAMA berhak menerima hasil pekerjaan sesuai spesifikasi dan berkewajiban melakukan pembayaran tepat waktu.\n")
-	sb.WriteString("2. PIHAK KEDUA berkewajiban menyelesaikan pekerjaan tepat waktu, tepat mutu, serta berhak menerima pembayaran sesuai termin.\n\n")
-
-	sb.WriteString("Pasal 6: JAMINAN PEMELIHARAAN DAN GARANSI\n")
-	sb.WriteString("PIHAK KEDUA memberikan jaminan pemeliharaan dan mutu atas hasil pekerjaan selama masa garansi terhitung sejak tanggal penandatanganan BAST.\n\n")
-
-	sb.WriteString("Pasal 7: SANKSI DAN DENDA KETERLAMBATAN\n")
-	sb.WriteString("Apabila terjadi keterlambatan penyelesaian pekerjaan yang disebabkan oleh kelalaian PIHAK KEDUA, maka dikenakan denda keterlambatan sebesar 1/1000 (satu permil) untuk setiap hari keterlambatan.\n\n")
-
-	sb.WriteString("Pasal 8: KLAUSUL INTEGRITAS DAN ANTI KORUPSI\n")
-	sb.WriteString("1. Para pihak berkomitmen menjunjung tinggi prinsip transparansi, akuntabilitas, serta bebas dari korupsi, kolusi, dan nepotisme.\n")
-	sb.WriteString("2. Dilarang keras menjanjikan, menawarkan, atau memberikan imbalan dalam bentuk apa pun (suap/gratifikasi) yang berkaitan dengan perjanjian ini.\n\n")
-
-	sb.WriteString("Pasal 9: KEADAAN KAHAR (FORCE MAJEURE)\n")
-	sb.WriteString("Keadaan kahar meliputi bencana alam, kebijakan moneter mendesak, atau huru-hara yang berada di luar kemampuan wajar para pihak untuk mencegahnya.\n\n")
-
-	sb.WriteString("Pasal 10: PENYELESAIAN PERSELISIHAN\n")
-	sb.WriteString("Segala perselisihan yang timbul dari pelaksanaan perjanjian ini akan diselesaikan secara musyawarah dan mufakat. Apabila musyawarah tidak tercapai, para pihak sepakat menyelesaikannya melalui Pengadilan Negeri setempat.\n\n")
+	sb.WriteString(ClausesToText(clauses))
 
 	sb.WriteString("Demikian Surat Perjanjian Kerja ini dibuat dalam rangkap 2 (dua) bermeterai cukup dan memiliki kekuatan hukum yang sama.\n\n")
 	sb.WriteString("PIHAK PERTAMA (Kepala Desa)                 PIHAK KEDUA (Rekanan)\n\n\n\n")
-	sb.WriteString(fmt.Sprintf("( %s )                                ( %s )\n", kades, vendor))
+	sb.WriteString(fmt.Sprintf("( %s )                                ( %s )\n", p.KadesName, p.VendorName))
+	return sb.String()
+}
 
-	return sb.String(), nil
+func withDraftDefaults(p CreateContractDraftParams) CreateContractDraftParams {
+	def := func(v, d string) string {
+		if v = strings.TrimSpace(v); v == "" {
+			return d
+		}
+		return v
+	}
+	p.KadesName = def(p.KadesName, "Kepala Desa")
+	p.VillageName = def(p.VillageName, "Pemerintah Desa")
+	p.VendorName = def(p.VendorName, "Pihak Kedua / Rekanan")
+	p.VendorNPWP = def(p.VendorNPWP, "-")
+	p.VendorAddress = def(p.VendorAddress, "Sesuai domisili badan usaha")
+	p.SkemaPembayaran = def(p.SkemaPembayaran, "Sekaligus setelah pekerjaan selesai 100%")
+	p.MetodePemilihan = def(p.MetodePemilihan, "Pengadaan Langsung")
+	return p
+}
+
+// RuleDraftClauses adalah pasal baku rule engine; dipakai saat DraftContract AI tidak tersedia.
+func RuleDraftClauses(p CreateContractDraftParams) []domain.Clause {
+	p = withDraftDefaults(p)
+	lingkup, _ := p.JawabanForm["lingkup_pekerjaan"].(string)
+	if lingkup == "" {
+		lingkup = p.Judul
+	}
+	isi := []struct{ judul, isi string }{
+		{"RUANG LINGKUP PEKERJAAN", fmt.Sprintf("PIHAK KEDUA berkewajiban melaksanakan dan menyelesaikan pekerjaan: %s, sesuai dengan rincian teknis dan penawaran yang telah disepakati.", lingkup)},
+		{"NILAI KONTRAK DAN PEMBIAYAAN", fmt.Sprintf("1. Total nilai pekerjaan yang disepakati adalah sebesar %s (termasuk pajak sesuai ketentuan peraturan perundang-undangan yang berlaku).\n2. Sumber pembiayaan dibebankan pada Anggaran Pendapatan dan Belanja Desa (APBDes) tahun anggaran berjalan.", formatRupiah(p.Nilai))},
+		{"JANGKA WAKTU PELAKSANAAN", fmt.Sprintf("Pekerjaan wajib diselesaikan secara menyeluruh paling lambat tanggal %s, dibuktikan dengan Berita Acara Serah Terima (BAST).", p.Tenggat.Format("02 January 2006"))},
+		{"SISTEM DAN TATA CARA PEMBAYARAN", fmt.Sprintf("1. Skema pembayaran dilaksanakan secara: %s.\n2. Pembayaran ditransfer ke rekening resmi PIHAK KEDUA setelah verifikasi kelengkapan berkas fisik dan administrasi oleh Tim Pelaksana Kegiatan.", p.SkemaPembayaran)},
+		{"HAK DAN KEWAJIBAN", "1. PIHAK PERTAMA berhak menerima hasil pekerjaan sesuai spesifikasi dan berkewajiban melakukan pembayaran tepat waktu.\n2. PIHAK KEDUA berkewajiban menyelesaikan pekerjaan tepat waktu, tepat mutu, serta berhak menerima pembayaran sesuai termin."},
+		{"JAMINAN PEMELIHARAAN DAN GARANSI", "PIHAK KEDUA memberikan jaminan pemeliharaan dan mutu atas hasil pekerjaan selama masa garansi terhitung sejak tanggal penandatanganan BAST."},
+		{"SANKSI DAN DENDA KETERLAMBATAN", "Apabila terjadi keterlambatan penyelesaian pekerjaan yang disebabkan oleh kelalaian PIHAK KEDUA, maka dikenakan denda keterlambatan sebesar 1/1000 (satu permil) untuk setiap hari keterlambatan."},
+		{"KLAUSUL INTEGRITAS DAN ANTI KORUPSI", "1. Para pihak berkomitmen menjunjung tinggi prinsip transparansi, akuntabilitas, serta bebas dari korupsi, kolusi, dan nepotisme.\n2. Dilarang keras menjanjikan, menawarkan, atau memberikan imbalan dalam bentuk apa pun (suap/gratifikasi) yang berkaitan dengan perjanjian ini."},
+		{"KEADAAN KAHAR (FORCE MAJEURE)", "Keadaan kahar meliputi bencana alam, kebijakan moneter mendesak, atau huru-hara yang berada di luar kemampuan wajar para pihak untuk mencegahnya."},
+		{"PENYELESAIAN PERSELISIHAN", "Segala perselisihan yang timbul dari pelaksanaan perjanjian ini akan diselesaikan secara musyawarah dan mufakat. Apabila musyawarah tidak tercapai, para pihak sepakat menyelesaikannya melalui Pengadilan Negeri setempat."},
+	}
+	out := make([]domain.Clause, len(isi))
+	for i, c := range isi {
+		out[i] = domain.Clause{KodePasal: fmt.Sprintf("P-%02d", i+1), Judul: c.judul, Isi: c.isi, Urutan: i + 1}
+	}
+	return out
 }
 
 type mandatoryRule struct {
@@ -364,41 +340,13 @@ func HashText(text string) string {
 	return hex.EncodeToString(h[:])
 }
 
-// RunAudit memakai AI Engine bila ada; bila gagal, jatuh ke rule auditor sehingga audit tetap nyata, bukan lolos otomatis.
-func RunAudit(ctx context.Context, ai AIEngine, contractText string) domain.AuditResult {
-	if ai != nil {
-		res, err := ai.AuditClauses(ctx, contractText)
-		if err == nil {
-			return res
-		}
-		slog.Warn("ai engine tidak tersedia, memakai rule auditor", "err", err)
-	}
-	score, fulfilled, total, summary, _ := AuditContractDraft(contractText)
-	return domain.AuditResult{Score: score, Fulfilled: fulfilled, Total: total, Summary: summary, Model: RuleAuditorModel, Findings: []domain.AuditFinding{}}
-}
-
 // AuditContractDraft melakukan audit kepatuhan klausul standar terhadap teks kontrak.
 func AuditContractDraft(contractText string) (score float64, fulfilled int, total int, summary string, hash string) {
 	rules := mandatoryRules
 
 	total = len(rules)
-	textLower := strings.ToLower(contractText)
-	var missingRules []string
-
-	for _, rule := range rules {
-		matched := false
-		for _, kw := range rule.Keywords {
-			if strings.Contains(textLower, kw) {
-				matched = true
-				break
-			}
-		}
-		if matched {
-			fulfilled++
-		} else {
-			missingRules = append(missingRules, rule.Name)
-		}
-	}
+	missingRules := missingMandatory(contractText)
+	fulfilled = total - len(missingRules)
 
 	score = (float64(fulfilled) / float64(total)) * 100.0
 
@@ -412,5 +360,23 @@ func AuditContractDraft(contractText string) (score float64, fulfilled int, tota
 	}
 
 	return score, fulfilled, total, summary, hash
+}
+
+func missingMandatory(contractText string) []string {
+	textLower := strings.ToLower(contractText)
+	var missing []string
+	for _, rule := range mandatoryRules {
+		matched := false
+		for _, kw := range rule.Keywords {
+			if strings.Contains(textLower, kw) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			missing = append(missing, rule.Name)
+		}
+	}
+	return missing
 }
 

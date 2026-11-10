@@ -1,3 +1,7 @@
 fastapi>=0.115,<1
 uvicorn[standard]>=0.34,<1
 httpx>=0.28,<1
+# Batas bawah mengikuti versi grpcio-tools yang membangkitkan app/gen/ (lihat scripts/gen_proto.sh).
+grpcio>=1.85.1,<2
+grpcio-health-checking>=1.85.1,<2
+protobuf>=7.35.1,<8

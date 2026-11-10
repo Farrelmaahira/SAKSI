@@ -33,6 +33,7 @@
 ### Task 1: Contract API Client (`frontend/src/lib/api/contracts.ts`)
 
 **Files:**
+
 - Create: `frontend/src/lib/api/contracts.ts`
 
 - [ ] Definisikan interface TypeScript untuk payload dan response:
@@ -61,6 +62,7 @@
 ### Task 2: Integrasi Wizard Pembuatan Kontrak (`BuatKontrakTemplate.tsx`)
 
 **Files:**
+
 - Modify: `frontend/src/components/organisms/BuatKontrakTemplate.tsx`
 
 - [ ] Muat opsi rekanan dari API `fetchCounterparties()` di Langkah 1 dengan fallback ke `counterpartyStore`.
@@ -75,6 +77,7 @@
 ### Task 3: Integrasi Daftar Kontrak (`KontrakListTemplate.tsx`)
 
 **Files:**
+
 - Modify: `frontend/src/components/organisms/KontrakListTemplate.tsx`
 
 - [ ] Gunakan `useEffect` untuk memuat daftar kontrak desa dari `fetchContractsAPI()`.
@@ -88,6 +91,7 @@
 ### Task 4: Integrasi Detail Kontrak & Lifecycle Tab (`KontrakDetailTemplate.tsx` & Tab)
 
 **Files:**
+
 - Modify: `frontend/src/components/organisms/KontrakDetailTemplate.tsx`
 - Modify: `frontend/src/components/organisms/TandaTanganTab.tsx`
 - Modify: `frontend/src/components/organisms/RingkasanTab.tsx`
@@ -103,6 +107,7 @@
 ### Task 5: Integrasi Dashboard Beranda (`DashHomeTemplate.tsx`)
 
 **Files:**
+
 - Modify: `frontend/src/components/organisms/DashHomeTemplate.tsx`
 
 - [ ] Muat metrik statistik riil menggunakan `fetchDashboardMetricsAPI()`.
@@ -122,4 +127,3 @@
   5. Login Kades -> TTD Kades -> Segel SHA-256 terbit otomatis.
 - [ ] Jalankan `cmd.exe /c "npx tsc --noEmit"` untuk memastikan 0 type errors.
 - [ ] Commit perubahan ke Git branch.
-

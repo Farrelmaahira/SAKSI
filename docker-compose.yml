@@ -20,6 +20,18 @@ services:
       timeout: 5s
       retries: 10
 
+  # Cache dan rate limit backend. Hanya untuk jaringan compose (port tidak dipublikasikan);
+  # akses manual: docker compose exec redis redis-cli. Cache bisa dibuang, jadi tanpa persistensi.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   backend:
     build: ./backend
     image: saksi-backend
@@ -28,14 +40,22 @@ services:
       - "8080:8080"
     environment:
       - SAKSI_SECRET=saksi-development-secret-key-min16chars
+      # development/local/test: token reset sandi ikut di respons dan log (belum ada email). Jangan dipakai di produksi.
+      - APP_ENV=development
       - PORT=8080
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/saksi?sslmode=disable
       - STORAGE_DIR=/data/files
+      # REST tetap sebagai cadangan selama gRPC belum terbukti di Azure.
       - AI_ENGINE_URL=http://ai-engine:8000
+      - AI_ENGINE_GRPC_ADDR=ai-engine:50051
+      # Kosongkan REDIS_URL untuk mematikan cache (aplikasi tetap jalan).
+      - REDIS_URL=redis://redis:6379/0
       - AI_API_KEY=${AI_API_KEY:-saksi-dev-ai-key}
       - WEB_ORIGIN=http://localhost:3000
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - saksi_storage_data:/data/files
@@ -51,9 +71,14 @@ services:
     env_file:
       - path: ./ai-engine/.env
         required: false
+    # gRPC (GRPC_PORT) hanya untuk jaringan compose. Untuk tes lokal dengan grpcurl,
+    # tambahkan "127.0.0.1:50051:50051" ke ports; jangan publikasikan ke 0.0.0.0.
+    expose:
+      - "50051"
     environment:
       # Ditimpa di sini agar selalu sama dengan kunci yang dipakai backend.
       - AI_API_KEY=${AI_API_KEY:-saksi-dev-ai-key}
+      - GRPC_PORT=50051
 
 volumes:
   saksi_postgres_data:

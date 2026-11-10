@@ -3,14 +3,18 @@ package aiengine
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"saksi-backend/internal/domain"
 	"saksi-backend/internal/usecase"
 )
 
-func TestAuditClauses(t *testing.T) {
+var sampleClauses = []domain.Clause{{KodePasal: "P-07", Judul: "Sanksi", Isi: "denda 1/1000", Urutan: 1}}
+
+func TestRESTAuditClauses(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/audit" || r.Header.Get("X-API-Key") != "k" {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -25,23 +29,26 @@ func TestAuditClauses(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res, err := NewClient(srv.URL+"/", "k").AuditClauses(context.Background(), "teks")
+	res, err := NewREST(srv.URL+"/", "k").AuditClauses(context.Background(), usecase.AuditInput{Clauses: sampleClauses})
 	if err != nil || res.Model != "groq/x" || res.Score != 50 || len(res.Findings) != 1 {
 		t.Fatalf("hasil salah: %+v, err=%v", res, err)
 	}
-	if _, err := NewClient(srv.URL, "salah").AuditClauses(context.Background(), "teks"); err == nil {
+	if _, err := NewREST(srv.URL, "salah").AuditClauses(context.Background(), usecase.AuditInput{Clauses: sampleClauses}); err == nil {
 		t.Fatal("api key salah harus error")
+	}
+	if _, err := NewREST(srv.URL, "k").RedactText(context.Background(), "x"); !errors.Is(err, usecase.ErrAIUnavailable) {
+		t.Fatal("redact lewat REST harus ErrAIUnavailable")
 	}
 }
 
-func TestRunAuditFallsBackToRules(t *testing.T) {
+func TestRESTDownIsUnavailable(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
 	defer srv.Close()
 
-	res := usecase.RunAudit(context.Background(), NewClient(srv.URL, "k"), "Pasal 7 sanksi denda 1/1000")
-	if res.Model != usecase.RuleAuditorModel || res.Total == 0 || res.Score == 100 {
-		t.Fatalf("AI gagal harus jatuh ke rule auditor, bukan lolos: %+v", res)
+	_, err := usecase.AuditText(context.Background(), NewREST(srv.URL, "k"), nil, "", "Pasal 7: Sanksi\ndenda 1/1000")
+	if !errors.Is(err, usecase.ErrAIUnavailable) || usecase.AIUnavailableMessage(err) != usecase.DefaultAIUnavailableMessage {
+		t.Fatalf("AI mati harus AI_UNAVAILABLE, bukan skor pengganti: %v", err)
 	}
 }

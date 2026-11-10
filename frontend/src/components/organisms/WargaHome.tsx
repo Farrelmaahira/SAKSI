@@ -9,44 +9,17 @@ import { greeting } from '@/lib/dash/greeting'
 import { notificationsFor } from '@/lib/notifications/notifications-for'
 import { useReadIds } from '@/lib/notifications/use-read-ids'
 import { villageById } from '@/lib/master/village-by-id'
-import { fetchMyReports, fetchPublicContracts, type CreatedReportResponse, type PublicContractSummary } from '@/lib/api/reports'
-import type { DReport, ReportFlow } from '@/interfaces/db'
+import type { PublicContractSummary } from '@/lib/api/reports'
+import { listReports } from '@/lib/api/list-reports'
+import { listPublicContracts } from '@/lib/api/list-public-contracts'
+import { toDReport } from '@/lib/api/to-dreport'
+import type { DReport } from '@/interfaces/db'
 import PageHead from '@/components/molecules/PageHead'
 import Stat from '@/components/molecules/Stat'
 import Panel from '@/components/molecules/Panel'
 import NotifList from '@/components/molecules/NotifList'
 import ReportMini from '@/components/molecules/ReportMini'
 import Btn from '@/components/atoms/Btn'
-
-function mapDbReport(r: CreatedReportResponse, email: string, name: string): DReport {
-  let flow: ReportFlow = 'baru'
-  if (r.status === 'diverifikasi') flow = 'diverifikasi'
-  else if (r.status === 'ditindaklanjuti') flow = 'ditindaklanjuti'
-  else if (r.status === 'diteruskan') flow = 'diteruskan'
-  else if (r.status === 'selesai' || r.status === 'ditolak') flow = 'ditutup'
-
-  return {
-    id: r.kodePelacakan,
-    contractCode: `SPK-1-${String(r.contractId).padStart(4, '0')}`,
-    category: r.kategori.replace(/_/g, ' '),
-    clause: 'Klausul Terkait',
-    text: r.deskripsi,
-    date: r.dibuatPada ? new Date(r.dibuatPada).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Hari ini',
-    reporter: 'Warga terverifikasi',
-    owner: email,
-    reporterName: name,
-    photos: r.attachments?.length || 0,
-    flow,
-    actions: (r.actions || []).map((a) => ({
-      id: String(a.id),
-      at: a.waktu,
-      by: a.aktorNama || 'BPD / Tim Pengawas',
-      role: 'bpd',
-      kind: 'klarifikasi',
-      text: a.catatan || a.tindakan,
-    })),
-  }
-}
 
 export default function WargaHome() {
   const { session } = useDash()
@@ -60,12 +33,12 @@ export default function WargaHome() {
     let active = true
     async function loadData() {
       const [reps, cnts] = await Promise.all([
-        fetchMyReports(),
-        fetchPublicContracts(),
+        listReports().then((r) => (r.ok ? r.data : [])),
+        listPublicContracts().then((r) => (r.ok ? r.data : [])),
       ])
       if (active) {
         if (reps && reps.length > 0) {
-          setReports(reps.map((r) => mapDbReport(r, session.email, session.name)))
+          setReports(reps.map((r) => toDReport(r)))
         }
         if (cnts) {
           setContracts(cnts)

@@ -1,9 +1,4 @@
 import json
-import os
-
-os.environ["AI_API_KEY"] = "test-key"
-os.environ["GROQ_API_KEY"] = "g"
-os.environ["GEMINI_API_KEY"] = "m"
 
 import httpx
 import pytest
@@ -11,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app import audit
 from app.main import app
+from conftest import fake
 
 client = TestClient(app)
 CHECKLIST = ["Sanksi dan Denda Keterlambatan", "Penyelesaian Perselisihan"]
@@ -25,16 +21,6 @@ def verdict(*items):
 GOOD = verdict(("Sanksi dan Denda Keterlambatan", True, "Pasal 7", None), ("Penyelesaian Perselisihan", False, None, "Belum ada."))
 
 
-def fake(responses):
-    """Mengganti pemanggilan penyedia: tiap penyedia mengembalikan teks atau melempar galat."""
-    async def call(name, system, user):
-        r = responses[name]
-        if isinstance(r, Exception):
-            raise r
-        return r, f"{name}/test"
-    return call
-
-
 def test_rejects_missing_key():
     assert client.post("/v1/audit", json=BODY).status_code == 401
 
@@ -42,13 +28,13 @@ def test_rejects_missing_key():
 def test_scores_and_findings(monkeypatch):
     monkeypatch.setattr(audit, "call_provider", fake({"groq": GOOD}))
     r = client.post("/v1/audit", json=BODY, headers=H).json()
-    assert (r["score"], r["fulfilled"], r["total"], r["model"]) == (50.0, 1, 2, "groq/test")
+    assert (r["score"], r["fulfilled"], r["total"], r["model"]) == (50.0, 1, 2, "groq:test")
     assert r["findings"] == [{"kodePasal": None, "tingkat": "kritis", "pesan": "Penyelesaian Perselisihan: Belum ada."}]
 
 
 def test_falls_back_to_gemini(monkeypatch):
     monkeypatch.setattr(audit, "call_provider", fake({"groq": httpx.ConnectTimeout("x"), "gemini": "```json\n" + GOOD + "\n```"}))
-    assert client.post("/v1/audit", json=BODY, headers=H).json()["model"] == "gemini/test"
+    assert client.post("/v1/audit", json=BODY, headers=H).json()["model"] == "gemini:test"
 
 
 def test_groq_quota_exhausted_switches_to_gemini(monkeypatch):
@@ -61,7 +47,7 @@ def test_groq_quota_exhausted_switches_to_gemini(monkeypatch):
     real = httpx.AsyncClient
     monkeypatch.setattr(audit.httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
     r = client.post("/v1/audit", json=BODY, headers=H)
-    assert r.status_code == 200 and r.json()["model"].startswith("gemini/")
+    assert r.status_code == 200 and r.json()["model"].startswith("gemini:")
 
 
 @pytest.mark.parametrize("bad", ["bukan json", verdict(("Sanksi dan Denda Keterlambatan", True, None, None))])

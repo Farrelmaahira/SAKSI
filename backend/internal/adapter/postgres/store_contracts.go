@@ -75,7 +75,7 @@ func (s *Store) CreateContractWithDetails(ctx context.Context, p usecase.CreateC
 	var contractID int64
 	var createdAt time.Time
 	status := "diaudit"
-	if p.IntegrityScore <= 0 {
+	if p.AuditModel == "" || p.IntegrityScore <= 0 {
 		status = "draf"
 	}
 
@@ -126,31 +126,38 @@ func (s *Store) CreateContractWithDetails(ctx context.Context, p usecase.CreateC
 		jawabanJSON = []byte("{}")
 	}
 
+	sumber := p.Sumber
+	if sumber != "manual" {
+		sumber = "ai"
+	}
 	var versionID int64
 	insertVersionQuery := `
 		INSERT INTO contract_versions (
 			contract_id, nomor_versi, jawaban_form, isi, sumber, dibuat_oleh, dibuat_pada
 		) VALUES (
-			$1, 1, $2, $3, 'ai', $4, now()
+			$1, 1, $2, $3, $4, $5, now()
 		) RETURNING id
 	`
-	err = tx.QueryRow(ctx, insertVersionQuery, contractID, jawabanJSON, p.IsiTeks, p.CreatedBy).Scan(&versionID)
+	err = tx.QueryRow(ctx, insertVersionQuery, contractID, jawabanJSON, p.IsiTeks, sumber, p.CreatedBy).Scan(&versionID)
 	if err != nil {
+		return domain.ContractDetail{}, err
+	}
+	if err := insertClauses(ctx, tx, versionID, p.Clauses); err != nil {
 		return domain.ContractDetail{}, err
 	}
 
 	// 4. Simpan tabel ai_audits
+	// AuditModel kosong = audit AI tidak tersedia saat dibuat; kontrak tetap draf tanpa baris ai_audits.
 	model := p.AuditModel
-	if model == "" {
-		model = usecase.RuleAuditorModel
-	}
 	var auditID int64
-	insertAuditQuery := `
+	if model != "" {
+		insertAuditQuery := `
 		INSERT INTO ai_audits (version_id, model, skor, status, dijalankan_pada)
 		VALUES ($1, $2, $3, 'selesai', now()) RETURNING id
 	`
-	if err := tx.QueryRow(ctx, insertAuditQuery, versionID, model, p.IntegrityScore).Scan(&auditID); err != nil {
-		return domain.ContractDetail{}, err
+		if err := tx.QueryRow(ctx, insertAuditQuery, versionID, model, p.IntegrityScore).Scan(&auditID); err != nil {
+			return domain.ContractDetail{}, err
+		}
 	}
 	for _, f := range p.AuditFindings {
 		if _, err := tx.Exec(ctx,
@@ -162,11 +169,12 @@ func (s *Store) CreateContractWithDetails(ctx context.Context, p usecase.CreateC
 	}
 
 	// 5. Simpan tabel contract_status_history
-	insertHistoryQuery := `
-		INSERT INTO contract_status_history (contract_id, status_ke, aktor_user_id, waktu)
-		VALUES ($1, $2, $3, now())
-	`
-	if _, err := tx.Exec(ctx, insertHistoryQuery, contractID, status, p.CreatedBy); err != nil {
+	if err := insertStatusHistory(ctx, tx, contractID, nil, status, p.CreatedBy); err != nil {
+		return domain.ContractDetail{}, err
+	}
+	if err := insertAuditLog(ctx, tx, p.CreatedBy, "contract.create", contractID, nil, map[string]any{
+		"status": status, "versionId": versionID, "sumber": sumber, "jumlahPasal": len(p.Clauses), "auditModel": model,
+	}, p.ActorIP); err != nil {
 		return domain.ContractDetail{}, err
 	}
 
@@ -188,6 +196,8 @@ func (s *Store) CreateContractWithDetails(ctx context.Context, p usecase.CreateC
 		NomorVersi:      1,
 		TeksKontrak:     p.IsiTeks,
 		JawabanForm:     p.JawabanForm,
+		Sumber:          sumber,
+		Clauses:         p.Clauses,
 		IntegrityScore:  p.IntegrityScore,
 		SHA256Hash:      p.SHA256Hash,
 		CreatedBy:       p.CreatedBy,

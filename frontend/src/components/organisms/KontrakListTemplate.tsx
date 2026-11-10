@@ -4,9 +4,10 @@ import { useDash } from '@/hooks/use-dash'
 import { db } from '@/lib/db/db'
 import { scopeContracts } from '@/lib/db/scope-contracts'
 import { useEffect, useMemo, useState } from 'react'
-import { fetchPublicContracts } from '@/lib/api/reports'
+import { listPublicContracts } from '@/lib/api/list-public-contracts'
 import type { KontrakFilter } from '@/interfaces/dash'
-import type { DContract } from '@/interfaces/db'
+import type { ContractStatus, DContract } from '@/interfaces/db'
+import type { TemplateKey } from '@/interfaces/drafting'
 import { nextStep } from '@/lib/db/next-step'
 import { groupOf } from '@/lib/dash/group-of'
 import { counterpartyById } from '@/lib/master/counterparty-by-id'
@@ -42,12 +43,12 @@ export default function KontrakListTemplate() {
   useEffect(() => {
     let active = true
     if (role.role === 'warga') {
-      fetchPublicContracts().then((res) => {
+      listPublicContracts().then((r) => (r.ok ? r.data : [])).then((res) => {
         if (active && res && res.length > 0) {
           const mapped: DContract[] = res.map((c) => ({
             code: c.nomor,
             title: c.judul,
-            template: (c.jenis as any) || 'pengadaan',
+            template: (c.jenis as TemplateKey) || 'pengadaan',
             counterpartyId: 'cp-maju',
             villageId: 'sukamaju',
             status: c.status === 'selesai' ? 'selesai' : 'berjalan',
@@ -85,7 +86,7 @@ export default function KontrakListTemplate() {
         if (active && apiList && apiList.length > 0) {
           const mapped: DContract[] = apiList.map((c) => {
             const rawStatus = c.status || 'diaudit'
-            const normalizedStatus: any =
+            const normalizedStatus: ContractStatus =
               rawStatus === 'ditandatangani'
                 ? 'ditandatangani'
                 : rawStatus === 'ditinjau'
@@ -99,7 +100,7 @@ export default function KontrakListTemplate() {
             return {
               code: c.contractNumber || `SKS-2026-${String(c.id).padStart(3, '0')}`,
               title: c.title,
-              template: (c.category as any) || 'pengadaan',
+              template: (c.category as TemplateKey) || 'pengadaan',
               counterpartyId: '1',
               villageId: 'sukamaju',
               status: normalizedStatus,

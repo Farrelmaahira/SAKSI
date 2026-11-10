@@ -1,3 +1,5 @@
+import type { ApiClause } from "@/interfaces/api";
+import type { ClauseSource } from "@/interfaces/drafting";
 import { getAuthToken } from "./reports";
 
 const API_BASE_URL =
@@ -41,20 +43,8 @@ export interface WizardPreviewPayload {
   tenggat: string;
   skemaPembayaran: string;
   metodePemilihan: string;
-  jawabanForm: Record<string, any>;
+  jawabanForm: Record<string, unknown>;
   drafTeksOverride?: string;
-}
-
-export interface WizardPreviewResponse {
-  judul: string;
-  jenis: string;
-  nilai: number;
-  teksDraf: string;
-  sha256Hash: string;
-  integrityScore: number;
-  mandatoryFulfilled: number;
-  totalMandatory: number;
-  summary: string;
 }
 
 export interface CreateContractPayload {
@@ -65,8 +55,10 @@ export interface CreateContractPayload {
   tenggat: string;
   skemaPembayaran: string;
   metodePemilihan: string;
-  jawabanForm: Record<string, any>;
+  jawabanForm: Record<string, unknown>;
   drafTeksOverride?: string;
+  sumber: ClauseSource;
+  clauses: ApiClause[];
 }
 
 export interface ContractDetailResponse {
@@ -84,7 +76,7 @@ export interface ContractDetailResponse {
   status: string;
   nomorVersi: number;
   teksKontrak?: string;
-  jawabanForm?: Record<string, any>;
+  jawabanForm?: Record<string, unknown>;
   integrityScore: number;
   sha256Hash: string;
   createdBy: number;
@@ -117,7 +109,7 @@ export interface ContractVersionItem {
   id: number;
   contractId: number;
   nomorVersi: number;
-  jawabanForm?: Record<string, any>;
+  jawabanForm?: Record<string, unknown>;
   isi: string;
   sumber: string;
   createdBy: number;
@@ -219,25 +211,6 @@ export async function fetchCounterparties(
   return [];
 }
 
-export async function previewContractWizard(
-  payload: WizardPreviewPayload,
-): Promise<WizardPreviewResponse | null> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/contracts/wizard/preview`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(),
-      },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) return await res.json();
-  } catch (err) {
-    console.warn("Failed to generate wizard preview:", err);
-  }
-  return null;
-}
-
 export async function createContractAPI(
   payload: CreateContractPayload,
 ): Promise<ContractDetailResponse | null> {
@@ -296,27 +269,6 @@ export async function fetchContractLifecycleAPI(
     if (res.ok) return await res.json();
   } catch (err) {
     console.warn(`Failed to fetch lifecycle for contract ${id}:`, err);
-  }
-  return null;
-}
-
-export async function reviseContractAPI(
-  id: number | string,
-  jawabanForm: Record<string, any>,
-  drafTeksOverride?: string,
-): Promise<ContractVersionItem | null> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/contracts/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(),
-      },
-      body: JSON.stringify({ jawabanForm, drafTeksOverride }),
-    });
-    if (res.ok) return await res.json();
-  } catch (err) {
-    console.error(`Failed to revise contract ${id}:`, err);
   }
   return null;
 }

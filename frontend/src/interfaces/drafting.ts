@@ -11,7 +11,9 @@ export interface Answers {
   method: string
 }
 
-export interface Clause { key: string; title: string; text: string; plain: string; legal: string }
+export interface Clause { key: string; title: string; text: string; plain: string; legal: string; legalReferenceId?: number }
+
+export type ClauseSource = 'ai' | 'manual'
 
 export interface Finding {
   id: string
