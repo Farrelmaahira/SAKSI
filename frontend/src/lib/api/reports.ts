@@ -16,6 +16,15 @@ export interface PublicContractDetail extends PublicContractSummary {
   klausulList: string[]
   integrityScore: number
   sha256Hash?: string
+  /* plan section 7.10: work and payment summary without notes or reporter names */
+  progres?: {
+    persenTerakhir: number
+    terakhirDilaporkan: string | null
+    spkMulai: string | null
+    spkSelesai: string | null
+    persenDibayar: number
+    termin: { urutan: number; persen: number; status: string; jatuhTempo: string }[] | null
+  } | null
 }
 
 export interface ReportAttachmentResponse {

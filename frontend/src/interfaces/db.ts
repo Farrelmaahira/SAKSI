@@ -19,7 +19,8 @@ export interface ContractSignatures { desa?: Signature; pihak?: Signature; meter
 
 export interface Seal { hash: string; at: string; prev: string | null; versionNo: number }
 
-export interface Term { no: number; label: string; percent: number; amount: number; planDate: string; paidDate?: string }
+/* apiId: payment_terms.id when the term comes from the server (needed to pay it) */
+export interface Term { no: number; label: string; percent: number; amount: number; planDate: string; paidDate?: string; apiId?: number; submitted?: boolean }
 
 export interface ProgressEntry { id: string; percent: number; note: string; at: string; by: string; role: RoleKey; photos: number }
 
@@ -57,6 +58,8 @@ export interface ReportAction { id: string; at: string; by: string; role: RoleKe
 
 export interface DReport {
   id: string
+  /* citizen_reports.id when the report comes from the API */
+  apiId?: number
   contractCode: string
   category: string
   clause: string

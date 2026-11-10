@@ -7,6 +7,9 @@ import { optionsFor } from '@/lib/dash/options-for'
 import { desaAnswered } from '@/lib/db/desa-answered'
 import type { ReportOption } from '@/interfaces/dash'
 import { reportAction } from '@/lib/db/report-action'
+import { addReportAction } from '@/lib/api/add-report-action'
+import { reportActionApi } from '@/data/report-action-api'
+import FormAlert from '@/components/atoms/FormAlert'
 import FlowBadge from '@/components/atoms/FlowBadge'
 import { reportDate } from '@/lib/db/report-date'
 import Icon from '@/components/atoms/Icon'
@@ -15,19 +18,28 @@ import { placeholderFor } from '@/data/dash'
 import Btn from '@/components/atoms/Btn'
 import ReportThread from '@/components/molecules/ReportThread'
 
-/* readOnly: a server report; follow-up actions are not on the API yet, so none are offered */
-interface Props { report: DReport; contract?: DContract; session: Session; readOnly?: boolean }
+/* onChanged: reload after a server action (POST /reports/{id}/actions); local demo reports change in the local store */
+interface Props { report: DReport; contract?: DContract; session: Session; onChanged?: () => void }
 
-export default function ReportCard({ report: r, contract, session, readOnly }: Props) {
+export default function ReportCard({ report: r, contract, session, onChanged }: Props) {
   const [text, setText] = useState('')
   const [hint, setHint] = useState<string | null>(null)
-  const options = readOnly ? [] : optionsFor(session, r)
+  const options = optionsFor(session, r).filter((o) => !r.apiId || reportActionApi[o.kind])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const waitingClarification = session.role.role === 'perangkat_desa' && r.actions.some((a) => a.kind === 'klarifikasi') && !desaAnswered(r)
 
-  const run = (o: ReportOption) => {
+  const run = async (o: ReportOption) => {
     const body = text.trim() || o.fallback || ''
     if (o.needsText && body.length < 5) return setHint('Tulis catatan singkat dulu, minimal 5 karakter.')
-    reportAction(r.id, o.kind, body, session)
+    if (r.apiId) {
+      setBusy(true)
+      setError('')
+      const res = await addReportAction(r.apiId, { ...reportActionApi[o.kind]!, catatan: body })
+      setBusy(false)
+      if (!res.ok) return setError(res.error)
+      onChanged?.()
+    } else reportAction(r.id, o.kind, body, session)
     setText('')
     setHint(null)
   }
@@ -83,9 +95,10 @@ export default function ReportCard({ report: r, contract, session, readOnly }: P
           </label>
           <textarea id={`note-${r.id}`} rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholderFor[session.role.role]} />
           {hint && <p className="text-red text-[1.35rem] not-italic">{hint}</p>}
+          {error && <FormAlert>{error}</FormAlert>}
           <div className="items-center flex flex-wrap gap-10">
             {options.map((o) => (
-              <Btn key={o.kind} variant={o.variant} small onClick={() => run(o)}>
+              <Btn key={o.kind} variant={o.variant} small onClick={() => run(o)} disabled={busy}>
                 {o.label}
               </Btn>
             ))}

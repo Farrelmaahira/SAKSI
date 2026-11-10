@@ -1,11 +1,6 @@
-import type { IllustrationName } from '@/data/illustrations'
-import type { Answers, Clause, TemplateKey } from '@/interfaces/drafting'
-import type { CounterpartyType } from '@/interfaces/master'
+import type { Answers, Clause, TemplateInfo, TemplateKey } from '@/interfaces/drafting'
 
-export const templates: Record<
-  TemplateKey,
-  { label: string; desc: string; art: IllustrationName; partyTypes: CounterpartyType[]; workLabel: string; workPlaceholder: string }
-> = {
+export const templates: Record<TemplateKey, TemplateInfo> = {
   pengadaan: {
     label: 'Pengadaan',
     desc: 'Membeli barang atau jasa, misalnya material bangunan.',

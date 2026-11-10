@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useDash } from '@/hooks/use-dash'
-import { db } from '@/lib/db/db'
 import { isClosed } from '@/lib/db/is-closed'
 import { greeting } from '@/lib/dash/greeting'
-import { notificationsFor } from '@/lib/notifications/notifications-for'
-import { useReadIds } from '@/lib/notifications/use-read-ids'
+import { useNotifications } from '@/hooks/use-notifications'
+import { toNotif } from '@/lib/notifications/to-notif'
 import { villageById } from '@/lib/master/village-by-id'
 import type { PublicContractSummary } from '@/lib/api/reports'
 import { listReports } from '@/lib/api/list-reports'
@@ -23,9 +22,9 @@ import Btn from '@/components/atoms/Btn'
 
 export default function WargaHome() {
   const { session } = useDash()
-  const d = db.use()
-  const read = useReadIds(session.userId)
-  const notifs = notificationsFor(session, d, [])
+  const server = useNotifications(session.userId)
+  const notifs = server.items.map(toNotif)
+  const read = server.items.filter((x) => x.dibaca).map((x) => `n:${x.id}`)
   const [reports, setReports] = useState<DReport[]>([])
   const [contracts, setContracts] = useState<PublicContractSummary[]>([])
 
@@ -69,7 +68,7 @@ export default function WargaHome() {
       </div>
       <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
         <Panel title="Notifikasi terbaru" action={<Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" href="/dashboard/notifikasi">Semua notifikasi</Link>}>
-          {notifs.length ? <NotifList items={notifs.slice(0, 4)} read={read} userId={session.userId} /> : <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">Belum ada kabar. Notifikasi muncul saat laporan Anda ditanggapi.</p>}
+          {notifs.length ? <NotifList items={notifs.slice(0, 4)} read={read} userId={session.userId} /> : <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">{server.status === 'error' ? server.error : server.status === 'ok' ? 'Belum ada kabar. Notifikasi muncul saat laporan Anda ditanggapi.' : 'Memuat notifikasi…'}</p>}
         </Panel>
         <Panel title="Laporan terakhir" action={<Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" href="/dashboard/laporan">Laporan saya</Link>}>
           {reports.length ? (

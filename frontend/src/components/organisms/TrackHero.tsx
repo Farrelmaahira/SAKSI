@@ -13,6 +13,8 @@ interface Props {
 }
 
 export default function TrackHero({ registry, input, onInput, onSearch, onOpen }: Props) {
+  // only a contract whose published detail is loaded carries its seal hash
+  const sample = registry.find((c) => c.hash)
   return (
     <section className="bg-ink text-white overflow-hidden pt-140 px-0 relative lg:pt-200 lg:px-0 page-hero pb-80 lg:pb-110">
       <HeroBg />
@@ -43,9 +45,9 @@ export default function TrackHero({ registry, input, onInput, onSearch, onOpen }
                 {c.code}
               </button>
             ))}
-            {registry[registry.length - 1].hash && (
-              <button type="button" onClick={() => onOpen(registry[registry.length - 1].hash.slice(0, 12))}>
-                hash {registry[registry.length - 1].hash.slice(0, 12)}
+            {sample && (
+              <button type="button" onClick={() => onOpen(sample.hash)}>
+                hash {sample.hash.slice(0, 12)}
               </button>
             )}
           </div>

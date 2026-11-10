@@ -23,6 +23,7 @@ export const roleLabels: Record<RoleKey, string> = {
   bpd: "BPD",
   inspektorat: "Inspektorat",
   warga: "Warga",
+  admin_daerah: "Admin Daerah",
 };
 
 export const roleArt: Record<RoleKey, IllustrationName> = {
@@ -31,6 +32,7 @@ export const roleArt: Record<RoleKey, IllustrationName> = {
   bpd: "data-reports_l2u3",
   inspektorat: "fingerprint_kdwq",
   warga: "online-community_3o0l",
+  admin_daerah: "fingerprint_kdwq",
 };
 
 export const seedAccounts: SeedAccount[] = [

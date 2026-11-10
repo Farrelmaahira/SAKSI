@@ -371,6 +371,8 @@ Token acak 32 byte (base64url), yang disimpan hanya SHA-256-nya, berlaku 30 meni
 
 `GET /contracts/{id}/reports` (kades, perangkat_desa, bpd, inspektorat) sudah ada dan tidak berubah: 200 `[CitizenReport]`, 403 untuk desa lain, 404 bila kontrak tidak ada.
 
+`GET /reports/{id}` (diubah 2026-11-10): cakupan sama dengan `/reports/{id}/actions` (warga: laporan sendiri; kades/perangkat_desa/bpd: desanya; inspektorat: wilayahnya; penyedia: kontraknya). Di luar cakupan dijawab **404 `NOT_FOUND`** (sebelumnya warga lain 403, petugas desa lain bisa membaca). Untuk kades/perangkat_desa/penyedia, nama pelapor di `pelaporNama` dan di aksi awal disamarkan.
+
 `POST /reports` (laporan warga): `deskripsi` minimal 15 dan **maksimal 5000 karakter**, `kategori` maksimal 255. Tidak ada kolom pasal/lokasi teks; FE menggabungkan `"[pasal] teks - Lokasi: x"` ke `deskripsi`, dan itu diterima. Laporan baru mengirim notifikasi `laporan_baru` ke pembuat kontrak (tanpa identitas pelapor).
 
 ### 7.10 Portal publik (keputusan PM 2026-11-10)
@@ -398,3 +400,9 @@ Aturan status (`citizen_reports.status`):
 - `tindakan: "selesai"` → `selesai` dari status terbuka mana pun.
 - `tindakan: "eskalasi"` → `diteruskan` (`diteruskanKeRole` `bpd`/`inspektorat`, default `inspektorat`); ditolak bila sudah `diteruskan`. Inspektorat tidak bisa eskalasi.
 - `tindakan: "klarifikasi"` tanpa `status`: `diterima` → `diverifikasi`, status lain tetap (catatan saja). Dengan `status`: `diterima` → `diverifikasi`/`ditolak`; `diverifikasi` → `ditindaklanjuti`/`ditolak`; `diteruskan` → `ditindaklanjuti`/`ditolak`.
+
+### 7.12 Operasional (2026-11-10)
+
+- `SAKSI_SECRET` wajib (min. 16 karakter, sama di semua replika) kecuali `APP_ENV` = `development`/`local`/`test`; tanpa itu API berhenti saat start dengan log error. Minimal 16 karena panjang secret Azure belum dicek; naikkan ke 32 setelah dicek.
+- Akun demo halaman login dibuat oleh `backend/scripts/seed_demo.sql` (idempoten, sandi `saksi123` bcrypt asli): `kades@saksi.id`, `penyedia@saksi.id` (CV Maju Bersama), `bpd@saksi.id`, `inspektorat@saksi.id` (2 wilayah: Banyumas + Purbalingga), `warga@saksi.id`, `budi.santoso@warga.id`. Alias email lama di `UserByEmail` (kades@saksi.id → kades.sukamaju@desa.id, dst.) dihapus.
+- `docker-compose.yml` sekarang memuat `compat_datetime.sql` → `SAKSI.sql` → `seed_villages.sql` → `seed_demo.sql` (volume kosong saja). `scripts/seed.sql` lama dihapus.

@@ -1,0 +1,22 @@
+import { useEffect, useState } from 'react'
+import type { SealedContract } from '@/interfaces/contract'
+import { listPublicContracts } from '@/lib/api/list-public-contracts'
+import { toSealedContract } from '@/lib/api/to-sealed-contract'
+
+/* Published contracts the citizen may report on; registry stays null while loading. */
+export function usePublishedContracts() {
+  const [registry, setRegistry] = useState<SealedContract[] | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let active = true
+    listPublicContracts().then((r) => {
+      if (!active) return
+      if (r.ok) setRegistry(r.data.map(toSealedContract))
+      else setError(r.error)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+  return { registry, error }
+}

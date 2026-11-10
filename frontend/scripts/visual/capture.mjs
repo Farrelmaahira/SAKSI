@@ -122,6 +122,8 @@ async function runTask(browser, task) {
     Math.random = () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296 }
     if (session) localStorage.setItem('saksi:session-v2', JSON.stringify(session))
   }, s.session ? SESSIONS[s.session] : null)
+  // the real backend is slow and changes over time; refusing it makes the app use its local fallback, so runs stay repeatable
+  await ctx.route(/azurewebsites\.net|localhost:8080/, (r) => r.abort())
   const page = await ctx.newPage()
   await page.clock.setFixedTime(FIXED_TIME)
   const dir = path.join(out, s.id, String(vw))

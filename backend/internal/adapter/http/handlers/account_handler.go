@@ -181,7 +181,7 @@ func HandleForgotPassword(d *Deps) http.HandlerFunc {
 		}
 		resp := ForgotPasswordResponse{Message: forgotMsg}
 		u, err := d.Store.UserByEmail(r.Context(), email)
-		// UserByEmail punya alias akun demo; hanya email yang persis sama yang diproses.
+		// Pengaman: hanya email yang persis sama yang diproses.
 		if err == nil && strings.EqualFold(u.Email, email) {
 			plain, hash, err := usecase.NewResetToken()
 			if err == nil {

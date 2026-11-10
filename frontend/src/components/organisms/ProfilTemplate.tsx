@@ -12,7 +12,7 @@ import ProfilWarga from '@/components/organisms/ProfilWarga'
 export default function ProfilTemplate() {
   const { session } = useDash()
   const r = session.role.role
-  const title = { perangkat_desa: 'Profil desa', pihak_kedua: 'Profil usaha', bpd: 'Profil', inspektorat: 'Profil', warga: 'Profil' }[r]
+  const title = { perangkat_desa: 'Profil desa', pihak_kedua: 'Profil usaha', bpd: 'Profil', inspektorat: 'Profil', warga: 'Profil', admin_daerah: 'Profil' }[r]
   return (
     <>
       <PageHead label="Profil" title={title} desc={`${roleLabels[r]} · ${wilayahLabel(session.role)}`} />

@@ -85,34 +85,8 @@ export const tabsFor: Record<RoleKey, string[] | null> = {
   bpd: null,
   inspektorat: null,
   warga: ["ringkasan", "progres", "laporan", "riwayat"],
+  admin_daerah: ["ringkasan", "riwayat"],
 };
-
-export const rancanganPlans = {
-  lhp: {
-    role: "inspektorat",
-    label: "Uji petik dan LHP",
-    title: "Uji petik dan Laporan Hasil Pemeriksaan",
-    desc: "Inspektorat akan bisa memilih sampel kontrak, mencatat temuan lapangan, dan menerbitkan LHP yang terhubung ke kontrak dan laporan warga.",
-    items: [
-      "Memilih sampel kontrak berdasarkan skor risiko",
-      "Formulir temuan lapangan dengan foto",
-      "Draf LHP dan rekomendasi tindak lanjut",
-      "Pemantauan tindak lanjut oleh desa",
-    ],
-  },
-  admin: {
-    role: null,
-    label: "Admin Daerah",
-    title: "Admin Daerah",
-    desc: "Admin kabupaten akan mengelola akun perangkat desa, BPD, dan Inspektorat, serta aturan ambang pengadaan per wilayah.",
-    items: [
-      "Undangan akun resmi untuk desa, BPD, dan Inspektorat",
-      "Pengaturan ambang pengadaan langsung",
-      "Pustaka pasal dan dasar hukum",
-      "Rekap kabupaten",
-    ],
-  },
-} as const;
 
 export const whoLabel = {
   perangkat_desa: "Perangkat desa",
@@ -120,4 +94,5 @@ export const whoLabel = {
   bpd: "BPD",
   inspektorat: "Inspektorat",
   warga: "Warga",
+  admin_daerah: "Admin daerah",
 };

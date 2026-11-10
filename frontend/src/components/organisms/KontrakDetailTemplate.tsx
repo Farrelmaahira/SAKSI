@@ -36,7 +36,8 @@ export default function KontrakDetailTemplate() {
   const router = useRouter()
   const pathname = usePathname()
   const [dbContract, setDbContract] = useState<DContract | null>(null)
-  const scopedC = scopeContracts(d, session.role).find((x) => x.code === code)
+  // links from the API (notifications, termin) use the server id instead of the local code
+  const scopedC = scopeContracts(d, session.role).find((x) => x.code === code || String(x.apiId) === code)
 
   useEffect(() => {
     if (session.role.role === 'warga' && !scopedC) {

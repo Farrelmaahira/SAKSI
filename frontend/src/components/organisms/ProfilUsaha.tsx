@@ -2,12 +2,16 @@
 
 import { useDash } from '@/hooks/use-dash'
 import { counterpartyStore } from '@/lib/master/counterparty-store'
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { updateCounterparty } from '@/lib/master/update-counterparty'
 import { addAudit } from '@/lib/audit/add-audit'
 import Panel from '@/components/molecules/Panel'
 import Notice from '@/components/molecules/Notice'
 import Btn from '@/components/atoms/Btn'
+import FormAlert from '@/components/atoms/FormAlert'
+import { getMe } from '@/lib/api/get-me'
+import { updateMe } from '@/lib/api/update-me'
+import { apiUserId } from '@/lib/auth/api-user-id'
 
 export default function ProfilUsaha() {
   const { session } = useDash()
@@ -15,13 +19,40 @@ export default function ProfilUsaha() {
   const cp = parties.find((p) => p.id === session.role.counterpartyId)
   const [form, setForm] = useState({ name: cp?.name ?? '', contact: cp?.contact ?? '', npwp: cp?.npwp ?? '', address: cp?.address ?? '' })
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  if (!cp) return null
+  // API accounts: the business comes from GET /auth/me (usaha) and is saved with PUT /auth/me
+  const onServer = apiUserId(session.userId) > 0
+  const [server, setServer] = useState<{ type: string; error: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    if (!onServer) return
+    let active = true
+    getMe().then((r) => {
+      if (!active) return
+      if (!r.ok) return setServer({ type: '', error: r.error })
+      const u = r.data.usaha
+      setServer({ type: u?.jenis ?? '', error: u ? '' : 'Akun ini belum terhubung ke data usaha di server.' })
+      if (u) setForm((f) => ({ ...f, name: u.nama, npwp: u.npwp ?? '', address: u.alamat ?? '' }))
+    })
+    return () => {
+      active = false
+    }
+  }, [onServer])
+  if (onServer && !server) return <Panel title="Profil usaha"><p className="text-[1.4rem] text-dim" role="status">Memuat profil usaha…</p></Panel>
+  if (onServer && server?.error) return <Panel title="Profil usaha"><FormAlert>{server.error}</FormAlert></Panel>
+  if (!onServer && !cp) return null
 
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault()
     if (form.name.trim().length < 3) return setMsg({ ok: false, text: 'Nama usaha minimal 3 huruf.' })
     if (form.npwp && !/^[\d.-]{15,20}$/.test(form.npwp.trim())) return setMsg({ ok: false, text: 'Format NPWP belum benar. Contoh: 01.234.567.8-405.000' })
     if (form.address.trim().length < 5) return setMsg({ ok: false, text: 'Alamat terlalu pendek.' })
+    if (onServer) {
+      setBusy(true)
+      const r = await updateMe({ usaha: { nama: form.name.trim(), npwp: form.npwp.trim() || undefined, alamat: form.address.trim() } })
+      setBusy(false)
+      return setMsg(r.ok ? { ok: true, text: 'Profil usaha tersimpan. Kontrak baru memakai data ini.' } : { ok: false, text: r.error })
+    }
+    if (!cp) return
     updateCounterparty(cp.id, { name: form.name.trim(), contact: form.contact.trim(), npwp: form.npwp.trim() || undefined, address: form.address.trim() })
     addAudit({ actor: session.name, role: 'Pihak Kedua', action: 'Memperbarui profil usaha', detail: form.name.trim() })
     setMsg({ ok: true, text: 'Profil usaha tersimpan. Kontrak baru memakai data ini.' })
@@ -37,11 +68,12 @@ export default function ProfilUsaha() {
           </label>
           <label className="[.d-form>&]:w-full border-0 border-none grid gap-6 min-w-0 [&>span]:text-[1.25rem] [&>span]:tracking-[0.04em] [&>span]:text-dim [&>span]:uppercase [&>legend]:text-[1.25rem]! [&>legend]:tracking-[0.04em]! [&>legend]:text-dim! [&>legend]:uppercase! [&>legend]:mb-6 [&_input:not([type='range'])]:bg-white [&_input:not([type='range'])]:border-[0.15rem] [&_input:not([type='range'])]:border-[#d6d6d2] [&_input:not([type='range'])]:border-solid [&_input:not([type='range'])]:rounded-[1.2rem] [&_input:not([type='range'])]:text-ink [&_input:not([type='range'])]:text-[1.5rem] [&_input:not([type='range'])]:min-h-48 [&_input:not([type='range'])]:[outline:none] [&_input:not([type='range'])]:py-10 [&_input:not([type='range'])]:px-14 [&_input:not([type='range'])]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_input:not([type='range'])]:w-full [&_select]:bg-white [&_select]:border-[0.15rem] [&_select]:border-[#d6d6d2] [&_select]:border-solid [&_select]:rounded-[1.2rem] [&_select]:text-ink! [&_select]:text-[1.5rem]! [&_select]:min-h-48 [&_select]:[outline:none] [&_select]:py-10 [&_select]:px-14 [&_select]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_select]:w-full [&_textarea]:bg-white! [&_textarea]:border-[0.15rem]! [&_textarea]:border-[#d6d6d2]! [&_textarea]:border-solid! [&_textarea]:rounded-[1.2rem]! [&_textarea]:text-ink! [&_textarea]:text-[1.5rem]! [&_textarea]:min-h-48! [&_textarea]:[outline:none]! [&_textarea]:py-10! [&_textarea]:px-14! [&_textarea]:[transition:border-color_0.2s,_box-shadow_0.2s]! [&_textarea]:w-full! [&_textarea]:leading-[1.5] [&_textarea]:resize-y [&_input:focus]:border-blue! [&_input:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)] [&_select:focus]:border-blue! [&_select:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)]! [&_textarea:focus]:border-blue! [&_textarea:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)]! [&_input[readonly]]:bg-soft! [&_input[readonly]]:text-dim! [&_input[type='range']]:[accent-color:var(--color-blue)] [&_input[type='range']]:w-full! [&_select]:appearance-none [&_select]:[background-image:linear-gradient(45deg,_transparent_50%,_currentColor_50%),_linear-gradient(135deg,_currentColor_50%,_transparent_50%)]! [&_select]:[background-position:calc(100%_-_2.4rem)_50%,_calc(100%_-_1.9rem)_50%]! [&_select]:[background-repeat:no-repeat]! [&_select]:[background-size:0.55rem_0.55rem]! [&_select]:pr-46! [&_select]:text-ellipsis">
             <span>Tipe</span>
-            <input value={cp.type} readOnly aria-readonly="true" />
+            <input value={onServer ? server?.type ?? '' : cp?.type ?? ''} readOnly aria-readonly="true" />
           </label>
           <label className="[.d-form>&]:w-full border-0 border-none grid gap-6 min-w-0 [&>span]:text-[1.25rem] [&>span]:tracking-[0.04em] [&>span]:text-dim [&>span]:uppercase [&>legend]:text-[1.25rem]! [&>legend]:tracking-[0.04em]! [&>legend]:text-dim! [&>legend]:uppercase! [&>legend]:mb-6 [&_input:not([type='range'])]:bg-white [&_input:not([type='range'])]:border-[0.15rem] [&_input:not([type='range'])]:border-[#d6d6d2] [&_input:not([type='range'])]:border-solid [&_input:not([type='range'])]:rounded-[1.2rem] [&_input:not([type='range'])]:text-ink [&_input:not([type='range'])]:text-[1.5rem] [&_input:not([type='range'])]:min-h-48 [&_input:not([type='range'])]:[outline:none] [&_input:not([type='range'])]:py-10 [&_input:not([type='range'])]:px-14 [&_input:not([type='range'])]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_input:not([type='range'])]:w-full [&_select]:bg-white [&_select]:border-[0.15rem] [&_select]:border-[#d6d6d2] [&_select]:border-solid [&_select]:rounded-[1.2rem] [&_select]:text-ink! [&_select]:text-[1.5rem]! [&_select]:min-h-48 [&_select]:[outline:none] [&_select]:py-10 [&_select]:px-14 [&_select]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_select]:w-full [&_textarea]:bg-white! [&_textarea]:border-[0.15rem]! [&_textarea]:border-[#d6d6d2]! [&_textarea]:border-solid! [&_textarea]:rounded-[1.2rem]! [&_textarea]:text-ink! [&_textarea]:text-[1.5rem]! [&_textarea]:min-h-48! [&_textarea]:[outline:none]! [&_textarea]:py-10! [&_textarea]:px-14! [&_textarea]:[transition:border-color_0.2s,_box-shadow_0.2s]! [&_textarea]:w-full! [&_textarea]:leading-[1.5] [&_textarea]:resize-y [&_input:focus]:border-blue! [&_input:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)] [&_select:focus]:border-blue! [&_select:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)]! [&_textarea:focus]:border-blue! [&_textarea:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)]! [&_input[readonly]]:bg-soft! [&_input[readonly]]:text-dim! [&_input[type='range']]:[accent-color:var(--color-blue)] [&_input[type='range']]:w-full! [&_select]:appearance-none [&_select]:[background-image:linear-gradient(45deg,_transparent_50%,_currentColor_50%),_linear-gradient(135deg,_currentColor_50%,_transparent_50%)]! [&_select]:[background-position:calc(100%_-_2.4rem)_50%,_calc(100%_-_1.9rem)_50%]! [&_select]:[background-repeat:no-repeat]! [&_select]:[background-size:0.55rem_0.55rem]! [&_select]:pr-46! [&_select]:text-ellipsis">
             <span>Penanggung jawab</span>
-            <input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+            <input value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} disabled={onServer} />
+            {onServer && <small className="text-[1.3rem] leading-[1.5] text-dim">Belum disimpan di server SAKSI.</small>}
           </label>
           <label className="[.d-form>&]:w-full border-0 border-none grid gap-6 min-w-0 [&>span]:text-[1.25rem] [&>span]:tracking-[0.04em] [&>span]:text-dim [&>span]:uppercase [&>legend]:text-[1.25rem]! [&>legend]:tracking-[0.04em]! [&>legend]:text-dim! [&>legend]:uppercase! [&>legend]:mb-6 [&_input:not([type='range'])]:bg-white [&_input:not([type='range'])]:border-[0.15rem] [&_input:not([type='range'])]:border-[#d6d6d2] [&_input:not([type='range'])]:border-solid [&_input:not([type='range'])]:rounded-[1.2rem] [&_input:not([type='range'])]:text-ink [&_input:not([type='range'])]:text-[1.5rem] [&_input:not([type='range'])]:min-h-48 [&_input:not([type='range'])]:[outline:none] [&_input:not([type='range'])]:py-10 [&_input:not([type='range'])]:px-14 [&_input:not([type='range'])]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_input:not([type='range'])]:w-full [&_select]:bg-white [&_select]:border-[0.15rem] [&_select]:border-[#d6d6d2] [&_select]:border-solid [&_select]:rounded-[1.2rem] [&_select]:text-ink! [&_select]:text-[1.5rem]! [&_select]:min-h-48 [&_select]:[outline:none] [&_select]:py-10 [&_select]:px-14 [&_select]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_select]:w-full [&_textarea]:bg-white! [&_textarea]:border-[0.15rem]! [&_textarea]:border-[#d6d6d2]! [&_textarea]:border-solid! [&_textarea]:rounded-[1.2rem]! [&_textarea]:text-ink! [&_textarea]:text-[1.5rem]! [&_textarea]:min-h-48! [&_textarea]:[outline:none]! [&_textarea]:py-10! [&_textarea]:px-14! [&_textarea]:[transition:border-color_0.2s,_box-shadow_0.2s]! [&_textarea]:w-full! [&_textarea]:leading-[1.5] [&_textarea]:resize-y [&_input:focus]:border-blue! [&_input:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)] [&_select:focus]:border-blue! [&_select:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)]! [&_textarea:focus]:border-blue! [&_textarea:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)]! [&_input[readonly]]:bg-soft! [&_input[readonly]]:text-dim! [&_input[type='range']]:[accent-color:var(--color-blue)] [&_input[type='range']]:w-full! [&_select]:appearance-none [&_select]:[background-image:linear-gradient(45deg,_transparent_50%,_currentColor_50%),_linear-gradient(135deg,_currentColor_50%,_transparent_50%)]! [&_select]:[background-position:calc(100%_-_2.4rem)_50%,_calc(100%_-_1.9rem)_50%]! [&_select]:[background-repeat:no-repeat]! [&_select]:[background-size:0.55rem_0.55rem]! [&_select]:pr-46! [&_select]:text-ellipsis">
             <span>NPWP (opsional)</span>
@@ -53,7 +85,7 @@ export default function ProfilUsaha() {
           </label>
         </div>
         <Notice msg={msg} />
-        <Btn type="submit">Simpan profil usaha</Btn>
+        <Btn type="submit" disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan profil usaha'}</Btn>
       </form>
     </Panel>
   )

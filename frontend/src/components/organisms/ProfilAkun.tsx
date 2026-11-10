@@ -4,6 +4,10 @@ import { useDash } from '@/hooks/use-dash'
 import { FormEvent, useState } from 'react'
 import { updateName } from '@/lib/auth/update-name'
 import { changePassword } from '@/lib/auth/change-password'
+import { changePassword as changePasswordApi } from '@/lib/api/change-password'
+import { updateMe } from '@/lib/api/update-me'
+import { checkPassword } from '@/lib/auth/check-password'
+import { apiUserId } from '@/lib/auth/api-user-id'
 import Panel from '@/components/molecules/Panel'
 import Notice from '@/components/molecules/Notice'
 import Btn from '@/components/atoms/Btn'
@@ -19,15 +23,30 @@ export default function ProfilAkun() {
   const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const saveName = (e: FormEvent) => {
+  // API accounts save to PUT /auth/me and POST /auth/password/change; the local session only follows a confirmed save
+  const onServer = apiUserId(session.userId) > 0
+  const saveName = async (e: FormEvent) => {
     e.preventDefault()
+    if (onServer) {
+      const clean = name.trim().replace(/\s+/g, ' ')
+      if (clean.length < 3) return setNameMsg({ ok: false, text: 'Nama minimal 3 huruf.' })
+      setBusy(true)
+      const res = await updateMe({ nama: clean })
+      setBusy(false)
+      if (!res.ok) return setNameMsg({ ok: false, text: res.error })
+    }
     const r = updateName(name)
     setNameMsg(r.ok ? { ok: true, text: 'Nama tersimpan.' } : { ok: false, text: r.error })
   }
   const savePw = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
-    const r = await changePassword(pw.current, pw.next, pw.confirm)
+    let r: { ok: true } | { ok: false; error: string }
+    if (onServer) {
+      const check = checkPassword(pw.next, pw.confirm)
+      const res = check.ok ? await changePasswordApi(pw.current, pw.next) : null
+      r = !check.ok ? check : res!.ok ? { ok: true } : { ok: false, error: res!.code === 'WRONG_PASSWORD' ? 'Kata sandi saat ini salah.' : res!.error }
+    } else r = await changePassword(pw.current, pw.next, pw.confirm)
     setBusy(false)
     if (r.ok) setPw({ current: '', next: '', confirm: '' })
     setPwMsg(r.ok ? { ok: true, text: 'Kata sandi diperbarui.' } : { ok: false, text: r.error })
@@ -47,7 +66,7 @@ export default function ProfilAkun() {
             <small className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">Email dipakai untuk masuk dan tidak bisa diubah di prototipe.</small>
           </label>
           <Notice msg={nameMsg} />
-          <Btn type="submit" disabled={name.trim() === session.name}>
+          <Btn type="submit" disabled={busy || name.trim() === session.name}>
             Simpan nama
           </Btn>
         </form>

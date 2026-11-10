@@ -37,6 +37,8 @@ export interface Contract {
   code: string;
   /* backend contracts.id when the contract comes from the API (public registry); absent for seed and simulation contracts */
   apiId?: number;
+  /* share of the contract value already paid (server progres.persenDibayar) */
+  paidPercent?: number;
   type: string;
   title: string;
   village: string;

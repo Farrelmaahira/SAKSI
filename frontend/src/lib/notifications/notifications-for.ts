@@ -1,6 +1,5 @@
 import type { Session } from '@/interfaces/auth'
 import type { Db } from '@/interfaces/db'
-import type { AuditLog } from '@/interfaces/audit'
 import type { Notif } from '@/interfaces/notifications'
 import { scopeContracts } from '@/lib/db/scope-contracts'
 import { scopeReports } from '@/lib/db/scope-reports'
@@ -10,25 +9,11 @@ import { desaAnswered } from '@/lib/db/desa-answered'
 import { isActive } from '@/lib/db/is-active'
 import { daysUntil } from '@/lib/dates/days-until'
 import { fmtDate } from '@/lib/dates/fmt-date'
-import { scopeLogs } from '@/lib/db/scope-logs'
-import { myReports } from '@/lib/db/my-reports'
-import { wargaNotifTitle } from '@/data/db'
 
-/* A citizen is told when a report is received and each time someone handles it */
-function wargaNotifications(s: Session, d: Db): Notif[] {
-  const list: Notif[] = []
-  for (const x of myReports(d, s.email)) {
-    const sent = Date.parse(x.date)
-    list.push({ id: `rw:${x.id}`, kind: 'aktivitas', title: 'Laporan Anda diterima', text: `${x.id} · ${x.category}`, to: '/dashboard/laporan', at: Number.isNaN(sent) ? new Date().toISOString() : new Date(sent).toISOString(), tone: 'ink' })
-    for (const a of x.actions)
-      list.push({ id: `rw:${x.id}:${a.id}`, kind: 'aktivitas', title: wargaNotifTitle[a.kind], text: `${x.id} · ${a.text || x.category}`, to: '/dashboard/laporan', at: a.at, tone: a.kind === 'tanggapan' || a.kind === 'selesai' || a.kind === 'tindak_lanjut' ? 'blue' : 'ink' })
-  }
-  return list.sort((a, b) => b.at.localeCompare(a.at))
-}
-
-export function notificationsFor(s: Session, d: Db, logs: AuditLog[]): Notif[] {
+/* To-dos derived from the contracts on this device ("Perlu tindakan"). Activity comes from GET /notifications (notif-store). */
+export function notificationsFor(s: Session, d: Db): Notif[] {
   const r = s.role
-  if (r.role === 'warga') return wargaNotifications(s, d)
+  if (r.role === 'warga') return []
   const contracts = scopeContracts(d, r)
   const reports = scopeReports(d, r)
   const list: Notif[] = []
@@ -64,17 +49,6 @@ export function notificationsFor(s: Session, d: Db, logs: AuditLog[]): Notif[] {
         })
       }
   }
-
-  for (const l of scopeLogs(logs, r, d, s.name).filter((l) => l.actor !== s.name && l.action !== 'Masuk').slice(0, 12))
-    list.push({
-      id: `log:${l.id}`,
-      kind: 'aktivitas',
-      title: `${l.actor} ${l.action.charAt(0).toLowerCase()}${l.action.slice(1)}`,
-      text: [l.contractCode, l.detail].filter(Boolean).join(' · ') || l.role,
-      to: l.contractCode ? `/dashboard/kontrak/${l.contractCode}` : '/dashboard',
-      at: l.at,
-      tone: 'ink',
-    })
 
   return list.sort((a, b) => (a.kind === b.kind ? b.at.localeCompare(a.at) : a.kind === 'tindakan' ? -1 : 1))
 }

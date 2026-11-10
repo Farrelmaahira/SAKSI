@@ -1,6 +1,17 @@
-import type { Counterparty, Village } from '@/interfaces/master'
+import type { IllustrationName } from '@/data/illustrations'
+import type { Counterparty, CounterpartyType, Village } from '@/interfaces/master'
 
 export type TemplateKey = 'pengadaan' | 'hibah' | 'bumdes' | 'sewa'
+
+/* How a contract type is shown and asked about in the wizard. */
+export interface TemplateInfo {
+  label: string
+  desc: string
+  art: IllustrationName
+  partyTypes: CounterpartyType[]
+  workLabel: string
+  workPlaceholder: string
+}
 
 export interface Answers {
   work: string

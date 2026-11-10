@@ -17,6 +17,7 @@ export default function LaporanTab({ c, session }: TabProps) {
   const d = db.use()
   const role = session.role.role
   const [server, setServer] = useState<{ id: number; result: ApiResult<DReport[]> } | null>(null)
+  const [tick, setTick] = useState(0)
 
   // server contracts: officials get every report on the contract, a citizen only their own (GET /reports is scoped by role)
   useEffect(() => {
@@ -29,7 +30,7 @@ export default function LaporanTab({ c, session }: TabProps) {
     return () => {
       active = false
     }
-  }, [c.apiId, c.code, role])
+  }, [c.apiId, c.code, role, tick])
 
   // contracts that exist only on this device (demo seed) keep their local reports
   const result = c.apiId ? (server?.id === c.apiId ? server.result : null) : { ok: true as const, data: allReports(d).filter((r) => r.contractCode === c.code) }
@@ -43,7 +44,7 @@ export default function LaporanTab({ c, session }: TabProps) {
   return (
     <div className="grid gap-14">
       {visible.map((r) => (
-        <ReportCard key={r.id} report={r} contract={c} session={session} readOnly={Boolean(c.apiId)} />
+        <ReportCard key={r.id} report={r} contract={c} session={session} onChanged={() => setTick((t) => t + 1)} />
       ))}
     </div>
   )

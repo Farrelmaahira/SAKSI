@@ -25,6 +25,7 @@ const roleMap: Record<string, RoleKey> = {
   bpd: "bpd",
   inspektorat: "inspektorat",
   warga: "warga",
+  admin_daerah: "admin_daerah",
 };
 
 const titleMap: Record<RoleKey, string> = {
@@ -33,6 +34,7 @@ const titleMap: Record<RoleKey, string> = {
   bpd: "BPD",
   inspektorat: "Auditor Inspektorat",
   warga: "Pelapor",
+  admin_daerah: "Admin Daerah",
 };
 
 export async function login(

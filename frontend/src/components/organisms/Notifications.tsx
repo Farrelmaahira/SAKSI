@@ -2,7 +2,10 @@
 
 import type { Session } from '@/interfaces/auth'
 import { db } from '@/lib/db/db'
-import { auditStore } from '@/lib/audit/audit-store'
+import { useNotifications } from '@/hooks/use-notifications'
+import { notifStore } from '@/lib/notifications/notif-store'
+import { toNotif } from '@/lib/notifications/to-notif'
+import { markAnyRead } from '@/lib/notifications/mark-any-read'
 import { useReadIds } from '@/lib/notifications/use-read-ids'
 import { useCallback, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -18,7 +21,7 @@ interface Props { session: Session }
 
 export default function Notifications({ session }: Props) {
   const d = db.use()
-  const logs = auditStore.use()
+  const server = useNotifications(session.userId)
   const read = useReadIds(session.userId)
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
@@ -26,8 +29,11 @@ export default function Notifications({ session }: Props) {
   const [tab, setTab] = useState<Notif['kind']>(session.role.role === 'warga' ? 'aktivitas' : 'tindakan')
   const ref = useRef<HTMLDivElement>(null)
 
-  const all = notificationsFor(session, d, logs)
-  const unread = all.filter((n) => !read.includes(n.id))
+  // Perlu tindakan: derived on this device; Aktivitas: GET /notifications
+  const todos = notificationsFor(session, d)
+  const all = [...todos, ...server.items.map(toNotif)]
+  const seen = new Set([...read, ...server.items.filter((n) => n.dibaca).map((n) => `n:${n.id}`)])
+  const unread = all.filter((n) => !seen.has(n.id))
   const shown = all.filter((n) => n.kind === tab)
   const count = (k: Notif['kind']) => unread.filter((n) => n.kind === k).length
 
@@ -57,7 +63,10 @@ export default function Notifications({ session }: Props) {
         <div className="[animation:pop_0.2s_ease-out] bg-white border-[0.15rem] border-ink border-solid rounded-[1.6rem] [box-shadow:0.6rem_0.6rem_0_var(--color-ink)] grid grid-rows-[auto_auto_minmax(0,1fr)] left-12 max-h-[min(64rem,_calc(100svh_-_10rem))] fixed right-12 top-72 z-25 [&_header]:items-center [&_header]:flex [&_header]:justify-between [&_header]:pt-16 [&_header]:px-18 [&_header]:pb-10 [&_header_strong]:text-[1.8rem] [&_header_strong]:font-[420] [&_ul]:list-none [&_ul]:list-outside [&_ul]:overflow-y-auto [&_ul]:p-6! [&_li_a]:[align-items:start] [&_li_a]:rounded-[1.2rem] [&_li_a]:grid [&_li_a]:gap-12 [&_li_a]:grid-cols-[auto_minmax(0,1fr)_1rem] [&_li_a]:py-11 [&_li_a]:px-12 [&_li_a:hover]:bg-soft md:left-auto md:absolute md:-right-4 md:top-[calc(100%_+_1rem)] md:w-420 app-notif-panel" role="dialog" aria-label="Notifikasi">
           <header>
             <strong>Notifikasi</strong>
-            <button type="button" className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" disabled={!unread.length} onClick={() => markRead(session.userId, all.map((n) => n.id))}>
+            <button type="button" className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" disabled={!unread.length} onClick={() => {
+              markRead(session.userId, todos.map((n) => n.id))
+              if (server.unread) notifStore.readAll()
+            }}>
               Tandai semua dibaca
             </button>
           </header>
@@ -72,10 +81,10 @@ export default function Notifications({ session }: Props) {
           {shown.length ? (
             <ul>
               {shown.map((n) => {
-                const isNew = !read.includes(n.id)
+                const isNew = !seen.has(n.id)
                 return (
                   <li key={n.id}>
-                    <Link href={n.to} className={isNew ? 'is-new' : ''} onClick={() => markRead(session.userId, [n.id])}>
+                    <Link href={n.to} className={isNew ? 'is-new' : ''} onClick={() => markAnyRead(session.userId, n.id)}>
                       <span className={`items-center rounded-[50%] text-white flex h-32 justify-center w-32 [&.tone-blue]:bg-blue [&.tone-red]:bg-red! [&.tone-ink]:bg-ink! app-notif-mark tone-${n.tone}`} aria-hidden="true">
                         <Icon name={n.kind === 'aktivitas' ? 'clock' : n.tone === 'red' ? 'alert' : 'arrow'} />
                       </span>
@@ -90,8 +99,16 @@ export default function Notifications({ session }: Props) {
                 )
               })}
             </ul>
-          ) : (
-            <p className="text-dim text-[1.4rem] pt-24 px-18 pb-28">{tab === 'tindakan' ? 'Tidak ada yang menunggu Anda.' : 'Belum ada aktivitas dari pihak lain.'}</p>
+          ) : null}
+          {shown.length > 0 && tab === 'aktivitas' && server.nextBefore ? (
+            <button type="button" className="[background:none] border-0 text-blue text-[1.3rem] py-12 px-18 text-left [&:hover]:text-ink disabled:text-dim" onClick={() => notifStore.loadMore()} disabled={server.busy}>
+              {server.busy ? 'Memuat…' : 'Muat notifikasi lebih lama'}
+            </button>
+          ) : null}
+          {!shown.length && (
+            <p className="text-dim text-[1.4rem] pt-24 px-18 pb-28" role={tab === 'aktivitas' && server.status === 'error' ? 'alert' : 'status'}>
+              {tab === 'tindakan' ? 'Tidak ada yang menunggu Anda.' : server.status === 'loading' || server.status === 'idle' ? 'Memuat notifikasi…' : server.status === 'error' ? server.error : 'Belum ada aktivitas dari pihak lain.'}
+            </p>
           )}
         </div>
       )}
