@@ -73,6 +73,9 @@ export async function apiRequest<T>(
       code,
       error: text || STATUS_ERRORS[429],
     };
+  // section-7 endpoints send a displayable Indonesian message with a code (INVALID_STATE, ALREADY_PAID, WRONG_PASSWORD, ...)
+  if (code && text && res.status !== 401 && code !== "CONTRACT_LOCKED")
+    return { ok: false, status: res.status, code, error: text };
   return {
     ok: false,
     status: res.status,

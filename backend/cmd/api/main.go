@@ -25,8 +25,20 @@ func env(key, fallback string) string {
 	return fallback
 }
 
+const minSecretLen = 16
+
 func main() {
-	secret := env("SAKSI_SECRET", "saksi-production-hmac-secret-min16chars")
+	devEnv := map[string]bool{"development": true, "local": true, "test": true}[os.Getenv("APP_ENV")]
+	secret := os.Getenv("SAKSI_SECRET")
+	if secret == "" && devEnv {
+		secret = "saksi-development-secret-key-min16chars" // hanya dev; semua replika dev memakai nilai yang sama
+	}
+	// Minimal 16 karena panjang secret Azure yang sudah terpasang belum diketahui; naikkan ke 32 setelah dicek.
+	if len(secret) < minSecretLen {
+		slog.Error("SAKSI_SECRET wajib diisi (min. 16 karakter) dan sama di semua replika; default hanya untuk APP_ENV=development/local/test",
+			"app_env", os.Getenv("APP_ENV"), "len", len(secret))
+		os.Exit(1)
+	}
 	port := env("PORT", "8080")
 	dbURL := env("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/saksi?sslmode=disable")
 	storageDir := env("STORAGE_DIR", "./data/files")
@@ -102,7 +114,7 @@ func main() {
 		Limiter:        limiter,
 		TrustedProxies: trusted,
 		// Fail-safe: token reset sandi hanya tampil bila APP_ENV eksplisit dev; kosong = diperlakukan produksi.
-		ExposeDevTokens: map[string]bool{"development": true, "local": true, "test": true}[os.Getenv("APP_ENV")],
+		ExposeDevTokens: devEnv,
 	}
 
 	mux := http.NewServeMux()

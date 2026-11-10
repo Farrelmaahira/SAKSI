@@ -12,6 +12,7 @@ import { findContract } from "@/lib/contracts/find-contract";
 import { listPublicContracts } from "@/lib/api/list-public-contracts";
 import { usePublicContract } from "@/hooks/use-public-contract";
 import { toSealedContract } from "@/lib/api/to-sealed-contract";
+import { verifySeal } from "@/lib/api/verify-seal";
 
 export default function LacakTemplate() {
   useReveal();
@@ -45,7 +46,23 @@ export default function LacakTemplate() {
     setLastQ(q);
     setInput(q);
   }
-  const found = list.find((c) => String(c.apiId) === q) ?? findContract(list, q);
+  // a full SHA-256 is looked up on the server (GET /public/seals/verify); codes and ids match the loaded list
+  const isHash = /^[0-9a-f]{64}$/i.test(q.trim());
+  const [sealHit, setSealHit] = useState<{ hash: string; id?: number } | null>(null);
+  useEffect(() => {
+    if (!isHash) return;
+    let active = true;
+    const hash = q.trim();
+    verifySeal(hash).then((r) => {
+      if (active) setSealHit({ hash, id: r.ok && r.data.cocok ? r.data.kontrak?.id : undefined });
+    });
+    return () => {
+      active = false;
+    };
+  }, [isHash, q]);
+  const sealPending = isHash && sealHit?.hash !== q.trim();
+  const found =
+    list.find((c) => String(c.apiId) === q || (isHash && !sealPending && c.apiId === sealHit?.id)) ?? findContract(list, q);
   // the opened contract and the one picked for a report get their full published text (clauses, hash)
   const foundDetail = usePublicContract(found?.apiId);
   const reportDetail = usePublicContract(list.find((c) => c.code === reportCode)?.apiId);
@@ -101,14 +118,14 @@ export default function LacakTemplate() {
       <TrackResults
         ref={resultRef}
         registry={registry}
-        loading={loading || (Boolean(found) && !foundDetail)}
+        loading={loading || sealPending || (Boolean(found) && !foundDetail)}
         error={error || (foundDetail?.ok === false ? foundDetail.error : "")}
         query={q}
         found={foundDetail?.ok ? foundDetail.data : undefined}
         onOpen={open}
         onReport={goReport}
       />
-      <VerifySection registry={registry} onOpen={open} />
+      <VerifySection onOpen={open} />
       <ReportSection
         ref={reportRef}
         registry={registry}

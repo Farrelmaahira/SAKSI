@@ -10,23 +10,39 @@ import Empty from '@/components/molecules/Empty'
 import Panel from '@/components/molecules/Panel'
 import Btn from '@/components/atoms/Btn'
 import { fmtDate } from '@/lib/dates/fmt-date'
+import { useContractTermin } from '@/hooks/use-contract-termin'
+import { setSpk } from '@/lib/api/set-spk'
+import FormAlert from '@/components/atoms/FormAlert'
+import TerminState from '@/components/molecules/TerminState'
 
-export default function SpkTab({ c, session }: TabProps) {
+export default function SpkTab({ c: local, session }: TabProps) {
+  const t = useContractTermin(local)
+  const c = t.c
+  const [busy, setBusy] = useState(false)
+  const [apiError, setApiError] = useState('')
   const [form, setForm] = useState(c.spk ?? { number: `SPK/${c.code.slice(-3)}/${new Date().getFullYear()}`, date: daysFromNow(0), start: daysFromNow(1), end: deadlineOf(c) })
   const [editing, setEditing] = useState(false)
   const [err, setErr] = useState('')
   const isDesa = session.role.role === 'perangkat_desa'
   const ready = signedOrLater(c.status)
 
-  const save = () => {
+  const save = async () => {
     if (form.number.trim().length < 4) return setErr('Isi nomor SPK.')
     if (!form.date || !form.start || !form.end) return setErr('Lengkapi semua tanggal.')
     if (form.end < form.start) return setErr('Tanggal selesai harus setelah tanggal mulai.')
-    saveSpk(c.code, { ...form, number: form.number.trim() }, session)
+    if (c.apiId) {
+      setBusy(true)
+      setApiError('')
+      const r = await setSpk(c.apiId, { nomor: form.number.trim(), tanggal: form.date, mulai: form.start, selesai: form.end })
+      setBusy(false)
+      if (!r.ok) return setApiError(r.error)
+      t.reload()
+    } else saveSpk(c.code, { ...form, number: form.number.trim() }, session)
     setEditing(false)
     setErr('')
   }
 
+  if (t.server && !t.result?.ok) return <TerminState result={t.result} />
   if (!ready) return <Empty art="contract-signed_vutk" title="SPK diterbitkan setelah kontrak ditandatangani." />
   const showForm = isDesa && (editing || !c.spk)
   return (
@@ -52,8 +68,9 @@ export default function SpkTab({ c, session }: TabProps) {
             </label>
           </div>
           {err && <p className="text-red text-[1.35rem] not-italic">{err}</p>}
+          {apiError && <FormAlert>{apiError}</FormAlert>}
           <div className="items-center flex flex-wrap gap-10">
-            <Btn onClick={save}>{c.spk ? 'Simpan perubahan' : 'Terbitkan SPK'}</Btn>
+            <Btn onClick={save} disabled={busy}>{busy ? 'Menyimpan…' : c.spk ? 'Simpan perubahan' : 'Terbitkan SPK'}</Btn>
             {c.spk && (
               <Btn variant="ghost" onClick={() => setEditing(false)}>
                 Batal
@@ -83,7 +100,10 @@ export default function SpkTab({ c, session }: TabProps) {
             </div>
           </dl>
           {isDesa && c.status !== 'selesai' && (
-            <Btn small variant="ghost" onClick={() => setEditing(true)}>
+            <Btn small variant="ghost" onClick={() => {
+                if (c.spk) setForm(c.spk)
+                setEditing(true)
+              }}>
               Ubah SPK
             </Btn>
           )}

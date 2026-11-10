@@ -1,5 +1,5 @@
-import RancanganTemplate from "@/components/organisms/RancanganTemplate";
+import AdminDaerahTemplate from '@/components/organisms/AdminDaerahTemplate'
 
 export default function AdminDaerahPage() {
-  return <RancanganTemplate plan="admin" />;
+  return <AdminDaerahTemplate />
 }

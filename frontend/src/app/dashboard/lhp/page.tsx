@@ -1,5 +1,5 @@
-import RancanganTemplate from '@/components/organisms/RancanganTemplate'
+import LhpTemplate from '@/components/organisms/LhpTemplate'
 
 export default function LhpPage() {
-  return <RancanganTemplate plan="lhp" />
+  return <LhpTemplate />
 }

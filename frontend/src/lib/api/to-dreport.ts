@@ -11,6 +11,7 @@ export function toDReport(r: CreatedReportResponse, contractCode = String(r.cont
   const m = /^\[([^\]]+)\]\s*([\s\S]*?)(?:\s-\sLokasi:\s(.+))?$/.exec(r.deskripsi)
   return {
     id: r.kodePelacakan,
+    apiId: r.id,
     contractCode,
     category: r.kategori.replace(/_/g, ' '),
     clause: m?.[1] ?? '-',

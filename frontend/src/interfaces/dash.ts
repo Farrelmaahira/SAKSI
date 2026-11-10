@@ -1,7 +1,7 @@
 import type { ActionKind } from '@/interfaces/db'
 import type { DContract } from '@/interfaces/db'
-import { scopeContracts } from '@/lib/db/scope-contracts'
 import type { Session } from '@/interfaces/auth'
+import type { TerminListItem } from '@/interfaces/api'
 
 export interface TabItem { key: string; label: string; badge?: number; done?: boolean }
 
@@ -13,7 +13,7 @@ export type KontrakFilter = 'semua' | 'tindakan' | 'draf' | 'proses' | 'aktif' |
 
 export type LaporanFilter = 'perlu' | 'semua' | 'proses' | 'selesai'
 
-export interface TerminLine { contracts: ReturnType<typeof scopeContracts> }
+export interface TerminLine { rows: TerminListItem[] }
 
 export type AuditFilter = 'semua' | 'kontrak' | 'laporan' | 'akun'
 

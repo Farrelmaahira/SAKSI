@@ -31,6 +31,12 @@ export function navFor(role: RoleKey, counts: NavCounts): NavItem[] {
       { to: '/dashboard/termin', label: 'Termin', icon: 'wallet' },
       { to: '/dashboard/profil', label: 'Profil Usaha', icon: 'user' },
     ]
+  if (role === 'admin_daerah')
+    return [
+      home,
+      { to: '/dashboard/admin-daerah', label: 'Admin Daerah', icon: 'shield' },
+      { to: '/dashboard/profil', label: 'Profil', icon: 'user' },
+    ]
   if (role === 'bpd')
     return [
       home,
@@ -45,7 +51,7 @@ export function navFor(role: RoleKey, counts: NavCounts): NavItem[] {
     { to: '/dashboard/kontrak', label: 'Kontrak Diawasi', icon: 'eye' },
     { to: '/dashboard/laporan', label: 'Laporan Eskalasi', icon: 'flag', badge: counts.reports },
     { to: '/dashboard/termin', label: 'Termin vs Realisasi', icon: 'chart' },
-    { to: '/dashboard/lhp', label: 'Uji Petik dan LHP', icon: 'doc', note: 'Rancangan' },
+    { to: '/dashboard/lhp', label: 'Uji Petik dan LHP', icon: 'doc' },
     seal,
     audit,
     { to: '/dashboard/profil', label: 'Profil', icon: 'user' },

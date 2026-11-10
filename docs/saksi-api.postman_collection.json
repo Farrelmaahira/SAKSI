@@ -770,7 +770,7 @@
                 "1"
               ]
             },
-            "description": "Mengambil rincian laporan pengaduan, status penanganan, lampiran foto, serta tindakan tindak lanjut BPD/Inspektorat."
+            "description": "Detail laporan. Warga: laporan sendiri; kades/perangkat_desa/BPD: desanya; inspektorat: wilayahnya. Di luar cakupan = 404 NOT_FOUND."
           },
           "response": []
         }

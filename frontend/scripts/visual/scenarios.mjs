@@ -88,6 +88,20 @@ for (const session of roles) {
   add({ id: `dash-${session}-confirm`, path: '/dashboard', session, viewports: [375, 1440], steps: [{ click: btn(/navigasi/), only: [375] }, { wait: 300, only: [375] }, { click: { text: 'Reset data demo' } }, { wait: 300 }] })
 }
 
+// Buat kontrak wizard, every step (Tulis manual avoids the AI backend)
+add({
+  id: 'dash-kades-wizard', path: '/dashboard/kontrak/baru', session: 'kades', viewports: [375, 1440],
+  steps: [
+    { snap: 'step0' }, { click: { role: 'button', name: /^Pengadaan/ } }, { snap: 'step0-chosen' }, { click: btn('Lanjut') },
+    { snap: 'step1' }, { click: btn('Undang pihak kedua baru') }, { click: btn('Kirim undangan') }, { snap: 'invite-error' }, { click: btn('Batal') },
+    { click: { role: 'radio', nth: 0 } }, { snap: 'step1-picked' }, { click: btn('Lanjut') },
+    { snap: 'step2' }, { click: btn('Tulis manual') }, { snap: 'step2-errors' },
+    { fill: { role: 'textbox', nth: 0 }, value: 'Pengadaan pasir dan batu untuk jalan desa' }, { fill: { placeholder: '0', exact: true }, value: '25000000' },
+    { fill: { label: 'Tenggat selesai' }, value: '2027-03-15' }, { click: btn('Termin') }, { snap: 'step2-filled' },
+    { click: btn('Tulis manual') }, { wait: 1200 }, { snap: 'step3' }, { click: btn('Lanjut') }, { wait: 500 }, { snap: 'step4' },
+  ],
+})
+
 const tabs = ['', 'draf', 'audit', 'peninjauan', 'tanda-tangan', 'segel', 'publikasi', 'spk', 'termin', 'progres', 'laporan', 'riwayat']
 for (const session of roles)
   for (const code of ['SKS-2026-014', 'SKS-2026-045'])

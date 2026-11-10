@@ -9,17 +9,17 @@ import { fmtDate } from '@/lib/dates/fmt-date'
 import Badge from '@/components/atoms/Badge'
 import Empty from '@/components/molecules/Empty'
 
-export default function PihakTermin({ contracts }: TerminLine) {
-  const rows = contracts.flatMap((c) => c.terms.map((t) => ({ c, t })))
-  const paid = rows.filter((x) => x.t.paidDate)
-  const pending = rows.filter((x) => !x.t.paidDate)
+export default function PihakTermin({ rows: list }: TerminLine) {
+  const rows = list.flatMap((c) => (c.terms ?? []).map((t) => ({ c, t })))
+  const paid = rows.filter((x) => x.t.status === 'dibayar')
+  const pending = rows.filter((x) => x.t.status !== 'dibayar')
   return (
     <>
       <PageHead label="Termin" title="Termin pembayaran" desc="Jadwal pembayaran dari desa untuk kontrak yang sedang berjalan. Pembayaran ditandai oleh desa." />
       <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(3,minmax(0,1fr))] lg:grid-cols-[repeat(3,minmax(0,1fr))] d-stats">
-        <Stat label="Sudah diterima" value={formatRp(paid.reduce((s, x) => s + x.t.amount, 0))} icon="check" />
-        <Stat label="Belum dibayar" value={formatRp(pending.reduce((s, x) => s + x.t.amount, 0))} icon="clock" tone="ink" />
-        <Stat label="Lewat jatuh tempo" value={pending.filter((x) => daysUntil(x.t.planDate) < 0).length} icon="alert" tone={pending.some((x) => daysUntil(x.t.planDate) < 0) ? 'red' : 'blue'} />
+        <Stat label="Sudah diterima" value={formatRp(paid.reduce((s, x) => s + (x.t.realisasiNominal ?? x.t.nominal), 0))} icon="check" />
+        <Stat label="Belum dibayar" value={formatRp(pending.reduce((s, x) => s + x.t.nominal, 0))} icon="clock" tone="ink" />
+        <Stat label="Lewat jatuh tempo" value={pending.filter((x) => daysUntil(x.t.jatuhTempo) < 0).length} icon="alert" tone={pending.some((x) => daysUntil(x.t.jatuhTempo) < 0) ? 'red' : 'blue'} />
       </div>
       <Panel>
         {rows.length ? (
@@ -36,21 +36,22 @@ export default function PihakTermin({ contracts }: TerminLine) {
               </thead>
               <tbody>
                 {rows.map(({ c, t }) => {
-                  const late = !t.paidDate && daysUntil(t.planDate) < 0
+                  // terlambat is computed here from jatuhTempo; the server never sets it
+                  const late = t.status !== 'dibayar' && daysUntil(t.jatuhTempo) < 0
                   return (
-                    <tr key={`${c.code}-${t.no}`}>
+                    <tr key={t.id}>
                       <td>
-                        <Link className="grid gap-2 min-w-220 [&_code]:text-[1.2rem] [&_code]:text-dim [&_strong]:font-[420] [&_strong]:[transition:color_0.2s] [&:hover_strong]:text-blue [&_small]:text-[1.25rem]! [&_small]:text-dim! max-md:min-w-0 d-row-link" href={`/dashboard/kontrak/${c.code}?tab=termin`}>
-                          <code>{c.code}</code>
-                          <strong>{c.title}</strong>
+                        <Link className="grid gap-2 min-w-220 [&_code]:text-[1.2rem] [&_code]:text-dim [&_strong]:font-[420] [&_strong]:[transition:color_0.2s] [&:hover_strong]:text-blue [&_small]:text-[1.25rem]! [&_small]:text-dim! max-md:min-w-0 d-row-link" href={`/dashboard/kontrak/${c.contractId}?tab=termin`}>
+                          <code>{c.nomor}</code>
+                          <strong>{c.judul}</strong>
                         </Link>
                       </td>
                       <td data-label="Termin">
-                        {t.label} · {t.percent}%
+                        Termin {t.urutan} · {t.persen}%
                       </td>
-                      <td className="[.d-table_&]:[font-variant-numeric:tabular-nums] [.d-table_&]:text-right [.d-table_&]:whitespace-nowrap max-md:[.d-table_td&]:text-left max-md:[.d-table_td&]:whitespace-normal" data-label="Jumlah">{formatRp(t.amount)}</td>
-                      <td className={late ? '[.app_&]:text-red [.app_em&]:text-[1.2rem] [.app_em&]:not-italic' : ''} data-label="Rencana">{fmtDate(t.planDate)}</td>
-                      <td data-label="Status">{t.paidDate ? <Badge tone="done">Dibayar {fmtDate(t.paidDate)}</Badge> : <Badge tone={late ? 'red' : 'muted'}>{late ? 'Lewat jatuh tempo' : 'Menunggu'}</Badge>}</td>
+                      <td className="[.d-table_&]:[font-variant-numeric:tabular-nums] [.d-table_&]:text-right [.d-table_&]:whitespace-nowrap max-md:[.d-table_td&]:text-left max-md:[.d-table_td&]:whitespace-normal" data-label="Jumlah">{formatRp(t.nominal)}</td>
+                      <td className={late ? '[.app_&]:text-red [.app_em&]:text-[1.2rem] [.app_em&]:not-italic' : ''} data-label="Rencana">{fmtDate(t.jatuhTempo)}</td>
+                      <td data-label="Status">{t.status === 'dibayar' ? <Badge tone="done">Dibayar {fmtDate(t.tanggalRealisasi ?? undefined)}</Badge> : <Badge tone={late ? 'red' : 'muted'}>{late ? 'Lewat jatuh tempo' : t.status === 'jatuh_tempo' ? 'Diajukan' : 'Menunggu'}</Badge>}</td>
                     </tr>
                   )
                 })}

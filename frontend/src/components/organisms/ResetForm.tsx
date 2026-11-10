@@ -8,15 +8,16 @@ import PasswordField from '@/components/molecules/PasswordField'
 import StepIndicator from '@/components/molecules/StepIndicator'
 import { resetSteps } from '@/data/auth'
 import type { AuthError } from '@/interfaces/auth'
-import { checkResetToken } from '@/lib/auth/check-reset-token'
-import { resetPassword } from '@/lib/auth/reset-password'
+import { checkPassword } from '@/lib/auth/check-password'
+import { resetPassword } from '@/lib/api/reset-password'
 
 interface Props {
   token: string
 }
 
 export default function ResetForm({ token }: Props) {
-  const [check] = useState(() => (token ? checkResetToken(token) : ({ ok: false, error: 'Link atur ulang tidak lengkap.' } as AuthError)))
+  // the token is only checked by the server when the new password is sent (POST /auth/password/reset)
+  const [check, setCheck] = useState<AuthError | { ok: true }>(token ? { ok: true } : { ok: false, error: 'Link atur ulang tidak lengkap.' })
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<AuthError | null>(null)
@@ -25,11 +26,14 @@ export default function ResetForm({ token }: Props) {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    const local = checkPassword(password, confirm)
+    if (!local.ok) return setError(local)
     setBusy(true)
-    const res = await resetPassword(token, password, confirm)
+    const res = await resetPassword(token, password)
     setBusy(false)
-    if (!res.ok) return setError(res)
-    setDone(true)
+    if (res.ok) return setDone(true)
+    if (res.code === 'TOKEN_INVALID') return setCheck({ ok: false, error: res.error })
+    setError({ ok: false, error: res.error })
   }
 
   const fieldError = (f: string) => (error?.field === f ? error.error : undefined)
@@ -60,9 +64,6 @@ export default function ResetForm({ token }: Props) {
         <form className="grid gap-20 auth-form" onSubmit={submit} noValidate>
           <div className="[animation:pop_0.35s_ease-out] grid gap-20">
             <h2 className="text-[3rem] font-[350] tracking-[-0.03em] leading-[1.1] md:text-[3.6rem]">Kata sandi baru</h2>
-            <p className="text-[1.5rem] mt-8 mx-0 mb-28 [&_a]:border-b-[0.1rem] [&_a]:border-b-current [&_a]:[border-bottom-style:solid] [&_a]:text-blue">
-              Untuk akun <strong>{check.email}</strong>
-            </p>
             {error && !error.field && <FormAlert>{error.error}</FormAlert>}
             {error?.field === 'token' && <FormAlert>{error.error}</FormAlert>}
             <PasswordField

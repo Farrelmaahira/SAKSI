@@ -12,8 +12,11 @@ services:
       - "5432:5432"
     volumes:
       - saksi_postgres_data:/var/lib/postgresql/data
-      - ./backend/internal/adapter/postgres/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
-      - ./backend/scripts/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      # Hanya jalan saat volume kosong. Skema nyata = SAKSI.sql (schema.sql lama tidak cocok dengan kode store).
+      - ./backend/scripts/compat_datetime.sql:/docker-entrypoint-initdb.d/00_compat_datetime.sql
+      - ./backend/scripts/SAKSI.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./backend/scripts/seed_villages.sql:/docker-entrypoint-initdb.d/02_seed_villages.sql
+      - ./backend/scripts/seed_demo.sql:/docker-entrypoint-initdb.d/03_seed_demo.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d saksi"]
       interval: 5s

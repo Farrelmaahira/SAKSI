@@ -4,7 +4,7 @@ import Link from "next/link";
 import Icon from "@/components/atoms/Icon";
 import type { Notif } from "@/interfaces/notifications";
 import { when } from "@/lib/dash/when";
-import { markRead } from "@/lib/notifications/mark-read";
+import { markAnyRead } from "@/lib/notifications/mark-any-read";
 
 interface Props {
   items: Notif[];
@@ -23,7 +23,7 @@ export default function NotifList({ items, read, userId }: Props) {
             <Link
               href={n.to}
               className={`tone-${n.tone} ${isNew ? "is-new" : ""}`}
-              onClick={() => markRead(userId, [n.id])}
+              onClick={() => markAnyRead(userId, n.id)}
             >
               <span className="items-center bg-blue rounded-[50%] text-white flex h-34 justify-center w-34 [.tone-red_&]:bg-red [.tone-red_&]:text-white [.tone-ink_&]:bg-ink! [.tone-ink_&]:text-white!" aria-hidden="true">
                 <Icon

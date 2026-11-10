@@ -12,11 +12,17 @@ interface Props {
 export default function Navbar({ cta, onOpenMenu }: Props) {
   return (
     <header className="items-center text-white flex justify-between left-0 my-0 mx-auto max-w-1680 py-0 px-20 absolute right-0 top-20 z-20 md:py-0 md:px-40 lg:py-0 lg:px-80 lg:top-30">
-      <Link className="items-center flex text-[2rem] font-[500] gap-12 tracking-[0.12em]" href="/" aria-label="SAKSI, ke beranda">
+      <Link
+        className="items-center flex text-[2rem] font-[500] gap-12 tracking-[0.12em]"
+        href="/"
+        aria-label="SAKSI, ke beranda"
+      >
         <Logo tone="white" />
         <span>SAKSI</span>
       </Link>
-      <p className="hidden text-[1.6rem] font-[350] opacity-[0.8] lg:inline-flex">Sistem Audit Kontrak Segel Integritas</p>
+      <p className="hidden text-[1.6rem] font-[350] opacity-[0.8] lg:inline-flex">
+        Sistem Audit Kontrak Segel Integritas
+      </p>
       <div className="items-center flex gap-20 navbar-right">
         <PillButton to={cta.href}>{cta.label}</PillButton>
         <NavSession />

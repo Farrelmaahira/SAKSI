@@ -2,7 +2,7 @@
 
 import { useDash } from '@/hooks/use-dash'
 import { db } from '@/lib/db/db'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { LaporanFilter } from '@/interfaces/dash'
 import NotAllowed from '@/components/molecules/NotAllowed'
 import { scopeContracts } from '@/lib/db/scope-contracts'
@@ -16,6 +16,11 @@ import Icon from '@/components/atoms/Icon'
 import ReportCard from '@/components/organisms/ReportCard'
 import Empty from '@/components/molecules/Empty'
 import LaporanSayaTemplate from '@/components/organisms/LaporanSayaTemplate'
+import FormAlert from '@/components/atoms/FormAlert'
+import type { ApiResult } from '@/interfaces/api'
+import type { CreatedReportResponse } from '@/lib/api/reports'
+import { listReports } from '@/lib/api/list-reports'
+import { toDReport } from '@/lib/api/to-dreport'
 
 export default function LaporanTemplate() {
   const { session } = useDash()
@@ -23,11 +28,27 @@ export default function LaporanTemplate() {
   const r = session.role
   const [filter, setFilter] = useState<LaporanFilter>('perlu')
   const [q, setQ] = useState('')
+  const [server, setServer] = useState<ApiResult<CreatedReportResponse[]> | null>(null)
+  const [tick, setTick] = useState(0)
+  const official = r.role === 'perangkat_desa' || r.role === 'bpd' || r.role === 'inspektorat'
+  // GET /reports is scoped by role on the server (village for desa/BPD, region or assignment for Inspektorat)
+  useEffect(() => {
+    if (!official) return
+    let active = true
+    listReports().then((x) => active && setServer(x))
+    return () => {
+      active = false
+    }
+  }, [official, tick])
   if (r.role === 'warga') return <LaporanSayaTemplate />
-  if (r.role === 'pihak_kedua') return <NotAllowed />
+  if (r.role === 'pihak_kedua' || r.role === 'admin_daerah') return <NotAllowed />
 
   const contracts = scopeContracts(d, r)
-  const reports = scopeReports(d, r)
+  // server reports, plus local demo reports on contracts that only exist on this device
+  const reports = [
+    ...(server?.ok ? server.data.map((x) => toDReport(x, contracts.find((c) => c.apiId === x.contractId)?.code)) : []),
+    ...scopeReports(d, r).filter((x) => !contracts.find((c) => c.code === x.contractCode)?.apiId),
+  ]
   const needsMe = (x: DReport) =>
     r.role === 'perangkat_desa' ? !isClosed(x) && !desaAnswered(x) : r.role === 'bpd' ? !isClosed(x) && x.flow !== 'diteruskan' : x.flow === 'diteruskan'
   const match = (x: DReport) => {
@@ -66,10 +87,14 @@ export default function LaporanTemplate() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari kode laporan, kontrak, atau isi" />
         </label>
       </div>
-      {list.length ? (
+      {!server ? (
+        <p className="text-[1.4rem] text-dim" role="status">Memuat laporan warga…</p>
+      ) : !server.ok ? (
+        <FormAlert>{server.error}</FormAlert>
+      ) : list.length ? (
         <div className="grid gap-14">
           {list.map((x) => (
-            <ReportCard key={x.id} report={x} contract={contracts.find((c) => c.code === x.contractCode)} session={session} />
+            <ReportCard key={x.id} report={x} contract={contracts.find((c) => c.code === x.contractCode)} session={session} onChanged={() => setTick((t) => t + 1)} />
           ))}
         </div>
       ) : (

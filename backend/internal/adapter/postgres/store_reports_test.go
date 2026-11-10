@@ -25,8 +25,10 @@ func TestStore_Reports_Workflow(t *testing.T) {
 	}
 
 	var contractID int64
+	contractVillage := int64(1)
 	if len(publicContracts) > 0 {
 		contractID = publicContracts[0].ID
+		contractVillage = publicContracts[0].VillageID
 	} else {
 		// Buat kontrak baru berstatus berjalan/dipublikasikan
 		c, err := store.CreateContractWithDetails(ctx, usecase.CreateContractParams{
@@ -110,7 +112,7 @@ func TestStore_Reports_Workflow(t *testing.T) {
 
 	// 6. Test GetCitizenReportByID dengan Hak Akses & Privasi
 	// 6a. Warga yang bersangkutan (melihat nama asli)
-	repWarga, err := store.GetCitizenReportByID(ctx, createdReport.ID, 3, domain.RoleWarga)
+	repWarga, err := store.GetCitizenReportByID(ctx, createdReport.ID, usecase.Scope{UserID: 3, Role: domain.RoleWarga})
 	if err != nil {
 		t.Fatalf("GetCitizenReportByID as warga failed: %v", err)
 	}
@@ -119,13 +121,19 @@ func TestStore_Reports_Workflow(t *testing.T) {
 	}
 
 	// 6b. IDOR check: warga lain tidak boleh melihat
-	_, err = store.GetCitizenReportByID(ctx, createdReport.ID, 9999, domain.RoleWarga)
-	if err != domain.ErrForbidden {
-		t.Errorf("expected ErrForbidden for other citizen, got %v", err)
+	_, err = store.GetCitizenReportByID(ctx, createdReport.ID, usecase.Scope{UserID: 9999, Role: domain.RoleWarga})
+	if err != domain.ErrNotFound {
+		t.Errorf("expected ErrNotFound for other citizen, got %v", err)
+	}
+
+	// 6b'. IDOR check: kades desa lain mendapat ErrNotFound (bukan 403) agar id tidak bisa ditebak
+	otherVillage := contractVillage + 1000
+	if _, err = store.GetCitizenReportByID(ctx, createdReport.ID, usecase.Scope{UserID: 1, Role: domain.RoleKades, VillageID: &otherVillage}); err != domain.ErrNotFound {
+		t.Errorf("expected ErrNotFound for kades of another village, got %v", err)
 	}
 
 	// 6c. Kades melihat nama tersamar "Warga terverifikasi"
-	repKades, err := store.GetCitizenReportByID(ctx, createdReport.ID, 1, domain.RoleKades)
+	repKades, err := store.GetCitizenReportByID(ctx, createdReport.ID, usecase.Scope{UserID: 1, Role: domain.RoleKades, VillageID: &contractVillage})
 	if err != nil {
 		t.Fatalf("GetCitizenReportByID as kades failed: %v", err)
 	}

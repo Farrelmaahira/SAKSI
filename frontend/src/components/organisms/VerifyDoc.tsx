@@ -3,34 +3,41 @@
 import { useState, type DragEvent } from 'react'
 import Check from '@/components/atoms/Check'
 import Cross from '@/components/atoms/Cross'
-import type { SealedContract } from '@/interfaces/contract'
 import type { VerifyResult } from '@/interfaces/verify'
-import { contractText } from '@/lib/contracts/contract-text'
-import { downloadText } from '@/lib/contracts/download-text'
-import { formatRp } from '@/lib/contracts/format-rp'
 import { sha256 } from '@/lib/contracts/sha256'
 import { shortHash } from '@/lib/contracts/short-hash'
 import { cn } from '@/lib/utils'
+import { verifySeal } from '@/lib/api/verify-seal'
+import FormAlert from '@/components/atoms/FormAlert'
 
 interface Props {
-  registry: SealedContract[]
-  onOpen: (code: string) => void
+  /* code = public contract number, id = server contract id */
+  onOpen: (code: string, id: number) => void
   onResult?: (r: VerifyResult) => void
 }
 
-export default function VerifyDoc({ registry, onOpen, onResult }: Props) {
+export default function VerifyDoc({ onOpen, onResult }: Props) {
   const [over, setOver] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<VerifyResult | null>(null)
+  const [error, setError] = useState('')
 
   const check = async (file?: File) => {
     if (!file) return
     setBusy(true)
+    setError('')
     const hash = await sha256(await file.arrayBuffer())
-    const next = { name: file.name, hash, match: registry.find((c) => c.hash === hash) }
+    // the hash is computed in the browser; only the hash goes to the server, never the file
+    const r = await verifySeal(hash)
+    setBusy(false)
+    if (!r.ok) {
+      setResult(null)
+      return setError(r.error)
+    }
+    const k = r.data.cocok ? r.data.kontrak : undefined
+    const next: VerifyResult = { name: file.name, hash, match: k ? { code: k.nomor, id: k.id, title: k.judul, version: r.data.segel?.nomorVersi ?? 0 } : undefined }
     setResult(next)
     onResult?.(next)
-    setBusy(false)
   }
 
   const onDrop = (e: DragEvent) => {
@@ -39,31 +46,12 @@ export default function VerifyDoc({ registry, onOpen, onResult }: Props) {
     check(e.dataTransfer.files[0])
   }
 
-  const sample = registry.find((c) => c.code === 'SKS-2026-014') ?? registry[0]
-
   return (
     <div className="grid gap-50 lg:items-center lg:gap-100 lg:grid-cols-[1fr_1fr] [.d-panel-ink_&]:grid [.d-panel-ink_&]:gap-30 lg:[.d-panel-ink_&]:gap-50 lg:[.d-panel-ink_&]:grid-cols-[1fr_1fr]">
       <div>
         <p className="text-white text-[1.4rem] font-[350] tracking-[0.01em] leading-[1.6] mb-30 uppercase [&.dark]:text-blue md:text-[2rem] md:mb-40 [.flow-head_&]:mb-0 [.d-panel-ink_&]:text-[1.3rem] [.d-panel-ink_&]:tracking-[0.06em] [.d-panel-ink_&]:text-ink-dim [.d-panel-ink_&]:uppercase label">Cek keaslian</p>
         <h2 className="text-[4.4rem] font-[320] tracking-[-0.04em] leading-[1.02] md:text-[6.4rem] lg:text-[8rem] [.d-panel-ink_&]:text-[3.6rem] [.d-panel-ink_&]:font-[320] [.d-panel-ink_&]:tracking-[-0.035em] [.d-panel-ink_&]:leading-[1.05] [.d-panel-ink_&]:mt-8">Apakah dokumen ini asli?</h2>
         <p className="text-[1.8rem] leading-[1.55] my-30 mx-0 max-w-560 opacity-[0.8] [.d-panel-ink_&]:text-[1.6rem] [.d-panel-ink_&]:mt-16 [.d-panel-ink_&]:mx-0 [.d-panel-ink_&]:mb-24 [.d-panel-ink_&]:leading-[1.55] [.d-panel-ink_&]:max-w-560 [.d-panel-ink_&]:text-[#d6d6dc]">Seret file kontrak ke kotak di samping. SAKSI menghitung hash file itu lalu mencocokkannya dengan arsip. File tidak diunggah ke mana pun.</p>
-        {sample && (
-          <div className="[&_p]:text-[1.4rem] [&_p]:mb-12 [&_p]:opacity-[0.6] [.d-panel-ink_&_p]:text-[1.35rem] [.d-panel-ink_&_p]:mb-10 [.d-panel-ink_&_p]:text-ink-dim verify-samples">
-            <p>Belum punya file? Coba dengan contoh ini:</p>
-            <button type="button" className="items-center [background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] [color:inherit] inline-flex text-[1.4rem] gap-8 tracking-[0.02em] py-4 px-0 uppercase [transition:color_0.3s,_opacity_0.3s] [&:hover:not(:disabled)]:text-blue [&.light:hover:not(:disabled)]:[color:inherit] [&.light:hover:not(:disabled)]:opacity-[0.7] disabled:cursor-not-allowed disabled:opacity-[0.3] light [.hash-actions_&:hover]:[color:inherit] [.hash-actions_&:hover]:opacity-[0.7] [.verify-samples_&]:mt-0 [.verify-samples_&]:mr-24 [.verify-samples_&]:mb-10 [.verify-samples_&]:ml-0 [.hash-status_&]:[grid-column:2] [.hash-status_&]:[justify-self:start] [.d-panel-ink_.verify-samples_&]:mt-0 [.d-panel-ink_.verify-samples_&]:mr-20 [.d-panel-ink_.verify-samples_&]:mb-10 [.d-panel-ink_.verify-samples_&]:ml-0" onClick={() => downloadText(`${sample.code}.txt`, contractText(sample))}>
-              Unduh dokumen asli
-            </button>
-            <button
-              type="button"
-              className="items-center [background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] [color:inherit] inline-flex text-[1.4rem] gap-8 tracking-[0.02em] py-4 px-0 uppercase [transition:color_0.3s,_opacity_0.3s] [&:hover:not(:disabled)]:text-blue [&.light:hover:not(:disabled)]:[color:inherit] [&.light:hover:not(:disabled)]:opacity-[0.7] disabled:cursor-not-allowed disabled:opacity-[0.3] light [.hash-actions_&:hover]:[color:inherit] [.hash-actions_&:hover]:opacity-[0.7] [.verify-samples_&]:mt-0 [.verify-samples_&]:mr-24 [.verify-samples_&]:mb-10 [.verify-samples_&]:ml-0 [.hash-status_&]:[grid-column:2] [.hash-status_&]:[justify-self:start] [.d-panel-ink_.verify-samples_&]:mt-0 [.d-panel-ink_.verify-samples_&]:mr-20 [.d-panel-ink_.verify-samples_&]:mb-10 [.d-panel-ink_.verify-samples_&]:ml-0"
-              onClick={() =>
-                downloadText(`${sample.code}-diubah.txt`, contractText(sample).split(formatRp(sample.value)).join(formatRp(sample.value + 4_000_000)))
-              }
-            >
-              Unduh versi yang diubah
-            </button>
-          </div>
-        )}
       </div>
 
       <div>
@@ -85,6 +73,7 @@ export default function VerifyDoc({ registry, onOpen, onResult }: Props) {
           <span>atau klik untuk memilih file</span>
         </label>
 
+        {error && <div className="mt-20"><FormAlert>{error}</FormAlert></div>}
         {result && (
           <div className={`[animation:pop_0.35s_ease-out] rounded-[1.6rem] grid gap-16 grid-cols-[auto_1fr] mt-20 p-24 [&.is-ok]:bg-blue [&.is-bad]:bg-red [.d-panel-ink_&]:[animation:pop_0.35s_ease-out] [.d-panel-ink_&]:rounded-[1.6rem] [.d-panel-ink_&]:grid [.d-panel-ink_&]:gap-14 [.d-panel-ink_&]:grid-cols-[auto_1fr] [.d-panel-ink_&]:mt-16 [.d-panel-ink_&]:p-20 [.d-panel-ink_&.is-ok]:bg-blue [.d-panel-ink_&.is-bad]:bg-red! ${result.match ? '[.d-checks_li&]:text-blue is-ok' : 'is-bad'}`}>
             <span className="items-center bg-white rounded-[50%] flex h-40 justify-center w-40 [.is-ok_&]:text-blue [.is-bad_&]:text-red [.d-panel-ink_&]:items-center [.d-panel-ink_&]:bg-white [.d-panel-ink_&]:rounded-[50%] [.d-panel-ink_&]:flex [.d-panel-ink_&]:h-40 [.d-panel-ink_&]:justify-center [.d-panel-ink_&]:w-40 [.d-panel-ink_.is-ok_&]:text-blue [.d-panel-ink_.is-bad_&]:text-red!">{result.match ? <Check /> : <Cross />}</span>
@@ -99,7 +88,7 @@ export default function VerifyDoc({ registry, onOpen, onResult }: Props) {
                 {result.name} · <code>{shortHash(result.hash)}</code>
               </p>
               {result.match && (
-                <button type="button" className="items-center [background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] [color:inherit] inline-flex text-[1.4rem] gap-8 tracking-[0.02em] py-4 px-0 uppercase [transition:color_0.3s,_opacity_0.3s] [&:hover:not(:disabled)]:text-blue [&.light:hover:not(:disabled)]:[color:inherit] [&.light:hover:not(:disabled)]:opacity-[0.7] disabled:cursor-not-allowed disabled:opacity-[0.3] light [.hash-actions_&:hover]:[color:inherit] [.hash-actions_&:hover]:opacity-[0.7] [.verify-samples_&]:mt-0 [.verify-samples_&]:mr-24 [.verify-samples_&]:mb-10 [.verify-samples_&]:ml-0 [.hash-status_&]:[grid-column:2] [.hash-status_&]:[justify-self:start] [.d-panel-ink_.verify-samples_&]:mt-0 [.d-panel-ink_.verify-samples_&]:mr-20 [.d-panel-ink_.verify-samples_&]:mb-10 [.d-panel-ink_.verify-samples_&]:ml-0" onClick={() => onOpen(result.match!.code)}>
+                <button type="button" className="items-center [background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] [color:inherit] inline-flex text-[1.4rem] gap-8 tracking-[0.02em] py-4 px-0 uppercase [transition:color_0.3s,_opacity_0.3s] [&:hover:not(:disabled)]:text-blue [&.light:hover:not(:disabled)]:[color:inherit] [&.light:hover:not(:disabled)]:opacity-[0.7] disabled:cursor-not-allowed disabled:opacity-[0.3] light [.hash-actions_&:hover]:[color:inherit] [.hash-actions_&:hover]:opacity-[0.7] [.verify-samples_&]:mt-0 [.verify-samples_&]:mr-24 [.verify-samples_&]:mb-10 [.verify-samples_&]:ml-0 [.hash-status_&]:[grid-column:2] [.hash-status_&]:[justify-self:start] [.d-panel-ink_.verify-samples_&]:mt-0 [.d-panel-ink_.verify-samples_&]:mr-20 [.d-panel-ink_.verify-samples_&]:mb-10 [.d-panel-ink_.verify-samples_&]:ml-0" onClick={() => onOpen(result.match!.code, result.match!.id)}>
                   Lihat kontraknya
                 </button>
               )}

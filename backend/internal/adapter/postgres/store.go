@@ -123,12 +123,8 @@ func (s *Store) CreateUserWithRole(ctx context.Context, p usecase.RegisterUserPa
 func (s *Store) UserByEmail(ctx context.Context, email string) (domain.User, error) {
 	var u domain.User
 	var roleStr string
+	// Akun demo (kades@saksi.id, dst.) kini akun nyata dari scripts/seed_demo.sql; tidak ada alias email lagi.
 	lookupEmail := strings.ToLower(strings.TrimSpace(email))
-	if lookupEmail == "kades@saksi.id" {
-		lookupEmail = "kades.sukamaju@desa.id"
-	} else if lookupEmail == "penyedia@saksi.id" {
-		lookupEmail = "kontraktor@ptjaya.com"
-	}
 	query := `SELECT u.id, u.nama, u.email, u.password_hash, u.status, u.dibuat_pada,
 		COALESCE(ur.role::text, ''), ur.village_id, COALESCE(v.nama, '')
 		FROM users u

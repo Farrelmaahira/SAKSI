@@ -15,13 +15,47 @@ import Btn from '@/components/atoms/Btn'
 import { markPaid } from '@/lib/db/mark-paid'
 import Locked from '@/components/atoms/Locked'
 import { useConfirm } from '@/hooks/use-confirm'
+import { useContractTermin } from '@/hooks/use-contract-termin'
+import { useState } from 'react'
+import { payTerm } from '@/lib/api/pay-term'
+import { setTermin } from '@/lib/api/set-termin'
+import { mkTerms } from '@/lib/db/mk-terms'
+import { latestVersion } from '@/lib/db/latest-version'
+import { daysFromNow } from '@/lib/dates/days-from-now'
+import FormAlert from '@/components/atoms/FormAlert'
+import TerminState from '@/components/molecules/TerminState'
 
-export default function TerminTab({ c, session }: TabProps) {
+export default function TerminTab({ c: local, session }: TabProps) {
   const confirm = useConfirm()
+  const t = useContractTermin(local)
+  const c = t.c
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const isDesa = session.role.role === 'perangkat_desa'
   const canPay = isDesa && (c.status === 'berjalan' || c.status === 'selesai')
   const paidPct = Math.round((paidOf(c) / Math.max(1, valueOf(c))) * 100)
   const ahead = paidPct - progressOf(c) > 10
+  if (t.server && !t.result?.ok) return <TerminState result={t.result} />
+
+  // server contracts: the desa sets the schedule once, proposed from the drafted payment scheme
+  const createSchedule = async () => {
+    if (!c.apiId) return
+    setBusy(true)
+    setError('')
+    const r = await setTermin(c.apiId, mkTerms(latestVersion(c).answers, daysFromNow(0)).map((x) => ({ persen: x.percent, jatuhTempo: x.planDate })))
+    setBusy(false)
+    if (!r.ok) return setError(r.error)
+    t.reload()
+  }
+  const pay = async (no: number, apiId?: number) => {
+    if (!c.apiId || !apiId) return markPaid(c.code, no, session)
+    setBusy(true)
+    setError('')
+    const r = await payTerm(c.apiId, apiId)
+    setBusy(false)
+    if (!r.ok) return setError(r.error)
+    t.reload()
+  }
   return (
     <div className="grid gap-20 [&>*]:min-w-0">
       <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(3,minmax(0,1fr))] lg:grid-cols-[repeat(3,minmax(0,1fr))] d-stats">
@@ -81,6 +115,7 @@ export default function TerminTab({ c, session }: TabProps) {
                         <Btn
                           small
                           variant={overdue ? 'primary' : 'ghost'}
+                          disabled={busy}
                           onClick={async () => {
                             const ok = await confirm({
                               title: `Tandai ${t.label.toLowerCase()} sudah dibayar?`,
@@ -88,13 +123,13 @@ export default function TerminTab({ c, session }: TabProps) {
                               confirmLabel: 'Ya, sudah dibayar',
                               art: 'all-checked_d3u6',
                             })
-                            if (ok) markPaid(c.code, t.no, session)
+                            if (ok) pay(t.no, t.apiId)
                           }}
                         >
                           Tandai dibayar
                         </Btn>
                       ) : (
-                        <Badge tone={overdue ? 'red' : 'muted'}>{overdue ? 'Lewat jatuh tempo' : 'Belum dibayar'}</Badge>
+                        <Badge tone={overdue ? 'red' : 'muted'}>{overdue ? 'Lewat jatuh tempo' : t.submitted ? 'Diajukan penyedia' : 'Belum dibayar'}</Badge>
                       )}
                     </td>
                   </tr>
@@ -103,6 +138,17 @@ export default function TerminTab({ c, session }: TabProps) {
             </tbody>
           </table>
         </div>
+        {t.server && !c.terms.length && (
+          isDesa ? (
+            <div className="grid gap-10 justify-items-start">
+              <p className="text-[1.4rem] leading-[1.5] text-dim">Jadwal termin belum dibuat di server. Buat dari skema pembayaran di rancangan kontrak.</p>
+              <Btn small onClick={createSchedule} disabled={busy}>{busy ? 'Menyimpan…' : 'Buat jadwal termin'}</Btn>
+            </div>
+          ) : (
+            <p className="text-[1.4rem] leading-[1.5] text-dim">Desa belum membuat jadwal termin.</p>
+          )
+        )}
+        {error && <FormAlert>{error}</FormAlert>}
         {isDesa && !canPay && <Locked text="Termin bisa dibayar setelah SPK terbit dan kontrak berjalan." />}
       </Panel>
     </div>
