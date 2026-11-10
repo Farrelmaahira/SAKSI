@@ -31,13 +31,29 @@ services:
       - PORT=8080
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/saksi?sslmode=disable
       - STORAGE_DIR=/data/files
-      - AI_ENGINE_URL=http://localhost:8000
+      - AI_ENGINE_URL=http://ai-engine:8000
+      - AI_API_KEY=${AI_API_KEY:-saksi-dev-ai-key}
       - WEB_ORIGIN=http://localhost:3000
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - saksi_storage_data:/data/files
+
+  ai-engine:
+    build: ./ai-engine
+    image: saksi-ai-engine
+    restart: unless-stopped
+    # Hanya untuk akses lokal; di produksi cukup lewat jaringan internal compose.
+    ports:
+      - "127.0.0.1:8000:8000"
+    # GROQ_API_KEY, GEMINI_API_KEY, AI_PROVIDERS dibaca dari ai-engine/.env.
+    env_file:
+      - path: ./ai-engine/.env
+        required: false
+    environment:
+      # Ditimpa di sini agar selalu sama dengan kunci yang dipakai backend.
+      - AI_API_KEY=${AI_API_KEY:-saksi-dev-ai-key}
 
 volumes:
   saksi_postgres_data:

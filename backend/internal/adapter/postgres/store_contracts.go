@@ -140,12 +140,25 @@ func (s *Store) CreateContractWithDetails(ctx context.Context, p usecase.CreateC
 	}
 
 	// 4. Simpan tabel ai_audits
+	model := p.AuditModel
+	if model == "" {
+		model = usecase.RuleAuditorModel
+	}
+	var auditID int64
 	insertAuditQuery := `
 		INSERT INTO ai_audits (version_id, model, skor, status, dijalankan_pada)
-		VALUES ($1, $2, $3, 'selesai', now())
+		VALUES ($1, $2, $3, 'selesai', now()) RETURNING id
 	`
-	if _, err := tx.Exec(ctx, insertAuditQuery, versionID, "saksi-rule-auditor-v1", p.IntegrityScore); err != nil {
+	if err := tx.QueryRow(ctx, insertAuditQuery, versionID, model, p.IntegrityScore).Scan(&auditID); err != nil {
 		return domain.ContractDetail{}, err
+	}
+	for _, f := range p.AuditFindings {
+		if _, err := tx.Exec(ctx,
+			`INSERT INTO ai_audit_findings (audit_id, kode_pasal, tingkat, pesan) VALUES ($1, $2, $3, $4)`,
+			auditID, f.KodePasal, f.Tingkat, f.Pesan,
+		); err != nil {
+			return domain.ContractDetail{}, err
+		}
 	}
 
 	// 5. Simpan tabel contract_status_history

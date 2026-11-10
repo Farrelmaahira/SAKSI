@@ -1,9 +1,11 @@
 package usecase
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -333,19 +335,51 @@ type mandatoryRule struct {
 	Keywords []string
 }
 
+// mandatoryRules adalah satu-satunya daftar klausul wajib; AI Engine menerima nama-namanya sebagai checklist.
+var mandatoryRules = []mandatoryRule{
+	{Name: "Objek dan Ruang Lingkup", Keywords: []string{"ruang lingkup", "lingkup pekerjaan", "spk", "pekerjaan"}},
+	{Name: "Nilai Kontrak dan Ketentuan Pajak", Keywords: []string{"nilai", "rp", "pajak", "apbdes"}},
+	{Name: "Jangka Waktu dan Serah Terima (BAST)", Keywords: []string{"jangka waktu", "paling lambat", "bast", "tenggat"}},
+	{Name: "Hak dan Kewajiban Para Pihak", Keywords: []string{"hak", "kewajiban"}},
+	{Name: "Tata Cara Pembayaran", Keywords: []string{"pembayaran", "skema", "termin", "rekening"}},
+	{Name: "Jaminan Pemeliharaan dan Garansi", Keywords: []string{"pemeliharaan", "garansi", "jaminan"}},
+	{Name: "Sanksi dan Denda Keterlambatan", Keywords: []string{"sanksi", "denda", "1/1000", "permil"}},
+	{Name: "Pakta Integritas dan Anti Korupsi", Keywords: []string{"integritas", "anti korupsi", "suap", "gratifikasi"}},
+	{Name: "Penyelesaian Perselisihan", Keywords: []string{"penyelesaian", "perselisihan", "musyawarah"}},
+}
+
+// RuleAuditorModel dicatat di ai_audits.model bila audit dilakukan rule auditor, bukan LLM.
+const RuleAuditorModel = "saksi-rule-auditor-v1"
+
+func MandatoryClauseNames() []string {
+	names := make([]string, len(mandatoryRules))
+	for i, r := range mandatoryRules {
+		names[i] = r.Name
+	}
+	return names
+}
+
+func HashText(text string) string {
+	h := sha256.Sum256([]byte(text))
+	return hex.EncodeToString(h[:])
+}
+
+// RunAudit memakai AI Engine bila ada; bila gagal, jatuh ke rule auditor sehingga audit tetap nyata, bukan lolos otomatis.
+func RunAudit(ctx context.Context, ai AIEngine, contractText string) domain.AuditResult {
+	if ai != nil {
+		res, err := ai.AuditClauses(ctx, contractText)
+		if err == nil {
+			return res
+		}
+		slog.Warn("ai engine tidak tersedia, memakai rule auditor", "err", err)
+	}
+	score, fulfilled, total, summary, _ := AuditContractDraft(contractText)
+	return domain.AuditResult{Score: score, Fulfilled: fulfilled, Total: total, Summary: summary, Model: RuleAuditorModel, Findings: []domain.AuditFinding{}}
+}
+
 // AuditContractDraft melakukan audit kepatuhan klausul standar terhadap teks kontrak.
 func AuditContractDraft(contractText string) (score float64, fulfilled int, total int, summary string, hash string) {
-	rules := []mandatoryRule{
-		{Name: "Objek dan Ruang Lingkup", Keywords: []string{"ruang lingkup", "lingkup pekerjaan", "spk", "pekerjaan"}},
-		{Name: "Nilai Kontrak dan Ketentuan Pajak", Keywords: []string{"nilai", "rp", "pajak", "apbdes"}},
-		{Name: "Jangka Waktu dan Serah Terima (BAST)", Keywords: []string{"jangka waktu", "paling lambat", "bast", "tenggat"}},
-		{Name: "Hak dan Kewajiban Para Pihak", Keywords: []string{"hak", "kewajiban"}},
-		{Name: "Tata Cara Pembayaran", Keywords: []string{"pembayaran", "skema", "termin", "rekening"}},
-		{Name: "Jaminan Pemeliharaan dan Garansi", Keywords: []string{"pemeliharaan", "garansi", "jaminan"}},
-		{Name: "Sanksi dan Denda Keterlambatan", Keywords: []string{"sanksi", "denda", "1/1000", "permil"}},
-		{Name: "Pakta Integritas dan Anti Korupsi", Keywords: []string{"integritas", "anti korupsi", "suap", "gratifikasi"}},
-		{Name: "Penyelesaian Perselisihan", Keywords: []string{"penyelesaian", "perselisihan", "musyawarah"}},
-	}
+	rules := mandatoryRules
 
 	total = len(rules)
 	textLower := strings.ToLower(contractText)
@@ -368,10 +402,7 @@ func AuditContractDraft(contractText string) (score float64, fulfilled int, tota
 
 	score = (float64(fulfilled) / float64(total)) * 100.0
 
-	// Hitung SHA-256 hash
-	h := sha256.New()
-	h.Write([]byte(contractText))
-	hash = hex.EncodeToString(h.Sum(nil))
+	hash = HashText(contractText)
 
 	if len(missingRules) == 0 {
 		summary = fmt.Sprintf("Audit berhasil: Seluruh %d klausul wajib terpenuhi dengan skor sempurna 100%%. Dokumen memenuhi standar akuntabilitas pengadaan desa.", total)

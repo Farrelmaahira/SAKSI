@@ -35,6 +35,8 @@ type CreateContractParams struct {
 	CreatedBy        int64
 	IntegrityScore   float64
 	SHA256Hash       string
+	AuditModel       string
+	AuditFindings    []domain.AuditFinding
 }
 
 type ListReportsFilter struct {
@@ -113,7 +115,7 @@ type Storage interface {
 }
 
 type AIEngine interface {
-	AuditClauses(ctx context.Context, contractText string) (score float64, fulfilled int, total int, summary string, err error)
+	AuditClauses(ctx context.Context, contractText string) (domain.AuditResult, error)
 }
 
 func AuthorizeContractAccess(callerRole domain.UserRole, callerVillageID string, contract domain.Contract) error {
