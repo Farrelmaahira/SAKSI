@@ -63,8 +63,8 @@ func (s *Store) ReviseContract(ctx context.Context, p usecase.ReviseContractPara
 		return domain.ContractVersion{}, domain.ErrForbidden
 	}
 
-	// Kontrak yang sudah ditandatangani, dibatalkan, atau dipublikasikan tidak dapat direvisi
-	if status == string(domain.StatusSigned) || status == string(domain.StatusCancelled) || status == string(domain.StatusPublished) {
+	// Status ≥ ditandatangani (atau dibatalkan) terkunci: segel SHA-256 tidak boleh berubah.
+	if domain.ContractStatus(status).Locked() {
 		return domain.ContractVersion{}, domain.ErrContractNotEditable
 	}
 
@@ -77,33 +77,29 @@ func (s *Store) ReviseContract(ctx context.Context, p usecase.ReviseContractPara
 	nextVersion := currentMaxVersion + 1
 
 	// 3. Tentukan isi draf teks kontrak
-	teksKontrak := strings.TrimSpace(p.DrafTeksOverride)
-	if teksKontrak == "" {
-		draftParams := usecase.CreateContractDraftParams{
-			Jenis:           domain.ContractJenis(jenis),
-			Judul:           judul,
-			Nilai:           nilai,
-			Tenggat:         tenggat,
-			SkemaPembayaran: skemaPembayaran,
-			MetodePemilihan: metodePemilihan,
-			VillageName:     villageName,
-			KadesName:       kadesName,
-			VendorName:      vendorName,
-			VendorNPWP:      vendorNPWP,
-			VendorAddress:   vendorAddress,
-			JawabanForm:     p.JawabanForm,
-		}
-		rendered, renderErr := usecase.RenderContractDraft(draftParams)
-		if renderErr == nil && strings.TrimSpace(rendered) != "" {
-			teksKontrak = rendered
-		} else {
-			// Fallback ke isi versi sebelumnya jika render baru gagal
-			_ = tx.QueryRow(ctx, `SELECT isi FROM contract_versions WHERE contract_id = $1 AND nomor_versi = $2`, contractID, currentMaxVersion).Scan(&teksKontrak)
-		}
+	draftParams := usecase.CreateContractDraftParams{
+		Jenis:           domain.ContractJenis(jenis),
+		Judul:           judul,
+		Nilai:           nilai,
+		Tenggat:         tenggat,
+		SkemaPembayaran: skemaPembayaran,
+		MetodePemilihan: metodePemilihan,
+		VillageName:     villageName,
+		KadesName:       kadesName,
+		VendorName:      vendorName,
+		VendorNPWP:      vendorNPWP,
+		VendorAddress:   vendorAddress,
+		JawabanForm:     p.JawabanForm,
 	}
-
-	// 4. Jalankan rule audit draf kontrak
-	score, _, _, _, _ := usecase.AuditContractDraft(teksKontrak)
+	clauses := p.Clauses
+	teksKontrak := strings.TrimSpace(p.DrafTeksOverride)
+	switch {
+	case clauses != nil: // editor pasal manual
+		teksKontrak = usecase.ComposeContractText(draftParams, clauses)
+	case teksKontrak == "":
+		clauses = usecase.RuleDraftClauses(draftParams)
+		teksKontrak = usecase.ComposeContractText(draftParams, clauses)
+	}
 
 	jawabanJSON, err := json.Marshal(p.JawabanForm)
 	if err != nil {
@@ -124,28 +120,30 @@ func (s *Store) ReviseContract(ctx context.Context, p usecase.ReviseContractPara
 	if err != nil {
 		return domain.ContractVersion{}, err
 	}
-
-	// 6. Simpan catatan ke ai_audits
-	insertAuditQuery := `
-		INSERT INTO ai_audits (version_id, model, skor, status, dijalankan_pada)
-		VALUES ($1, 'saksi-rule-auditor-v1', $2, 'selesai', NOW())
-	`
-	if _, err := tx.Exec(ctx, insertAuditQuery, versionID, score); err != nil {
+	if err := insertClauses(ctx, tx, versionID, clauses); err != nil {
 		return domain.ContractVersion{}, err
 	}
 
-	// 7. Update status kontrak ke "diaudit"
-	newStatus := string(domain.StatusAudited)
-	if _, err := tx.Exec(ctx, `UPDATE contracts SET status = $1 WHERE id = $2`, newStatus, contractID); err != nil {
+	// 6. Versi baru belum diaudit: status kembali ke draf sampai POST /contracts/{id}/audit dijalankan
+	//    (tidak ada skor pengganti dari rule engine; keputusan 2026-11-10).
+	newStatus := string(domain.StatusDraft)
+	tag, err := tx.Exec(ctx, `UPDATE contracts SET status = $1 WHERE id = $2
+		AND status NOT IN ('ditandatangani', 'dipublikasikan', 'berjalan', 'selesai', 'dibatalkan')`, newStatus, contractID)
+	if err != nil {
 		return domain.ContractVersion{}, err
 	}
+	if tag.RowsAffected() != 1 {
+		return domain.ContractVersion{}, domain.ErrContractNotEditable
+	}
 
-	// 8. Catat riwayat status
-	insertHistoryQuery := `
-		INSERT INTO contract_status_history (contract_id, status_ke, aktor_user_id, waktu)
-		VALUES ($1, $2, $3, NOW())
-	`
-	if _, err := tx.Exec(ctx, insertHistoryQuery, contractID, newStatus, p.KadesUserID); err != nil {
+	// 8. Catat riwayat status dan audit log
+	if err := insertStatusHistory(ctx, tx, contractID, &status, newStatus, p.KadesUserID); err != nil {
+		return domain.ContractVersion{}, err
+	}
+	if err := insertAuditLog(ctx, tx, p.KadesUserID, "contract.revise", contractID,
+		map[string]any{"status": status, "nomorVersi": currentMaxVersion},
+		map[string]any{"status": newStatus, "nomorVersi": nextVersion, "versionId": versionID, "sumber": "manual", "jumlahPasal": len(clauses)},
+		p.ActorIP); err != nil {
 		return domain.ContractVersion{}, err
 	}
 
@@ -160,6 +158,7 @@ func (s *Store) ReviseContract(ctx context.Context, p usecase.ReviseContractPara
 		JawabanForm: p.JawabanForm,
 		Isi:         teksKontrak,
 		Sumber:      "manual",
+		Clauses:     clauses,
 		DibuatOleh:  p.KadesUserID,
 		CreatedAt:   createdAt,
 	}, nil
@@ -248,6 +247,20 @@ func (s *Store) SubmitContractReview(ctx context.Context, p usecase.SubmitReview
 		}
 	}
 
+	if err := insertAuditLog(ctx, tx, p.VendorUserID, "contract.review", p.ContractID, nil,
+		map[string]any{"reviewId": reviewID, "versionId": versionID, "status": reviewStatus}, p.ActorIP); err != nil {
+		return domain.ContractReview{}, err
+	}
+	var creatorID int64
+	var judul string
+	if err := tx.QueryRow(ctx, `SELECT dibuat_oleh, judul FROM contracts WHERE id = $1`, p.ContractID).Scan(&creatorID, &judul); err != nil {
+		return domain.ContractReview{}, err
+	}
+	if err := notify(ctx, tx, creatorID, "kontrak_ditinjau",
+		fmt.Sprintf("Penyedia mengirim tinjauan (%s) untuk kontrak \"%s\".", reviewStatus, judul), contractLink(p.ContractID)); err != nil {
+		return domain.ContractReview{}, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return domain.ContractReview{}, err
 	}
@@ -291,12 +304,17 @@ func (s *Store) SignContract(ctx context.Context, p usecase.SignContractParams) 
 	// 2. Cari party_id untuk pengguna pemanggil
 	var partyID int64
 	if p.CallerRole == domain.RoleKades {
+		// Kades hanya boleh menandatangani kontrak desanya sendiri (cegah IDOR lintas desa).
+		if p.VillageID == nil {
+			return domain.Signature{}, nil, domain.ErrForbidden
+		}
 		queryParty := `
 			SELECT cp.id
 			FROM contract_parties cp
-			WHERE cp.contract_id = $1 AND cp.peran_pihak = 'pertama'
+			JOIN contracts c ON c.id = cp.contract_id
+			WHERE cp.contract_id = $1 AND cp.peran_pihak = 'pertama' AND c.village_id = $2
 		`
-		err = tx.QueryRow(ctx, queryParty, p.ContractID).Scan(&partyID)
+		err = tx.QueryRow(ctx, queryParty, p.ContractID, *p.VillageID).Scan(&partyID)
 	} else if p.CallerRole == domain.RolePenyedia {
 		queryParty := `
 			SELECT cp.id
@@ -407,12 +425,15 @@ func (s *Store) SignContract(ctx context.Context, p usecase.SignContractParams) 
 		var waktuSegel time.Time
 		chainName := "saksi-ledger-simulated"
 		txHash := "tx_" + sha256Hash[:32]
+		var prevSealID *int64
 		insertSealQuery := `
-			INSERT INTO document_seals (version_id, file_id, sha256, waktu_segel, chain, tx_hash)
-			VALUES ($1, $2, $3, NOW(), $4, $5)
-			RETURNING id, waktu_segel
+			INSERT INTO document_seals (version_id, file_id, sha256, waktu_segel, segel_sebelumnya_id, chain, tx_hash)
+			VALUES ($1, $2, $3, NOW(), (
+				SELECT ds.id FROM document_seals ds JOIN contract_versions v ON v.id = ds.version_id
+				WHERE v.contract_id = $6 ORDER BY ds.id DESC LIMIT 1), $4, $5)
+			RETURNING id, waktu_segel, segel_sebelumnya_id
 		`
-		err = tx.QueryRow(ctx, insertSealQuery, versionID, fileID, sha256Hash, chainName, txHash).Scan(&sealID, &waktuSegel)
+		err = tx.QueryRow(ctx, insertSealQuery, versionID, fileID, sha256Hash, chainName, txHash, p.ContractID).Scan(&sealID, &waktuSegel, &prevSealID)
 		if err != nil {
 			return domain.Signature{}, nil, err
 		}
@@ -433,13 +454,50 @@ func (s *Store) SignContract(ctx context.Context, p usecase.SignContractParams) 
 		}
 
 		sealResult = &domain.DocumentSeal{
-			ID:         sealID,
-			VersionID:  versionID,
-			FileID:     fileID,
-			SHA256:     sha256Hash,
-			WaktuSegel: waktuSegel,
-			Chain:      chainName,
-			TxHash:     txHash,
+			ID:                sealID,
+			VersionID:         versionID,
+			FileID:            fileID,
+			SHA256:            sha256Hash,
+			WaktuSegel:        waktuSegel,
+			SegelSebelumnyaID: prevSealID,
+			Chain:             chainName,
+			TxHash:            txHash,
+		}
+	}
+
+	if err := insertAuditLog(ctx, tx, p.UserID, "contract.sign", p.ContractID, nil,
+		map[string]any{"signatureId": sigID, "partyId": partyID, "versionId": versionID, "metode": metode}, p.ActorIP); err != nil {
+		return domain.Signature{}, nil, err
+	}
+	var creatorID int64
+	var judul string
+	if err := tx.QueryRow(ctx, `SELECT dibuat_oleh, judul FROM contracts WHERE id = $1`, p.ContractID).Scan(&creatorID, &judul); err != nil {
+		return domain.Signature{}, nil, err
+	}
+	vendorID, err := vendorUserID(ctx, tx, p.ContractID)
+	if err != nil {
+		return domain.Signature{}, nil, err
+	}
+	link := contractLink(p.ContractID)
+	if sealResult != nil {
+		if err := insertAuditLog(ctx, tx, p.UserID, "contract.seal", p.ContractID, nil,
+			map[string]any{"sealId": sealResult.ID, "sha256": sealResult.SHA256, "segelSebelumnyaId": prevSealIDOf(sealResult)}, p.ActorIP); err != nil {
+			return domain.Signature{}, nil, err
+		}
+		for _, uid := range uniqueIDs(creatorID, vendorID) {
+			if err := notify(ctx, tx, uid, "kontrak_disegel", fmt.Sprintf("Kontrak \"%s\" sudah ditandatangani semua pihak dan disegel.", judul), link); err != nil {
+				return domain.Signature{}, nil, err
+			}
+		}
+	} else {
+		other := vendorID
+		if p.CallerRole != domain.RoleKades {
+			other = creatorID
+		}
+		if other != p.UserID {
+			if err := notify(ctx, tx, other, "kontrak_ditandatangani", fmt.Sprintf("Pihak lain sudah menandatangani kontrak \"%s\". Giliran Anda.", judul), link); err != nil {
+				return domain.Signature{}, nil, err
+			}
 		}
 	}
 
@@ -511,6 +569,17 @@ func (s *Store) GetContractLifecycleDetail(ctx context.Context, contractID int64
 		versions = append(versions, v)
 		if v.NomorVersi >= currentVersion.NomorVersi {
 			currentVersion = v
+		}
+	}
+
+	byVersion, err := s.clausesByVersion(ctx, `cv.contract_id = $1`, contractID)
+	if err != nil {
+		return domain.ContractLifecycleDetail{}, err
+	}
+	for i := range versions {
+		versions[i].Clauses = clausesOrParsed(byVersion[versions[i].ID], versions[i].Isi)
+		if versions[i].ID == currentVersion.ID {
+			currentVersion.Clauses = versions[i].Clauses
 		}
 	}
 
@@ -597,4 +666,25 @@ func (s *Store) GetContractLifecycleDetail(ctx context.Context, contractID int64
 		Signatures: signatures,
 		Seal:       seal,
 	}, nil
+}
+
+func prevSealIDOf(d *domain.DocumentSeal) any {
+	if d.SegelSebelumnyaID == nil {
+		return nil
+	}
+	return *d.SegelSebelumnyaID
+}
+
+func uniqueIDs(ids ...int64) []int64 {
+	out := []int64{}
+	for _, id := range ids {
+		dup := false
+		for _, o := range out {
+			dup = dup || o == id
+		}
+		if id > 0 && !dup {
+			out = append(out, id)
+		}
+	}
+	return out
 }

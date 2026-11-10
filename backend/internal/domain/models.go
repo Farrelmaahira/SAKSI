@@ -13,6 +13,7 @@ var (
 	ErrForbidden           = errors.New("domain: access forbidden")
 	ErrConflict            = errors.New("domain: resource conflict")
 	ErrContractNotEditable = errors.New("domain: contract is not editable in current status")
+	ErrInvalidInput        = errors.New("domain: invalid input")
 )
 
 type UserRole string
@@ -57,6 +58,7 @@ type User struct {
 	VillageName       string    `json:"villageName,omitempty"`
 	RegionID          *int64    `json:"regionId,omitempty"`
 	NoHP              string    `json:"noHp,omitempty"`
+	CounterpartyID    *int64    `json:"counterpartyId,omitempty"`
 	CounterpartyName  string    `json:"counterpartyName,omitempty"`
 	CounterpartyJenis string    `json:"counterpartyJenis,omitempty"`
 	NPWP              string    `json:"npwp,omitempty"`
@@ -120,6 +122,8 @@ type ContractDraftPreview struct {
 	Summary            string         `json:"summary"`
 	AuditModel         string         `json:"auditModel"`
 	Findings           []AuditFinding `json:"findings"`
+	Clauses            []Clause       `json:"clauses"`
+	DraftModel         string         `json:"model"` // model DraftContract
 }
 
 // AuditFinding adalah satu temuan audit klausul (tabel ai_audit_findings).
@@ -139,6 +143,87 @@ type AuditResult struct {
 	Findings  []AuditFinding `json:"findings"`
 }
 
+// Clause adalah satu pasal kontrak (contract_clauses / clause_library). Bentuk JSON disepakati FE ↔ BE.
+type Clause struct {
+	KodePasal        string `json:"kodePasal"`
+	Judul            string `json:"judul"`
+	Isi              string `json:"isi"`
+	Urutan           int    `json:"urutan"`
+	LegalReferenceID int64  `json:"legalReferenceId"` // 0 = tanpa dasar hukum
+}
+
+// LibraryClause adalah pasal template dari clause_library.
+type LibraryClause struct {
+	Clause
+	Wajib bool `json:"wajib"`
+}
+
+type LegalReference struct {
+	ID         int64  `json:"id"`
+	Peraturan  string `json:"peraturan"`
+	NomorPasal string `json:"nomorPasal"`
+	Isi        string `json:"isi"`
+}
+
+// ContractTemplate adalah template terbaru per jenis kontrak untuk satu wilayah (atau nasional).
+type ContractTemplate struct {
+	ID      int64           `json:"id"`
+	Jenis   ContractJenis   `json:"jenis"`
+	Versi   int             `json:"versi"`
+	Clauses []LibraryClause `json:"clauses"`
+}
+
+// DraftingOptions adalah template, clause_library, dan legal_references yang berlaku di satu wilayah.
+type DraftingOptions struct {
+	RegionID        int64              `json:"regionId"`
+	Templates       []ContractTemplate `json:"templates"`
+	LegalReferences []LegalReference   `json:"legalReferences"`
+}
+
+// Template mengembalikan template untuk jenis tertentu (zero value bila tidak ada).
+func (o DraftingOptions) Template(j ContractJenis) ContractTemplate {
+	for _, t := range o.Templates {
+		if t.Jenis == j {
+			return t
+		}
+	}
+	return ContractTemplate{Jenis: j}
+}
+
+// ContractDraftState adalah keadaan kontrak + versi terakhir yang dibutuhkan untuk audit/publikasi.
+type ContractDraftState struct {
+	ContractID int64
+	VillageID  int64
+	Jenis      ContractJenis
+	Status     ContractStatus
+	VersionID  int64
+	NomorVersi int
+	Sumber     string
+	Isi        string
+	Clauses    []Clause
+}
+
+// ContractAudit adalah baris ai_audits terakhir beserta temuannya.
+type ContractAudit struct {
+	ID             int64
+	VersionID      int64
+	NomorVersi     int
+	Sumber         string
+	Model          string
+	Skor           float64
+	DijalankanPada time.Time
+	Findings       []AuditFinding
+}
+
+type Publication struct {
+	ID            int64     `json:"id"`
+	ContractID    int64     `json:"contractId"`
+	VersionID     int64     `json:"versionId"`
+	IsiTersaring  string    `json:"isiTersaring"`
+	RedactedKinds []string  `json:"redactedKinds"`
+	Waktu         time.Time `json:"waktu"`
+}
+
 type ContractDetail struct {
 	ID               int64          `json:"id"`
 	VillageID        *int64         `json:"villageId,omitempty"`
@@ -155,8 +240,11 @@ type ContractDetail struct {
 	NomorVersi       int            `json:"nomorVersi"`
 	TeksKontrak      string         `json:"teksKontrak,omitempty"`
 	JawabanForm      map[string]any `json:"jawabanForm,omitempty"`
+	Sumber           string         `json:"sumber,omitempty"`
+	Clauses          []Clause       `json:"clauses,omitempty"`
 	IntegrityScore   float64        `json:"integrityScore"`
 	SHA256Hash       string         `json:"sha256Hash"`
+	AuditError       string         `json:"auditError,omitempty"` // audit AI gagal saat dibuat; kontrak tetap tersimpan sebagai draf
 	CreatedBy        int64          `json:"createdBy"`
 	CreatedAt        time.Time      `json:"createdAt"`
 }
@@ -169,6 +257,8 @@ const (
 	StatusInReview  ContractStatus = "ditinjau"
 	StatusSigned    ContractStatus = "ditandatangani"
 	StatusPublished ContractStatus = "dipublikasikan"
+	StatusRunning   ContractStatus = "berjalan"
+	StatusDone      ContractStatus = "selesai"
 	StatusCancelled ContractStatus = "dibatalkan"
 
 	// Backward-compatibility aliases
@@ -177,6 +267,15 @@ const (
 	StatusSealed        ContractStatus = "ditandatangani"
 )
 
+// Locked true bila isi kontrak tidak boleh diubah lagi (status ≥ ditandatangani, atau dibatalkan).
+func (s ContractStatus) Locked() bool {
+	switch s {
+	case StatusSigned, StatusPublished, StatusRunning, StatusDone, StatusCancelled:
+		return true
+	}
+	return false
+}
+
 type ContractVersion struct {
 	ID          int64          `json:"id"`
 	ContractID  int64          `json:"contractId"`
@@ -184,6 +283,7 @@ type ContractVersion struct {
 	JawabanForm map[string]any `json:"jawabanForm,omitempty"`
 	Isi         string         `json:"isi"`
 	Sumber      string         `json:"sumber"` // "ai" | "manual"
+	Clauses     []Clause       `json:"clauses,omitempty"`
 	DibuatOleh  int64          `json:"createdBy"`
 	CreatedAt   time.Time      `json:"createdAt"`
 }
@@ -337,8 +437,26 @@ type PublicContractSummary struct {
 
 type PublicContractDetail struct {
 	PublicContractSummary
-	IsiTeks        string   `json:"isiTeks"`
-	KlausulList    []string `json:"klausulList"`
-	IntegrityScore float64  `json:"integrityScore"`
-	SHA256Hash     string   `json:"sha256Hash"`
+	IsiTeks        string          `json:"isiTeks"`
+	KlausulList    []string        `json:"klausulList"`
+	IntegrityScore float64         `json:"integrityScore"`
+	SHA256Hash     string          `json:"sha256Hash"`
+	Progres        *PublicProgress `json:"progres,omitempty"`
+}
+
+// PublicProgress ringkasan progres untuk portal publik: tanpa catatan dan tanpa nama pelapor.
+type PublicProgress struct {
+	PersenTerakhir     float64              `json:"persenTerakhir"`
+	TerakhirDilaporkan *time.Time           `json:"terakhirDilaporkan"`
+	SPKMulai           *time.Time           `json:"spkMulai"`
+	SPKSelesai         *time.Time           `json:"spkSelesai"`
+	PersenDibayar      float64              `json:"persenDibayar"`
+	Termin             []PublicTermProgress `json:"termin"`
+}
+
+type PublicTermProgress struct {
+	Urutan     int               `json:"urutan"`
+	Persen     float64           `json:"persen"`
+	Status     PaymentTermStatus `json:"status"`
+	JatuhTempo time.Time         `json:"jatuhTempo"`
 }

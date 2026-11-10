@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,15 +57,27 @@ func (m *reportsMockStore) ListCitizenReportsByReporter(ctx context.Context, rep
 	return list, nil
 }
 
-func (m *reportsMockStore) GetCitizenReportByID(ctx context.Context, reportID int64, requesterID int64, requesterRole domain.UserRole) (domain.CitizenReport, error) {
+// GetCitizenReportByID meniru scope store: kontrak 10 ada di desa 1; di luar cakupan = ErrNotFound.
+func (m *reportsMockStore) GetCitizenReportByID(ctx context.Context, reportID int64, sc usecase.Scope) (domain.CitizenReport, error) {
 	r, ok := m.reports[reportID]
 	if !ok {
 		return domain.CitizenReport{}, domain.ErrNotFound
 	}
-	if requesterRole == domain.RoleWarga && r.PelaporUserID != requesterID {
-		return domain.CitizenReport{}, domain.ErrForbidden
+	inVillage := sc.VillageID != nil && *sc.VillageID == 1
+	switch sc.Role {
+	case domain.RoleWarga:
+		ok = r.PelaporUserID == sc.UserID
+	case domain.RoleKades, domain.RolePerangkatDesa, domain.RoleBPD:
+		ok = inVillage
+	case domain.RoleInspektorat:
+		ok = true
+	default:
+		ok = false
 	}
-	if requesterRole == domain.RoleKades {
+	if !ok {
+		return domain.CitizenReport{}, domain.ErrNotFound
+	}
+	if sc.Role == domain.RoleKades {
 		r.PelaporNama = "Warga terverifikasi"
 	}
 	return r, nil
@@ -274,15 +287,18 @@ func TestReports_Handlers(t *testing.T) {
 	})
 
 	// 5. Test HandleGetReportDetail (IDOR check & Privacy Masking)
-	t.Run("GetReportDetail_IDOR_Forbidden", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/v1/reports/100", nil)
-		req.SetPathValue("id", "100")
-		req.Header.Set("Authorization", "Bearer "+otherWargaToken)
-		w := httptest.NewRecorder()
+	t.Run("GetReportDetail_IDOR_NotFound", func(t *testing.T) {
+		// Warga lain dan kades desa lain sama-sama mendapat 404, sama seperti id yang tidak ada.
+		for name, token := range map[string]string{"warga lain": otherWargaToken, "kades desa lain": otherKadesToken} {
+			req := httptest.NewRequest("GET", "/api/v1/reports/100", nil)
+			req.SetPathValue("id", "100")
+			req.Header.Set("Authorization", "Bearer "+token)
+			w := httptest.NewRecorder()
 
-		authMiddleware(handlers.HandleGetReportDetail(deps)).ServeHTTP(w, req)
-		if w.Code != http.StatusForbidden {
-			t.Fatalf("expected status 403 Forbidden for other citizen, got %d", w.Code)
+			authMiddleware(handlers.HandleGetReportDetail(deps)).ServeHTTP(w, req)
+			if w.Code != http.StatusNotFound || !strings.Contains(w.Body.String(), `"code":"NOT_FOUND"`) {
+				t.Fatalf("%s: expected 404 NOT_FOUND, got %d %s", name, w.Code, w.Body.String())
+			}
 		}
 	})
 

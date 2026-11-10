@@ -1,0 +1,58 @@
+[
+  {
+    "jenis": "PENGADAAN",
+    "mandatory": ["P-01", "P-02", "P-03", "P-04", "P-05"],
+    "clauses": [
+      ["P-01", "Para Pihak", "Pihak Pertama Pemerintah Desa Sukamaju; Pihak Kedua CV Maju Jaya."],
+      ["P-02", "Objek Pekerjaan", "Pengaspalan jalan desa sepanjang 500 meter."],
+      ["P-03", "Nilai Kontrak", "Rp 150.000.000 termasuk pajak, bersumber dari APBDes 2026."],
+      ["P-04", "Jangka Waktu", "Pekerjaan selesai paling lambat 30 hari sejak SPK."]
+    ],
+    "missing": ["P-05"],
+    "skor": 80.0
+  },
+  {
+    "jenis": "HIBAH",
+    "mandatory": ["H-01", "H-02", "H-03", "H-04"],
+    "clauses": [
+      ["H-01", "Para Pihak", "Pemberi hibah Pemerintah Desa Sukamaju; penerima Kelompok Tani Subur."],
+      ["H-02", "Objek Hibah", "Dua unit pompa air."],
+      ["H-03", "Nilai Hibah", "Senilai Rp 24.000.000."]
+    ],
+    "missing": ["H-04"],
+    "skor": 75.0
+  },
+  {
+    "jenis": "KERJA_SAMA_BUMDES",
+    "mandatory": ["K-01", "K-02", "K-03", "K-04"],
+    "clauses": [
+      ["K-01", "Para Pihak", "BUMDes Sejahtera dan CV Tani Makmur."],
+      ["K-02", "Ruang Lingkup", "Pengelolaan penggilingan padi desa."],
+      ["K-04", "Jangka Waktu", "Dua tahun sejak penandatanganan."]
+    ],
+    "missing": ["K-03"],
+    "skor": 75.0
+  },
+  {
+    "jenis": "SEWA_ASET",
+    "mandatory": ["S-01", "S-02", "S-03", "S-04", "S-05"],
+    "clauses": [
+      ["S-01", "Para Pihak", "Pemerintah Desa Sukamaju dan Bapak Penyewa."],
+      ["S-02", "Objek Sewa", "Tanah kas desa seluas 2.000 m2 di Dusun II."],
+      ["S-04", "Harga Sewa", "Rp 6.000.000 per tahun, dibayar di muka."],
+      ["S-05", "Penyelesaian Sengketa", "Musyawarah, lalu Pengadilan Negeri setempat."]
+    ],
+    "missing": ["S-03"],
+    "skor": 80.0
+  },
+  {
+    "jenis": "UMKM",
+    "mandatory": ["U-01", "U-02", "U-03"],
+    "clauses": [
+      ["U-01", "Para Pihak", "UD Kopi Desa dan Toko Sumber Rejeki."],
+      ["U-02", "Objek dan Harga", "Pasokan 100 kg kopi per bulan seharga Rp 90.000/kg."]
+    ],
+    "missing": ["U-03"],
+    "skor": 66.67
+  }
+]

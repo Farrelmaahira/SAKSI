@@ -152,15 +152,20 @@ func (s *Store) UserByID(ctx context.Context, id int64) (domain.User, error) {
 	var u domain.User
 	var roleStr string
 	query := `SELECT u.id, u.nama, u.email, u.password_hash, u.status, u.dibuat_pada,
-		COALESCE(ur.role::text, ''), ur.village_id, COALESCE(v.nama, '')
+		COALESCE(ur.role::text, ''), ur.village_id, COALESCE(v.nama, ''),
+		COALESCE(wp.no_hp, ''), k.id, COALESCE(k.nama, ''), COALESCE(k.jenis::text, ''), COALESCE(k.npwp, ''), COALESCE(k.alamat, '')
 		FROM users u
 		LEFT JOIN user_roles ur ON u.id = ur.user_id
 		LEFT JOIN villages v ON ur.village_id = v.id
+		LEFT JOIN warga_profiles wp ON wp.user_id = u.id
+		LEFT JOIN counterparties k ON k.user_id = u.id
 		WHERE u.id = $1
+		ORDER BY ur.id, k.id
 		LIMIT 1`
 	err := s.db.QueryRow(ctx, query, id).Scan(
 		&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Status, &u.CreatedAt,
 		&roleStr, &u.VillageID, &u.VillageName,
+		&u.NoHP, &u.CounterpartyID, &u.CounterpartyName, &u.CounterpartyJenis, &u.NPWP, &u.Alamat,
 	)
 	if err != nil {
 		return u, notFound(err)

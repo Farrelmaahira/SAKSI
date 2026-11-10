@@ -85,7 +85,7 @@ func (s *Store) GetPublicContractDetail(ctx context.Context, villageID int64, co
 			COALESCE(c.village_id, 0),
 			COALESCE(v.nama, '') AS village_name,
 			COALESCE(cpy.nama, '') AS counterparty_nama,
-			COALESCE(cv.isi, '') AS isi_teks,
+			COALESCE(pub.isi_tersaring, '') AS isi_teks,
 			COALESCE(aa.skor, 0) AS integrity_score
 		FROM contracts c
 		LEFT JOIN villages v ON v.id = c.village_id
@@ -103,6 +103,13 @@ func (s *Store) GetPublicContractDetail(ctx context.Context, villageID int64, co
 			ORDER BY dijalankan_pada DESC
 			LIMIT 1
 		) aa ON true
+		LEFT JOIN LATERAL (
+			-- hanya teks yang sudah diredaksi saat publikasi; naskah mentah tidak pernah tampil di publik
+			SELECT isi_tersaring FROM publications
+			WHERE contract_id = c.id
+			ORDER BY waktu DESC, id DESC
+			LIMIT 1
+		) pub ON true
 		WHERE c.id = $1
 		  AND c.status::text IN ('dipublikasikan', 'berjalan', 'selesai')
 		  AND ($2::bigint = 0 OR c.village_id = $2)
@@ -131,6 +138,17 @@ func (s *Store) GetPublicContractDetail(ctx context.Context, villageID int64, co
 	res.Nomor = fmt.Sprintf("SPK-%d-%04d", res.VillageID, res.ID)
 	// Ekstraksi klausul dari isi teks
 	res.KlausulList = extractClauses(res.IsiTeks)
+
+	// Hash segel terakhir kontrak ini, supaya warga bisa mencocokkan dokumen lewat /public/seals/verify.
+	err = s.db.QueryRow(ctx, `
+		SELECT ds.sha256 FROM document_seals ds JOIN contract_versions v ON v.id = ds.version_id
+		WHERE v.contract_id = $1 ORDER BY ds.id DESC LIMIT 1`, contractID).Scan(&res.SHA256Hash)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return domain.PublicContractDetail{}, err
+	}
+	if res.Progres, err = s.publicProgress(ctx, contractID, res.Nilai); err != nil {
+		return domain.PublicContractDetail{}, err
+	}
 	return res, nil
 }
 
@@ -188,7 +206,8 @@ func (s *Store) CreateCitizenReport(ctx context.Context, r domain.CitizenReport,
 
 	// Pastikan kontrak ada dan valid
 	var contractTitle string
-	err = tx.QueryRow(ctx, `SELECT judul FROM contracts WHERE id = $1`, r.ContractID).Scan(&contractTitle)
+	var creatorID int64
+	err = tx.QueryRow(ctx, `SELECT judul, dibuat_oleh FROM contracts WHERE id = $1`, r.ContractID).Scan(&contractTitle, &creatorID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.CitizenReport{}, fmt.Errorf("contract %d not found: %w", r.ContractID, domain.ErrNotFound)
@@ -247,6 +266,12 @@ func (s *Store) CreateCitizenReport(ctx context.Context, r domain.CitizenReport,
 	action.Catatan = "Laporan pengaduan masyarakat telah diterima sistem SAKSI."
 	_ = tx.QueryRow(ctx, actionQuery, r.ID, r.PelaporUserID).Scan(&action.ID, &action.Waktu)
 	r.Actions = []domain.ReportAction{action}
+
+	// Pesan tanpa identitas pelapor (desa hanya melihat "Warga terverifikasi").
+	if err := notify(ctx, tx, creatorID, "laporan_baru",
+		fmt.Sprintf("Laporan warga baru (%s) untuk kontrak \"%s\".", r.KodePelacakan, contractTitle), "/dashboard/laporan"); err != nil {
+		return domain.CitizenReport{}, err
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return domain.CitizenReport{}, err
@@ -316,7 +341,7 @@ func (s *Store) ListCitizenReportsByReporter(ctx context.Context, reporterID int
 }
 
 // GetCitizenReportByID mengambil satu laporan spesifik dengan pengecekan privasi role
-func (s *Store) GetCitizenReportByID(ctx context.Context, reportID int64, requesterID int64, requesterRole domain.UserRole) (domain.CitizenReport, error) {
+func (s *Store) GetCitizenReportByID(ctx context.Context, reportID int64, sc usecase.Scope) (domain.CitizenReport, error) {
 	query := `
 		SELECT 
 			cr.id, 
@@ -360,18 +385,27 @@ func (s *Store) GetCitizenReportByID(ctx context.Context, reportID int64, reques
 	}
 	r.Status = domain.ReportStatus(statusStr)
 
-	// Validasi Hak Akses (IDOR)
-	if requesterRole == domain.RoleWarga && r.PelaporUserID != requesterID {
-		return domain.CitizenReport{}, domain.ErrForbidden
-	}
-
-	// Enforce privasi: Perangkat desa / Kades hanya melihat nama tersamar "Warga terverifikasi"
-	if requesterRole == domain.RoleKades || requesterRole == domain.RolePenyedia {
-		r.PelaporNama = "Warga terverifikasi"
+	// IDOR: cakupan sama dengan /reports/{id}/actions (warga: laporan sendiri; petugas: desa/wilayah).
+	// Di luar cakupan dijawab ErrNotFound agar id laporan tidak bisa ditebak.
+	if _, err := s.reportForCaller(ctx, s.db, reportID, sc, false); err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			return domain.CitizenReport{}, domain.ErrNotFound
+		}
+		return domain.CitizenReport{}, err
 	}
 
 	r.Attachments = s.loadAttachments(ctx, r.ID)
 	r.Actions = s.loadActions(ctx, r.ID)
+
+	// Enforce privasi: desa dan penyedia hanya melihat nama tersamar, termasuk di aksi awal pelapor.
+	if sc.Role == domain.RoleKades || sc.Role == domain.RolePerangkatDesa || sc.Role == domain.RolePenyedia {
+		r.PelaporNama = "Warga terverifikasi"
+		for i := range r.Actions {
+			if r.Actions[i].AktorUserID == r.PelaporUserID {
+				r.Actions[i].AktorNama = "Warga terverifikasi"
+			}
+		}
+	}
 
 	return r, nil
 }

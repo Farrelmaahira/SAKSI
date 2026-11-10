@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,13 +60,15 @@ type SessionResponse struct {
 }
 
 type MeResponse struct {
-	UserID      int64  `json:"userId"`
-	Role        string `json:"role"`
-	Nama        string `json:"nama"`
-	Email       string `json:"email"`
-	VillageID   *int64 `json:"villageId,omitempty"`
-	VillageName string `json:"villageName,omitempty"`
-	Status      string `json:"status"`
+	UserID      int64         `json:"userId"`
+	Role        string        `json:"role"`
+	Nama        string        `json:"nama"`
+	Email       string        `json:"email"`
+	VillageID   *int64        `json:"villageId,omitempty"`
+	VillageName string        `json:"villageName,omitempty"`
+	Status      string        `json:"status"`
+	NoHP        string        `json:"noHp,omitempty"`  // warga
+	Usaha       *UsahaProfile `json:"usaha,omitempty"` // penyedia
 }
 
 // Handlers untuk modul autentikasi
@@ -175,6 +178,12 @@ func HandleRegister(d *Deps) http.HandlerFunc {
 
 func HandleLogin(d *Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !usecase.Allow(r.Context(), d.Limiter, usecase.KeyRLLogin(ClientIP(r, d.TrustedProxies)), usecase.LimitLoginPerIP, usecase.WindowLoginRL) {
+			w.Header().Set("Retry-After", strconv.Itoa(int(usecase.WindowLoginRL.Seconds())))
+			WriteErrorCode(w, http.StatusTooManyRequests, "RATE_LIMITED", "terlalu banyak percobaan masuk, coba lagi nanti")
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 		var req LoginRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			WriteError(w, http.StatusBadRequest, "invalid request body")
@@ -215,15 +224,7 @@ func HandleMe(d *Deps) http.HandlerFunc {
 			WriteError(w, http.StatusNotFound, "user profile not found")
 			return
 		}
-		WriteJSON(w, http.StatusOK, MeResponse{
-			UserID:      u.ID,
-			Role:        string(u.Role),
-			Nama:        u.Name,
-			Email:       u.Email,
-			VillageID:   u.VillageID,
-			VillageName: u.VillageName,
-			Status:      u.Status,
-		})
+		WriteJSON(w, http.StatusOK, meResponse(u))
 	}
 }
 

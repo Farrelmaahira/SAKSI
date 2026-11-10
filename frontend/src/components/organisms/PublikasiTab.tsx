@@ -5,6 +5,9 @@ import { useState } from 'react'
 import type { PubField } from '@/interfaces/db'
 import { pubFieldLabels, pubFields } from '@/data/db'
 import { publishContract } from '@/lib/db/publish-contract'
+import { publishContract as publishOnServer } from '@/lib/api/publish-contract'
+import type { Publication } from '@/interfaces/api'
+import FormAlert from '@/components/atoms/FormAlert'
 import Panel from '@/components/molecules/Panel'
 import Icon from '@/components/atoms/Icon'
 import { fmtDate } from '@/lib/dates/fmt-date'
@@ -16,14 +19,39 @@ export default function PublikasiTab({ c, session }: TabProps) {
   const [fields, setFields] = useState<PubField[]>(c.publication?.fields ?? [...pubFields])
   const [confirm, setConfirm] = useState(false)
   const [editing, setEditing] = useState(!c.publication)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<{ text: string; retry: boolean } | null>(null)
+  const [published, setPublished] = useState<Publication | null>(null)
   const isDesa = session.role.role === 'perangkat_desa'
   const sealed = c.seals.length > 0
 
   const toggle = (f: PubField) => setFields(fields.includes(f) ? fields.filter((x) => x !== f) : [...fields, f])
-  const publish = () => {
+  const done = () => {
     publishContract(c.code, fields, session)
     setConfirm(false)
     setEditing(false)
+  }
+  // server contracts are published by the API (it redacts personal data first); the local copy only follows a confirmed publish.
+  // Local-only contracts (no apiId) and later changes to the shown fields (display only, not stored on the server) stay local.
+  const publish = async () => {
+    if (!c.apiId || c.publication) return done()
+    setBusy(true)
+    setError(null)
+    const r = await publishOnServer(c.apiId)
+    setBusy(false)
+    if (r.ok) {
+      setPublished(r.data)
+      return done()
+    }
+    setError({
+      text:
+        r.code === 'AI_UNAVAILABLE' || r.code === 'AI_ERROR'
+          ? `${r.error} Publikasi dibatalkan supaya data pribadi tidak ikut tampil.`
+          : r.status === 409
+            ? 'Hanya kontrak berstatus ditandatangani yang bisa dipublikasikan, atau statusnya baru berubah. Muat ulang halaman lalu coba lagi.'
+            : r.error,
+      retry: r.status === 0 || r.status === 503 || r.status === 502,
+    })
   }
 
   return (
@@ -38,6 +66,19 @@ export default function PublikasiTab({ c, session }: TabProps) {
                 Lihat di portal publik
               </Link>
             </div>
+          </div>
+        )}
+        {published && (
+          <div className="grid gap-8 text-[1.4rem] leading-[1.5]" role="status">
+            <p>
+              {published.redactedKinds?.length
+                ? `Data pribadi yang disaring sebelum tampil: ${published.redactedKinds.map((k) => k.replace(/_/g, ' ')).join(', ')}.`
+                : 'Tidak ada data pribadi yang perlu disaring.'}
+            </p>
+            <details className="bg-soft rounded-[1.2rem] py-12 px-14 [&_summary]:cursor-pointer [&_pre]:font-body [&_pre]:mt-10 [&_pre]:max-h-320 [&_pre]:overflow-auto [&_pre]:whitespace-pre-wrap [&_pre]:text-[1.3rem]">
+              <summary>Lihat teks yang tampil untuk warga</summary>
+              <pre>{published.isiTersaring}</pre>
+            </details>
           </div>
         )}
         {!sealed ? (
@@ -61,8 +102,8 @@ export default function PublikasiTab({ c, session }: TabProps) {
               <span>Saya sudah memeriksa bagian yang ditampilkan dan tidak ada data pribadi yang tidak perlu.</span>
             </label>
             <div className="items-center flex flex-wrap gap-10">
-              <Btn icon="globe" onClick={publish} disabled={!confirm}>
-                {c.publication ? 'Simpan perubahan' : 'Publikasikan'}
+              <Btn icon="globe" onClick={publish} disabled={!confirm || busy}>
+                {busy ? 'Menyaring data pribadi…' : c.publication ? 'Simpan perubahan' : 'Publikasikan'}
               </Btn>
               {c.publication && (
                 <Btn variant="ghost" onClick={() => setEditing(false)}>
@@ -70,6 +111,17 @@ export default function PublikasiTab({ c, session }: TabProps) {
                 </Btn>
               )}
             </div>
+            {!c.apiId && !c.publication && <p className="text-[1.35rem] leading-[1.5] text-dim">Kontrak ini hanya tersimpan di perangkat ini, belum di server SAKSI, jadi publikasinya juga hanya di perangkat ini.</p>}
+            {error && (
+              <div className="grid gap-10 justify-items-start">
+                <FormAlert>{error.text}</FormAlert>
+                {error.retry && (
+                  <Btn variant="ghost" small icon="refresh" onClick={publish} disabled={!confirm || busy}>
+                    Coba lagi
+                  </Btn>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <Btn variant="ghost" onClick={() => setEditing(true)}>

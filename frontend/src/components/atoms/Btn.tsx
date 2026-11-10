@@ -14,6 +14,9 @@ interface Props {
   type?: "button" | "submit";
   disabled?: boolean;
   small?: boolean;
+  id?: string;
+  /* accessible name when the visible text alone is ambiguous, e.g. "Hapus" in a list */
+  label?: string;
 }
 
 const BASE =
@@ -37,6 +40,8 @@ export default function Btn({
   type = "button",
   disabled,
   small,
+  id,
+  label,
 }: Props) {
   const cls = cn(BASE, VARIANTS[variant], small && SMALL);
   const inner = (
@@ -52,7 +57,7 @@ export default function Btn({
       </Link>
     );
   return (
-    <button className={cls} type={type} onClick={onClick} disabled={disabled}>
+    <button id={id} aria-label={label} className={cls} type={type} onClick={onClick} disabled={disabled}>
       {inner}
     </button>
   );

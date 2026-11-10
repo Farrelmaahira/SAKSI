@@ -68,6 +68,14 @@ func (m *contractMockStore) CreateContractWithDetails(ctx context.Context, p use
 	return detail, nil
 }
 
+func (m *contractMockStore) RegionIDByVillage(ctx context.Context, villageID int64) (int64, error) {
+	return 7, nil
+}
+
+func (m *contractMockStore) DraftingOptions(ctx context.Context, regionID int64) (domain.DraftingOptions, error) {
+	return draftingOpts(), nil
+}
+
 func newContractTestDeps() (*contractMockStore, *handlers.Deps) {
 	cpID := int64(10)
 	ms := &contractMockStore{
@@ -82,8 +90,9 @@ func newContractTestDeps() (*contractMockStore, *handlers.Deps) {
 		},
 	}
 	deps := &handlers.Deps{
-		Store:  ms,
-		Secret: "test-secret-min-32-bytes-long-key-123",
+		Store:    ms,
+		AIEngine: &fakeAI{},
+		Secret:   "test-secret-min-32-bytes-long-key-123",
 	}
 	return ms, deps
 }

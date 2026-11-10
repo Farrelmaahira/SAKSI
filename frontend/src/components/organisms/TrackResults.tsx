@@ -1,4 +1,5 @@
 import type { Ref } from 'react'
+import FormAlert from '@/components/atoms/FormAlert'
 import Illustration from '@/components/atoms/Illustration'
 import OpenContractCard from '@/components/molecules/OpenContractCard'
 import type { SealedContract } from '@/interfaces/contract'
@@ -9,19 +10,22 @@ interface Props {
   ref: Ref<HTMLElement>
   registry: SealedContract[]
   loading: boolean
+  error?: string
   query: string
   found?: SealedContract
   onOpen: (code: string) => void
   onReport: () => void
 }
 
-export default function TrackResults({ ref, registry, loading, query: q, found, onOpen, onReport }: Props) {
+export default function TrackResults({ ref, registry, loading, error, query: q, found, onOpen, onReport }: Props) {
   return (
     <section className="pt-80 px-0 pb-120 [scroll-margin-top:1rem] lg:pt-120 lg:px-0 lg:pb-160" ref={ref}>
       <div className="my-0 mx-auto max-w-1680 py-0 px-20 relative w-full md:py-0 md:px-40 lg:py-0 lg:px-80 [.auth>&]:relative [.auth>&]:z-1 [.page-hero>&]:relative [.page-hero>&]:z-1 container">
-        {loading && <p className="text-[1.8rem] opacity-[0.6]">Memuat arsip kontrak…</p>}
+        {loading && <p className="text-[1.8rem] opacity-[0.6]" role="status">Memuat arsip kontrak…</p>}
 
-        {!loading && q && !found && (
+        {!loading && error && <div className="mb-40"><FormAlert>{error}</FormAlert></div>}
+
+        {!loading && !error && q && !found && (
           <div className="items-center [animation:pop_0.4s_ease-out] bg-soft rounded-[2rem] grid gap-30 mb-80 py-40 px-30 [&_img]:max-h-160 [&_h2]:text-[3.4rem] [&_h2]:font-[320] [&_h2]:tracking-[-0.03em] [&_h2]:mb-12 [&_p]:text-[1.7rem] [&_p]:leading-[1.5] [&_code]:font-code md:grid-cols-[18rem_1fr] md:p-40">
             <Illustration name="document-warning_2es6" />
             <div>

@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package saksi.ai.v1;
+
+option go_package = "saksi-backend/gen/saksi/ai/v1;aiv1";
+
+// Health memakai grpc.health.v1.Health standar (service name "saksi.ai.v1.AiEngine").
+service AiEngine {
+  // Menyusun pasal dari jawaban wizard. Hasilnya draf, bukan versi final.
+  rpc DraftContract(DraftContractRequest) returns (DraftContractResponse);
+  // Mengaudit kelengkapan pasal (berlaku untuk versi AI maupun manual).
+  rpc AuditContract(AuditContractRequest) returns (AuditContractResponse);
+  // Menyaring data pribadi sebelum publikasi.
+  rpc RedactText(RedactTextRequest) returns (RedactTextResponse);
+}
+
+enum ContractType {
+  CONTRACT_TYPE_UNSPECIFIED = 0;
+  PENGADAAN = 1;
+  HIBAH = 2;
+  KERJA_SAMA_BUMDES = 3;
+  SEWA_ASET = 4;
+  UMKM = 5;
+}
+
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  KRITIS = 1;
+  SARAN = 2;
+}
+
+message LegalReference {
+  int64 id = 1;            // legal_references.id
+  string peraturan = 2;
+  string nomor_pasal = 3;
+  string isi = 4;
+}
+
+message Clause {
+  string kode_pasal = 1;
+  string judul = 2;
+  string isi = 3;
+  int32 urutan = 4;
+  int64 legal_reference_id = 5;  // 0 = tanpa dasar hukum
+}
+
+message DraftContractRequest {
+  ContractType jenis = 1;
+  map<string, string> jawaban = 2;          // jawaban_form wizard
+  repeated Clause clause_library = 3;       // template + pasal wajib dari clause_library
+  repeated LegalReference legal_references = 4;
+}
+
+message DraftContractResponse {
+  repeated Clause clauses = 1;
+  string model = 2;                          // "groq:<model>" / "gemini:<model>"
+}
+
+message AuditContractRequest {
+  ContractType jenis = 1;
+  repeated Clause clauses = 2;
+  repeated string mandatory_kode_pasal = 3;  // clause_library.wajib = true
+  repeated LegalReference legal_references = 4;
+}
+
+message Finding {
+  string kode_pasal = 1;   // kosong = temuan umum
+  Severity tingkat = 2;
+  string pesan = 3;
+}
+
+message AuditContractResponse {
+  repeated Finding findings = 1;
+  double skor = 2;         // 0..100
+  string model = 3;
+}
+
+message RedactTextRequest {
+  string text = 1;
+}
+
+message RedactTextResponse {
+  string text = 1;
+  repeated string redacted_kinds = 2;  // mis. "nik", "no_hp", "email", "alamat"
+}

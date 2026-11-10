@@ -15,12 +15,13 @@ import { placeholderFor } from '@/data/dash'
 import Btn from '@/components/atoms/Btn'
 import ReportThread from '@/components/molecules/ReportThread'
 
-interface Props { report: DReport; contract?: DContract; session: Session }
+/* readOnly: a server report; follow-up actions are not on the API yet, so none are offered */
+interface Props { report: DReport; contract?: DContract; session: Session; readOnly?: boolean }
 
-export default function ReportCard({ report: r, contract, session }: Props) {
+export default function ReportCard({ report: r, contract, session, readOnly }: Props) {
   const [text, setText] = useState('')
   const [hint, setHint] = useState<string | null>(null)
-  const options = optionsFor(session, r)
+  const options = readOnly ? [] : optionsFor(session, r)
   const waitingClarification = session.role.role === 'perangkat_desa' && r.actions.some((a) => a.kind === 'klarifikasi') && !desaAnswered(r)
 
   const run = (o: ReportOption) => {

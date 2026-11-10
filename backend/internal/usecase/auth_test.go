@@ -1,6 +1,7 @@
 package usecase_test
 
 import (
+	"golang.org/x/crypto/bcrypt"
 	"testing"
 	"time"
 
@@ -58,3 +59,15 @@ func TestTokenLifecycle_Int64ID(t *testing.T) {
 	}
 }
 
+
+func TestCheckPasswordRejectsLegacyDemoPasswords(t *testing.T) {
+	h, _ := bcrypt.GenerateFromPassword([]byte("rahasia-asli-1"), bcrypt.MinCost)
+	for _, p := range []string{"saksi123", "passwordKades123", "passwordPenyedia123", "passwordWarga123"} {
+		if usecase.CheckPassword(string(h), p) {
+			t.Fatalf("sandi demo %q tidak boleh lolos", p)
+		}
+	}
+	if !usecase.CheckPassword(string(h), "rahasia-asli-1") {
+		t.Fatal("sandi benar harus lolos")
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -19,6 +20,8 @@ import (
 type ReviseContractPayload struct {
 	JawabanForm      map[string]any `json:"jawabanForm"`
 	DrafTeksOverride string         `json:"drafTeksOverride,omitempty"`
+	// Clauses diisi editor pasal manual: pasal bisa ditambah, dihapus, diurutkan ulang (versi sumber='manual').
+	Clauses *[]domain.Clause `json:"clauses,omitempty"`
 }
 
 type SubmitContractReviewPayload struct {
@@ -55,21 +58,24 @@ func HandleReviseContract(d *Deps) http.HandlerFunc {
 			return
 		}
 
+		r.Body = http.MaxBytesReader(w, r.Body, maxDraftBody)
 		var req ReviseContractPayload
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			WriteError(w, http.StatusBadRequest, "payload JSON revisi kontrak tidak valid")
 			return
 		}
 
-		if len(req.JawabanForm) == 0 && strings.TrimSpace(req.DrafTeksOverride) == "" {
-			WriteError(w, http.StatusBadRequest, "jawabanForm atau drafTeksOverride wajib diisi")
+		if req.Clauses == nil && len(req.JawabanForm) == 0 && strings.TrimSpace(req.DrafTeksOverride) == "" {
+			WriteError(w, http.StatusBadRequest, "clauses, jawabanForm, atau drafTeksOverride wajib diisi")
 			return
 		}
 
-		var villageID int64
-		if userVillageID != nil {
-			villageID = *userVillageID
+		// Kades tanpa desa tidak boleh merevisi apa pun (store hanya memeriksa desa bila > 0).
+		if userVillageID == nil || *userVillageID <= 0 {
+			WriteError(w, http.StatusForbidden, "akun Kepala Desa belum terikat ke desa")
+			return
 		}
+		villageID := *userVillageID
 
 		params := usecase.ReviseContractParams{
 			ContractID:       contractID,
@@ -77,6 +83,23 @@ func HandleReviseContract(d *Deps) http.HandlerFunc {
 			VillageID:        villageID,
 			JawabanForm:      req.JawabanForm,
 			DrafTeksOverride: req.DrafTeksOverride,
+			ActorIP:          ClientIP(r, d.TrustedProxies),
+		}
+		if req.Clauses != nil {
+			if len(*req.Clauses) == 0 {
+				WriteError(w, http.StatusBadRequest, "versi manual minimal berisi 1 pasal")
+				return
+			}
+			opts, err := loadDraftingOptions(r, d, userVillageID)
+			if err != nil {
+				slog.Error("gagal memuat opsi drafting", "err", err)
+				WriteError(w, http.StatusInternalServerError, "gagal memuat daftar dasar hukum")
+				return
+			}
+			if params.Clauses, err = usecase.NormalizeClauses(*req.Clauses, usecase.LegalRefIDs(opts.LegalReferences)); err != nil {
+				writeInvalid(w, err)
+				return
+			}
 		}
 
 		version, err := d.Store.ReviseContract(r.Context(), params)
@@ -90,10 +113,11 @@ func HandleReviseContract(d *Deps) http.HandlerFunc {
 				return
 			}
 			if errors.Is(err, domain.ErrContractNotEditable) {
-				WriteError(w, http.StatusConflict, "kontrak tidak dapat direvisi karena sudah ditandatangani atau ditutup")
+				WriteErrorCode(w, http.StatusConflict, "CONTRACT_LOCKED", "kontrak tidak dapat direvisi karena sudah ditandatangani atau ditutup")
 				return
 			}
-			WriteError(w, http.StatusInternalServerError, "gagal merevisi draf kontrak: "+err.Error())
+			slog.Error("gagal merevisi kontrak", "contract_id", contractID, "err", err)
+			WriteError(w, http.StatusInternalServerError, "gagal merevisi draf kontrak")
 			return
 		}
 
@@ -169,6 +193,7 @@ func HandleSubmitContractReview(d *Deps) http.HandlerFunc {
 			ClauseID:     req.ClauseID,
 			Komentar:     req.Komentar,
 			Status:       status,
+			ActorIP:      ClientIP(r, d.TrustedProxies),
 		}
 
 		review, err := d.Store.SubmitContractReview(r.Context(), params)
@@ -196,7 +221,7 @@ func HandleSubmitContractReview(d *Deps) http.HandlerFunc {
 // HandleSignContract menangani pembubuhan tanda tangan bilateral oleh Kades atau Rekanan.
 func HandleSignContract(d *Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID, role, _ := ClaimsFromContext(r.Context())
+		userID, role, userVillageID := ClaimsFromContext(r.Context())
 		if role != domain.RoleKades && role != domain.RolePenyedia {
 			WriteError(w, http.StatusForbidden, "hanya Kepala Desa dan Penyedia yang dapat menandatangani kontrak")
 			return
@@ -269,6 +294,8 @@ func HandleSignContract(d *Deps) http.HandlerFunc {
 			CallerRole: role,
 			StorageKey: storageKey,
 			Metode:     metode,
+			VillageID:  userVillageID,
+			ActorIP:    ClientIP(r, d.TrustedProxies),
 		}
 
 		sig, seal, err := d.Store.SignContract(r.Context(), params)

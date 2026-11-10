@@ -5,8 +5,9 @@ import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigat
 import { useDash } from '@/hooks/use-dash'
 import { db } from '@/lib/db/db'
 import { scopeContracts } from '@/lib/db/scope-contracts'
-import { fetchPublicContracts } from '@/lib/api/reports'
+import { listPublicContracts } from '@/lib/api/list-public-contracts'
 import type { DContract } from '@/interfaces/db'
+import type { TemplateKey } from '@/interfaces/drafting'
 import Empty from '@/components/molecules/Empty'
 import Btn from '@/components/atoms/Btn'
 import { allTabs } from '@/data/dash-tabs'
@@ -40,14 +41,14 @@ export default function KontrakDetailTemplate() {
   useEffect(() => {
     if (session.role.role === 'warga' && !scopedC) {
       let active = true
-      fetchPublicContracts().then((list) => {
+      listPublicContracts().then((r) => (r.ok ? r.data : [])).then((list) => {
         if (!active || !list) return
         const found = list.find((x) => x.nomor === code || String(x.id) === code)
         if (found) {
           setDbContract({
             code: found.nomor,
             title: found.judul,
-            template: (found.jenis as any) || 'pengadaan',
+            template: (found.jenis as TemplateKey) || 'pengadaan',
             counterpartyId: 'cp-maju',
             villageId: 'sukamaju',
             status: found.status === 'selesai' ? 'selesai' : 'berjalan',

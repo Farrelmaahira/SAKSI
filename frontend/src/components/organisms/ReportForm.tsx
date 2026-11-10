@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import Check from '@/components/atoms/Check'
+import FormAlert from '@/components/atoms/FormAlert'
 import PillButton from '@/components/atoms/PillButton'
 import PhotoDrop from '@/components/molecules/PhotoDrop'
 import ReportReview from '@/components/molecules/ReportReview'
 import { formSteps, reportCategories } from '@/data/report-form'
 import type { Report, SealedContract } from '@/interfaces/contract'
 import { getSession } from '@/lib/auth/get-session'
-import { newReportId } from '@/lib/contracts/new-report-id'
-import { saveReport } from '@/lib/contracts/save-report'
+import { submitReport } from '@/lib/api/submit-report'
 import { cn } from '@/lib/utils'
 import ReportTicket from './ReportTicket'
 
@@ -17,17 +17,19 @@ interface Props {
   registry: SealedContract[]
   code: string
   onCode: (code: string) => void
-  onSubmitted: (code: string) => void
   onOpen: (code: string) => void
 }
 
-export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen }: Props) {
+export default function ReportForm({ registry, code, onCode, onOpen }: Props) {
   const [step, setStep] = useState(0)
   const [category, setCategory] = useState('')
   const [clause, setClause] = useState('')
   const [text, setText] = useState('')
   const [location, setLocation] = useState('')
   const [photos, setPhotos] = useState<string[]>([])
+  const [files, setFiles] = useState<File[]>([])
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
   const [anonymous, setAnonymous] = useState(true)
   const [name, setName] = useState(() => getSession()?.name ?? '')
   const [ticket, setTicket] = useState<Report | null>(null)
@@ -43,36 +45,38 @@ export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen
 
   const addPhotos = (files: FileList | null) => {
     if (!files) return
-    const urls = [...files].filter((f) => f.type.startsWith('image/')).map((f) => URL.createObjectURL(f))
-    setPhotos((p) => [...p, ...urls].slice(0, 4))
+    const valid = [...files].filter((f) => f.type.startsWith('image/'))
+    setPhotos((p) => [...p, ...valid.map((f) => URL.createObjectURL(f))].slice(0, 4))
+    setFiles((f) => [...f, ...valid].slice(0, 4))
   }
 
 
   const removePhoto = (i: number) => {
     URL.revokeObjectURL(photos[i])
     setPhotos((p) => p.filter((_, j) => j !== i))
+    setFiles((f) => f.filter((_, j) => j !== i))
   }
   const canNext = step === 0 ? Boolean(category && contract) : step === 1 ? Boolean(clause && text.trim().length >= 15) : true
 
-  const submit = () => {
-    if (!contract) return
-    const report: Report = {
-      id: newReportId(),
+  const submit = async () => {
+    if (!contract?.apiId) return
+    setSending(true)
+    setError('')
+    const r = await submitReport({ contractId: contract.apiId, category, clause, text, location, photos: files })
+    setSending(false)
+    if (!r.ok) return setError(r.status === 401 ? 'Masuk dengan akun warga untuk mengirim laporan.' : r.status === 403 ? 'Hanya akun warga terdaftar yang bisa mengirim laporan.' : r.error)
+    setTicket({
+      id: r.data.kodePelacakan,
       category,
       clause,
       text: text.trim(),
       location: location.trim() || undefined,
-      date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      date: r.data.dibuatPada,
       status: 0,
       reporter,
-      photos: photos.length,
-      owner: getSession()?.email,
-    }
-    saveReport(contract.code, report)
-    setTicket(report)
-    onSubmitted(contract.code)
+      photos: files.length,
+    })
   }
-
   const restart = () => {
     setStep(0)
     setCategory('')
@@ -80,6 +84,8 @@ export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen
     setText('')
     setLocation('')
     setPhotos([])
+    setFiles([])
+    setError('')
     setAnonymous(true)
     setName('')
     setTicket(null)
@@ -178,6 +184,7 @@ export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen
         />
       )}
 
+      {error && <div className="mt-24"><FormAlert>{error}</FormAlert></div>}
       <div className="items-center flex flex-wrap gap-20 justify-between mt-30">
         <button type="button" className="items-center [background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] [color:inherit] inline-flex text-[1.4rem] gap-8 tracking-[0.02em] py-4 px-0 uppercase [transition:color_0.3s,_opacity_0.3s] [&:hover:not(:disabled)]:text-blue [&.light:hover:not(:disabled)]:[color:inherit] [&.light:hover:not(:disabled)]:opacity-[0.7] disabled:cursor-not-allowed disabled:opacity-[0.3] [.hash-actions_&:hover]:[color:inherit] [.hash-actions_&:hover]:opacity-[0.7] [.verify-samples_&]:mt-0 [.verify-samples_&]:mr-24 [.verify-samples_&]:mb-10 [.verify-samples_&]:ml-0 [.hash-status_&]:[grid-column:2] [.hash-status_&]:[justify-self:start] [.d-panel-ink_.verify-samples_&]:mt-0 [.d-panel-ink_.verify-samples_&]:mr-20 [.d-panel-ink_.verify-samples_&]:mb-10 [.d-panel-ink_.verify-samples_&]:ml-0" onClick={() => setStep((s) => s - 1)} disabled={step === 0}>
           Kembali
@@ -187,8 +194,8 @@ export default function ReportForm({ registry, code, onCode, onSubmitted, onOpen
             Lanjut
           </PillButton>
         ) : (
-          <PillButton tone="blue" onClick={submit}>
-            Kirim laporan
+          <PillButton tone="blue" onClick={submit} disabled={sending || !contract?.apiId}>
+            {sending ? 'Mengirim…' : 'Kirim laporan'}
           </PillButton>
         )}
       </div>

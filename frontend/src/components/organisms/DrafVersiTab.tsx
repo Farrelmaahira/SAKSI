@@ -2,7 +2,7 @@
 
 import type { TabProps } from '@/interfaces/dash'
 import { latestVersion } from '@/lib/db/latest-version'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Clause } from '@/interfaces/drafting'
 import { isEditable } from '@/lib/db/is-editable'
 import { openCritical } from '@/lib/db/open-critical'
@@ -17,6 +17,16 @@ import Badge from '@/components/atoms/Badge'
 import { sendForReview } from '@/lib/db/send-for-review'
 import { counterpartyById } from '@/lib/master/counterparty-by-id'
 import Locked from '@/components/atoms/Locked'
+import FormAlert from '@/components/atoms/FormAlert'
+import SourceBadge from '@/components/atoms/SourceBadge'
+import AuditResult from '@/components/molecules/AuditResult'
+import ClauseEditor from '@/components/organisms/ClauseEditor'
+import type { ApiResult, ContractAudit } from '@/interfaces/api'
+import { backendJenis } from '@/data/drafting'
+import { clauseError } from '@/lib/drafting/clause-error'
+import { saveClauses } from '@/lib/api/save-clauses'
+import { auditContract } from '@/lib/api/audit-contract'
+import { fetchLatestAudit } from '@/lib/api/fetch-latest-audit'
 
 export default function DrafVersiTab({ c, session, go }: TabProps) {
   const latest = latestVersion(c)
@@ -24,6 +34,20 @@ export default function DrafVersiTab({ c, session, go }: TabProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Clause[]>(latest.clauses)
   const [note, setNote] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const [saving, setSaving] = useState(false)
+  // null = not loaded yet; ok with data null = the server has no audit for this contract yet
+  const [serverAudit, setServerAudit] = useState<ApiResult<ContractAudit | null> | null>(null)
+  const [auditing, setAuditing] = useState(false)
+
+  useEffect(() => {
+    if (!c.apiId) return
+    let active = true
+    fetchLatestAudit(c.apiId).then((r) => active && setServerAudit(r))
+    return () => {
+      active = false
+    }
+  }, [c.apiId])
   const isDesa = session.role.role === 'perangkat_desa'
   const canEdit = isDesa && isEditable(c)
   const ver = c.versions.find((v) => v.no === verNo) ?? latest
@@ -34,13 +58,32 @@ export default function DrafVersiTab({ c, session, go }: TabProps) {
   const startEdit = () => {
     setDraft(latest.clauses)
     setVerNo(latest.no)
+    setSaveError('')
     setEditing(true)
   }
-  const save = () => {
-    saveDraft(c.code, draft, session, note.trim() || undefined)
+  const save = async () => {
+    const err = clauseError(draft)
+    if (err) return setSaveError(err)
+    let serverNo: number | undefined
+    if (c.apiId) {
+      setSaving(true)
+      const r = await saveClauses(c.apiId, draft)
+      setSaving(false)
+      if (!r.ok) return setSaveError(`Perubahan belum tersimpan. ${r.error}`)
+      serverNo = r.data.nomorVersi
+    }
+    const no = saveDraft(c.code, draft, session, note.trim() || undefined, serverNo)
+    // the previous audit belongs to the old text
+    if (c.apiId) setServerAudit({ ok: true, data: null })
     setEditing(false)
     setNote('')
-    setVerNo(revising ? latest.no + 1 : latest.no)
+    setVerNo(no ?? latest.no)
+  }
+  const reaudit = async () => {
+    if (!c.apiId) return
+    setAuditing(true)
+    setServerAudit(await auditContract(c.apiId))
+    setAuditing(false)
   }
   const download = () => {
     const lines = [
@@ -68,6 +111,7 @@ export default function DrafVersiTab({ c, session, go }: TabProps) {
         action={
           !editing && (
             <div className="items-center flex flex-wrap gap-10">
+              <SourceBadge source={ver.source} />
               {c.versions.length > 1 && (
                 <label className="[&_select]:bg-white [&_select]:border-[0.15rem] [&_select]:border-[#d6d6d2] [&_select]:border-solid [&_select]:rounded-[1.2rem] [&_select]:text-ink [&_select]:[outline:none] [&_select]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_select:focus]:border-blue [&_select:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)] [&_select]:text-[1.3rem] [&_select]:min-h-36 [&_select]:py-4 [&_select]:px-12 [&_select]:w-auto [&_select]:appearance-none [&_select]:[background-image:linear-gradient(45deg,_transparent_50%,_currentColor_50%),_linear-gradient(135deg,_currentColor_50%,_transparent_50%)] [&_select]:[background-position:calc(100%_-_2.4rem)_50%,_calc(100%_-_1.9rem)_50%] [&_select]:[background-repeat:no-repeat] [&_select]:[background-size:0.55rem_0.55rem] [&_select]:pr-46 [&_select]:text-ellipsis">
                   <span className="[clip:rect(0_0_0_0)] h-[1px] overflow-hidden absolute whitespace-nowrap w-[1px] sr-only">Pilih versi</span>
@@ -75,6 +119,7 @@ export default function DrafVersiTab({ c, session, go }: TabProps) {
                     {c.versions.map((v) => (
                       <option key={v.no} value={v.no}>
                         Versi {v.no}
+                        {v.source ? ` · ${v.source === 'ai' ? 'AI' : 'Manual'}` : ''}
                         {v.no === latest.no ? ' (terbaru)' : ''}
                       </option>
                     ))}
@@ -95,26 +140,16 @@ export default function DrafVersiTab({ c, session, go }: TabProps) {
       >
         {editing ? (
           <>
-            <ol className="is-editing [&_textarea]:bg-white [&_textarea]:border-[0.15rem] [&_textarea]:border-[#d6d6d2] [&_textarea]:border-solid [&_textarea]:rounded-[1.2rem] [&_textarea]:text-ink [&_textarea]:text-[1.5rem] [&_textarea]:min-h-48 [&_textarea]:[outline:none] [&_textarea]:py-10 [&_textarea]:px-14 [&_textarea]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_textarea]:w-full [&_textarea]:leading-[1.5] [&_textarea]:resize-y [&_textarea:focus]:border-blue [&_textarea:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)] grid gap-8 list-none list-outside [&>li]:border-[0.15rem]! [&>li]:border-[#ececea]! [&>li]:border-solid! [&>li]:rounded-[1.4rem]! [&>li]:grid [&>li]:gap-8 [&>li]:py-14! [&>li]:px-16! [&>li_p]:text-[1.5rem] [&>li_p]:leading-[1.6] [&.is-editing>li]:[border-style:dashed] [&.is-editing_label]:grid [&.is-editing_label]:gap-8 d-clauses">
-              {draft.map((cl, i) => (
-                <li key={cl.key}>
-                  <label>
-                    <span className="text-[1.25rem] tracking-[0.04em] text-dim uppercase">
-                      Pasal {i + 1} · {cl.title}
-                    </span>
-                    <textarea rows={3} value={cl.text} onChange={(e) => setDraft(draft.map((x) => (x.key === cl.key ? { ...x, text: e.target.value } : x)))} />
-                  </label>
-                </li>
-              ))}
-            </ol>
+            <ClauseEditor clauses={draft} onChange={(list) => { setDraft(list); setSaveError('') }} jenis={backendJenis[c.template]} />
             {revising && (
               <label className="[.d-form>&]:w-full border-0 border-none grid gap-6 min-w-0 [&>span]:text-[1.25rem] [&>span]:tracking-[0.04em] [&>span]:text-dim [&>span]:uppercase [&>legend]:text-[1.25rem]! [&>legend]:tracking-[0.04em]! [&>legend]:text-dim! [&>legend]:uppercase! [&>legend]:mb-6 [&_input:not([type='range'])]:bg-white [&_input:not([type='range'])]:border-[0.15rem] [&_input:not([type='range'])]:border-[#d6d6d2] [&_input:not([type='range'])]:border-solid [&_input:not([type='range'])]:rounded-[1.2rem] [&_input:not([type='range'])]:text-ink [&_input:not([type='range'])]:text-[1.5rem] [&_input:not([type='range'])]:min-h-48 [&_input:not([type='range'])]:[outline:none] [&_input:not([type='range'])]:py-10 [&_input:not([type='range'])]:px-14 [&_input:not([type='range'])]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_input:not([type='range'])]:w-full [&_select]:bg-white [&_select]:border-[0.15rem] [&_select]:border-[#d6d6d2] [&_select]:border-solid [&_select]:rounded-[1.2rem] [&_select]:text-ink! [&_select]:text-[1.5rem]! [&_select]:min-h-48 [&_select]:[outline:none] [&_select]:py-10 [&_select]:px-14 [&_select]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_select]:w-full [&_textarea]:bg-white! [&_textarea]:border-[0.15rem]! [&_textarea]:border-[#d6d6d2]! [&_textarea]:border-solid! [&_textarea]:rounded-[1.2rem]! [&_textarea]:text-ink! [&_textarea]:text-[1.5rem]! [&_textarea]:min-h-48! [&_textarea]:[outline:none]! [&_textarea]:py-10! [&_textarea]:px-14! [&_textarea]:[transition:border-color_0.2s,_box-shadow_0.2s]! [&_textarea]:w-full! [&_textarea]:leading-[1.5] [&_textarea]:resize-y [&_input:focus]:border-blue! [&_input:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)] [&_select:focus]:border-blue! [&_select:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)]! [&_textarea:focus]:border-blue! [&_textarea:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)]! [&_input[readonly]]:bg-soft! [&_input[readonly]]:text-dim! [&_input[type='range']]:[accent-color:var(--color-blue)] [&_input[type='range']]:w-full! [&_select]:appearance-none [&_select]:[background-image:linear-gradient(45deg,_transparent_50%,_currentColor_50%),_linear-gradient(135deg,_currentColor_50%,_transparent_50%)]! [&_select]:[background-position:calc(100%_-_2.4rem)_50%,_calc(100%_-_1.9rem)_50%]! [&_select]:[background-repeat:no-repeat]! [&_select]:[background-size:0.55rem_0.55rem]! [&_select]:pr-46! [&_select]:text-ellipsis">
                 <span>Catatan perubahan untuk pihak kedua</span>
                 <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Contoh: Tenggat termin 2 dimundurkan sesuai permintaan." />
               </label>
             )}
+            {saveError && <FormAlert>{saveError}</FormAlert>}
             <div className="items-center flex flex-wrap gap-10">
-              <Btn onClick={save}>{revising ? `Kirim versi ${latest.no + 1}` : 'Simpan perubahan'}</Btn>
+              <Btn onClick={save} disabled={saving}>{saving ? 'Menyimpan...' : revising ? `Kirim versi ${latest.no + 1}` : 'Simpan perubahan'}</Btn>
               <Btn variant="ghost" onClick={() => setEditing(false)}>
                 Batal
               </Btn>
@@ -136,6 +171,31 @@ export default function DrafVersiTab({ c, session, go }: TabProps) {
           </ol>
         )}
       </Panel>
+
+      {isDesa && !editing && (
+        <Panel
+          title="Audit ulang"
+          desc={c.apiId ? 'Periksa versi terbaru di server, baik hasil AI maupun suntingan manual.' : 'Kontrak ini hanya tersimpan di perangkat ini, jadi belum bisa diaudit oleh server.'}
+          action={
+            <Btn small icon="refresh" onClick={reaudit} disabled={!c.apiId || auditing}>
+              {auditing ? 'Mengaudit...' : 'Audit ulang'}
+            </Btn>
+          }
+        >
+          {auditing && <p role="status" className="text-[1.4rem] text-dim">Server sedang memeriksa pasal…</p>}
+          {!auditing && serverAudit && !serverAudit.ok && (
+            <div className="grid gap-12 justify-items-start">
+              <FormAlert>{serverAudit.code === 'AI_UNAVAILABLE' ? serverAudit.error : `Audit gagal. ${serverAudit.error}`}</FormAlert>
+              <Btn small icon="refresh" onClick={reaudit}>
+                Coba lagi
+              </Btn>
+            </div>
+          )}
+          {!auditing && c.apiId && !serverAudit && <p role="status" className="text-[1.4rem] text-dim">Memuat audit terakhir…</p>}
+          {!auditing && serverAudit?.ok && !serverAudit.data && <p className="text-[1.4rem] leading-[1.5] text-dim">Belum ada audit untuk versi terbaru. Tekan Audit ulang untuk memeriksanya.</p>}
+          {!auditing && serverAudit?.ok && serverAudit.data && <AuditResult audit={serverAudit.data} clauses={latest.clauses} />}
+        </Panel>
+      )}
 
       {isDesa && (c.status === 'draf' || c.status === 'diaudit') && !editing && (
         <Panel title="Kirim ke pihak kedua" desc="Setelah dikirim, pihak kedua bisa memberi komentar per pasal. Isi kontrak dikunci kecuali mereka meminta revisi.">

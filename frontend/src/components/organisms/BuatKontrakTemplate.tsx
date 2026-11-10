@@ -4,12 +4,12 @@ import { useRouter } from 'next/navigation'
 import { useDash } from '@/hooks/use-dash'
 import { counterpartyStore } from '@/lib/master/counterparty-store'
 import { useEffect, useMemo, useState } from 'react'
-import type { Answers, Clause, TemplateKey } from '@/interfaces/drafting'
+import type { Answers, Clause, ClauseSource, TemplateKey } from '@/interfaces/drafting'
 import type { Counterparty, CounterpartyType } from '@/interfaces/master'
 import { emptyAnswers } from '@/lib/dash/empty-answers'
 import { auditDraft } from '@/lib/drafting/audit-draft'
 import { villageById } from '@/lib/master/village-by-id'
-import { methods, templates } from '@/data/drafting'
+import { backendJenis, methods, templates } from '@/data/drafting'
 import { draftContext } from '@/lib/db/draft-context'
 import { draftClauses } from '@/lib/drafting/draft-clauses'
 import NotAllowed from '@/components/molecules/NotAllowed'
@@ -37,7 +37,15 @@ import { titleFor } from '@/lib/db/title-for'
 import type { Meterai, Signature } from '@/interfaces/db'
 import LetterPreview from '@/components/organisms/LetterPreview'
 import SignaturePad from '@/components/molecules/SignaturePad'
-import { createContractAPI, fetchCounterparties, type CreateContractPayload } from '@/lib/api/contracts'
+import { createContractAPI, fetchCounterparties } from '@/lib/api/contracts'
+import { previewDraft } from '@/lib/api/preview-draft'
+import { fetchDraftOptions } from '@/lib/api/fetch-draft-options'
+import { toApiClauses } from '@/lib/api/to-api-clauses'
+import { wizardPayload } from '@/lib/drafting/wizard-payload'
+import { clauseError } from '@/lib/drafting/clause-error'
+import { update } from '@/lib/db/update'
+import FormAlert from '@/components/atoms/FormAlert'
+import ClauseEditor from '@/components/organisms/ClauseEditor'
 
 export default function BuatKontrakTemplate() {
   const { session } = useDash()
@@ -65,6 +73,11 @@ export default function BuatKontrakTemplate() {
   const [desaSig, setDesaSig] = useState<Signature | null>(null)
   const [meterai, setMeterai] = useState<Meterai | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [mode, setMode] = useState<ClauseSource>('ai')
+  const [edited, setEdited] = useState(false)
+  const [draftError, setDraftError] = useState('')
+  const [preview, setPreview] = useState<{ model: string } | null>(null)
+  const [loadingTemplate, setLoadingTemplate] = useState(false)
 
   // Sinkronkan rekanan dari backend API saat pertama kali dimuat
   useEffect(() => {
@@ -101,19 +114,6 @@ export default function BuatKontrakTemplate() {
   const t = template ? templates[template] : null
   const choices = useMemo(() => (t ? parties.filter((p) => t.partyTypes.includes(p.type)) : []), [parties, t])
 
-  // Simulated AI drafting: short delay so the step feels like work is being done
-  useEffect(() => {
-    if (!thinking || !template) return
-    const id = window.setTimeout(() => {
-      const ctx = draftContext(role.villageId!, partyId)
-      const draft = draftClauses(template, answers, ctx)
-      setClauses(draft)
-      setAudit(auditDraft(template, answers, draft, regionId))
-      setThinking(false)
-    }, 1400)
-    return () => window.clearTimeout(id)
-  }, [thinking, template, answers, partyId, regionId, role.villageId])
-
   if (role.role !== 'perangkat_desa') return <NotAllowed />
 
   const pickTemplate = (k: TemplateKey) => {
@@ -145,12 +145,52 @@ export default function BuatKontrakTemplate() {
     return !Object.keys(e).length
   }
 
+  const applyDraft = (list: Clause[], source: ClauseSource) => {
+    setClauses(list)
+    setAudit(auditDraft(template!, answers, list, regionId))
+    setMode(source)
+    setEdited(false)
+  }
+
+  // AI mode: the backend drafts. On failure (e.g. 503 AI_UNAVAILABLE) we show the error, never a local stand-in; manual mode stays open.
+  const draftWithAI = async () => {
+    if (!template) return
+    setThinking(true)
+    setDraftError('')
+    setAudit(null)
+    const r = await previewDraft(wizardPayload(template, answers, partyId))
+    setThinking(false)
+    if (!r.ok) return setDraftError(r.code === 'AI_UNAVAILABLE' ? r.error : `Draf AI belum bisa dibuat. ${r.error}`)
+    setPreview({ model: r.data.model })
+    applyDraft(r.data.clauses, 'ai')
+  }
+
+  // Manual mode: start from the mandatory clause template (clause_library) of this contract type
+  const writeManual = async () => {
+    if (!template) return
+    if (step === 2 && !validateAnswers()) return
+    setLoadingTemplate(true)
+    const r = await fetchDraftOptions(backendJenis[template])
+    setLoadingTemplate(false)
+    // shortcut: an older backend sends no clauseTemplate (or cannot be reached), so the local template keeps manual mode usable; drop draftClauses here once every backend serves clauseTemplate
+    const list = r.ok && r.data.clauseTemplate?.length ? r.data.clauseTemplate : draftClauses(template, answers, draftContext(role.villageId!, partyId))
+    setErrors({})
+    setDraftError('')
+    setPreview(null)
+    applyDraft(list, 'manual')
+    setStep(3)
+  }
+
   const next = () => {
     if (step === 0 && !template) return setErrors({ step: 'Pilih salah satu jenis kontrak.' })
     if (step === 1 && !partyId) return setErrors({ step: 'Pilih pihak kedua, atau undang yang baru.' })
     if (step === 2) {
       if (!validateAnswers()) return
-      setThinking(true)
+      void draftWithAI()
+    }
+    if (step === 3 && mode === 'manual') {
+      const err = clauseError(clauses)
+      if (err) return setErrors({ step: err })
     }
     setErrors({})
     if (step === 3) setLetterDate(nowIso())
@@ -170,14 +210,16 @@ export default function BuatKontrakTemplate() {
     const out = applyFinding(template, answers, clauses, id)
     setAnswers(out.answers)
     setClauses(out.clauses)
+    setEdited(true)
     setAudit(reaudit(template, out.answers, out.clauses, regionId, audit))
   }
 
-  const editClause = (key: string, text: string) => {
-    const list = clauses.map((c) => (c.key === key ? { ...c, text } : c))
+  const editClauses = (list: Clause[]) => {
     setClauses(list)
+    setEdited(true)
     if (template) setAudit(reaudit(template, answers, list, regionId, audit ?? undefined))
   }
+  const editClause = (key: string, text: string) => editClauses(clauses.map((c) => (c.key === key ? { ...c, text } : c)))
 
   const critical = audit?.findings.filter((f) => f.severity === 'kritis' && !f.applied).length ?? 0
   const finish = async (send: boolean) => {
@@ -185,43 +227,23 @@ export default function BuatKontrakTemplate() {
     setSubmitting(true)
 
     // 1. Simpan di local store untuk persistensi UI instan
+    // an AI draft a person changed is recorded as a manual version
+    const source: ClauseSource = mode === 'ai' && !edited ? 'ai' : 'manual'
     const localCode = createContract(
-      { template, answers, counterpartyId: partyId, clauses, audit, send, signatures: desaSig ? { desa: desaSig, ...(meterai ? { meterai } : {}) } : undefined },
+      { template, answers, counterpartyId: partyId, clauses, audit, send, signatures: desaSig ? { desa: desaSig, ...(meterai ? { meterai } : {}) } : undefined, source },
       session,
     )
 
-    // 2. Simpan ke Backend API PostgreSQL
-    const cpNumericId = parseInt(partyId, 10) || 1
-    const backendJenis =
-      template === 'pengadaan'
-        ? 'pengadaan'
-        : template === 'sewa'
-          ? 'sewa_aset'
-          : template === 'bumdes'
-            ? 'kerja_sama_bumdes'
-            : 'hibah'
-
-    const payload: CreateContractPayload = {
-      counterpartyId: cpNumericId,
-      jenis: backendJenis,
-      judul: titleFor(template, answers.work),
-      nilai: answers.value,
-      tenggat: answers.deadline,
-      skemaPembayaran: answers.scheme.toLowerCase(),
-      metodePemilihan: answers.method === 'Pengadaan langsung' ? 'pengadaan_langsung' : 'lelang_terbatas',
-      jawabanForm: {
-        ...answers,
-        work: answers.work,
-        clauses: clauses.map((c) => ({ key: c.key, title: c.title, text: c.text })),
-      },
+    // 2. Simpan ke Backend API PostgreSQL; apiId links the local copy to the server for later edits and audits
+    const saved = await createContractAPI({
+      ...wizardPayload(template, answers, partyId),
+      jawabanForm: { ...answers, clauses: clauses.map((c) => ({ key: c.key, title: c.title, text: c.text })) },
       drafTeksOverride: clauses.map((c) => `[${c.title}]\n${c.text}`).join('\n\n'),
-    }
-
-    try {
-      await createContractAPI(payload)
-    } catch (err) {
-      console.warn('Backend contract creation failed, using local copy:', err)
-    }
+      sumber: source,
+      clauses: toApiClauses(clauses),
+    })
+    // the server numbers versions; keep the local copy on the same number
+    if (saved?.id) update(localCode, (x) => ({ ...x, apiId: saved.id, versions: x.versions.map((v) => ({ ...v, no: Number(saved.nomorVersi) || v.no })) }))
 
     setSubmitting(false)
     router.push(`/dashboard/kontrak/${localCode}`)
@@ -395,7 +417,21 @@ export default function BuatKontrakTemplate() {
           </div>
         )}
 
-        {step === 3 &&
+        {step === 3 && draftError && !thinking && (
+          <div className="grid gap-14 justify-items-start">
+            <FormAlert>{draftError}</FormAlert>
+            <div className="items-center flex flex-wrap gap-10">
+              <Btn icon="refresh" onClick={() => void draftWithAI()}>
+                Coba lagi
+              </Btn>
+              <Btn variant="ghost" icon="sign" onClick={writeManual} disabled={loadingTemplate}>
+                {loadingTemplate ? 'Memuat template...' : 'Tulis manual'}
+              </Btn>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && !draftError &&
           (thinking || !audit ? (
             <div className="items-center flex gap-20 justify-center min-h-300 [&_p]:grid [&_p]:gap-4 [&_strong]:text-[1.8rem] [&_strong]:font-[400] [&_small]:text-[1.35rem]! [&_small]:text-dim" role="status">
               <span className="[animation:d-spin_0.9s_linear_infinite] border-[0.3rem] border-line border-solid rounded-[50%] border-t-blue h-44 w-44" aria-hidden="true" />
@@ -408,7 +444,20 @@ export default function BuatKontrakTemplate() {
             <div className="[align-items:start] grid gap-24 lg:grid-cols-[minmax(0,1.5fr)_minmax(32rem,1fr)] d-draft">
               <div className="d-draft-main">
                 <h2 className="text-[2.6rem] font-[340] tracking-[-0.025em] mb-6">Draf kontrak</h2>
+                {mode === 'manual' ? (
+                  <>
+                    <p className="text-[1.4rem] leading-[1.5] text-dim mb-16">Mulai dari pasal wajib untuk {t?.label.toLowerCase()}. Tambah, hapus, urutkan, dan sunting pasal. Hasil audit diperbarui otomatis.</p>
+                    <ClauseEditor clauses={clauses} onChange={editClauses} jenis={backendJenis[template!]} />
+                  </>
+                ) : (
+                <>
                 <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">Klik pasal untuk mengubah isinya. Hasil audit diperbarui otomatis.</p>
+                {preview && (
+                  <p className="items-center flex flex-wrap gap-8 text-[1.3rem] text-dim mt-6">
+                    <Badge tone="blue">AI</Badge>
+                    {preview.model && `Disusun oleh ${preview.model}`}
+                  </p>
+                )}
                 <ol className="[&_textarea]:bg-white [&_textarea]:border-[0.15rem] [&_textarea]:border-[#d6d6d2] [&_textarea]:border-solid [&_textarea]:rounded-[1.2rem] [&_textarea]:text-ink [&_textarea]:text-[1.5rem] [&_textarea]:min-h-48 [&_textarea]:[outline:none] [&_textarea]:py-10 [&_textarea]:px-14 [&_textarea]:[transition:border-color_0.2s,_box-shadow_0.2s] [&_textarea]:w-full [&_textarea]:leading-[1.5] [&_textarea]:resize-y [&_textarea:focus]:border-blue [&_textarea:focus]:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)] grid gap-8 list-none list-outside [&>li]:border-[0.15rem]! [&>li]:border-[#ececea]! [&>li]:border-solid! [&>li]:rounded-[1.4rem]! [&>li]:grid [&>li]:gap-8 [&>li]:py-14! [&>li]:px-16! [&>li_p]:text-[1.5rem] [&>li_p]:leading-[1.6] [&.is-editing>li]:[border-style:dashed] [&.is-editing_label]:grid [&.is-editing_label]:gap-8 d-clauses">
                   {clauses.map((c, i) => (
                     <li key={c.key} className={audit.findings.some((f) => f.clauseKey === c.key && !f.applied && f.severity === 'kritis') ? '[.d-clauses>li&]:border-red' : ''}>
@@ -421,7 +470,8 @@ export default function BuatKontrakTemplate() {
                         <div className="grid gap-6">
                           <textarea rows={4} value={c.text} onChange={(e) => editClause(c.key, e.target.value)} aria-label={`Isi pasal ${c.title}`} />
                           <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">
-                            {c.plain} Dasar: {c.legal}.
+                            {c.plain}
+                            {c.legal && ` Dasar: ${c.legal}.`}
                           </p>
                         </div>
                       ) : (
@@ -430,6 +480,8 @@ export default function BuatKontrakTemplate() {
                     </li>
                   ))}
                 </ol>
+                </>
+                )}
               </div>
               <AuditPanel audit={audit} onApply={applyAI} />
             </div>
@@ -520,9 +572,18 @@ export default function BuatKontrakTemplate() {
           ) : (
             <span />
           )}
-          {step < 4 ? (
-            <Btn onClick={next} disabled={thinking} icon="arrow">
-              {step === 2 ? 'Susun draf dengan AI' : 'Lanjut'}
+          {step === 2 ? (
+            <div className="items-center flex flex-wrap gap-10">
+              <Btn variant="ghost" icon="sign" onClick={writeManual} disabled={loadingTemplate}>
+                {loadingTemplate ? 'Memuat template...' : 'Tulis manual'}
+              </Btn>
+              <Btn onClick={next} disabled={thinking || loadingTemplate} icon="arrow">
+                Bantu dengan AI
+              </Btn>
+            </div>
+          ) : step < 4 ? (
+            <Btn onClick={next} disabled={thinking || (step === 3 && (Boolean(draftError) || !audit))} icon="arrow">
+              Lanjut
             </Btn>
           ) : (
             <div className="items-center flex flex-wrap gap-10">

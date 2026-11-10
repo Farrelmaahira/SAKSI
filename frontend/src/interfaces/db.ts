@@ -1,10 +1,10 @@
-import type { Answers, Audit, Clause, TemplateKey } from '@/interfaces/drafting'
+import type { Answers, Audit, Clause, ClauseSource, TemplateKey } from '@/interfaces/drafting'
 import type { RoleKey } from '@/interfaces/auth'
 import { pubFields } from '@/data/db'
 
 export type ContractStatus = 'draf' | 'diaudit' | 'ditinjau' | 'ditandatangani' | 'dipublikasikan' | 'berjalan' | 'selesai'
 
-export interface Version { no: number; at: string; answers: Answers; clauses: Clause[]; audit: Audit; note?: string }
+export interface Version { no: number; at: string; answers: Answers; clauses: Clause[]; audit: Audit; note?: string; source?: ClauseSource }
 
 export interface ReviewReply { author: string; role: RoleKey; text: string; at: string }
 
@@ -27,6 +27,8 @@ export type PubField = (typeof pubFields)[number]
 
 export interface DContract {
   code: string
+  /* backend contracts.id, set once POST /contracts succeeded; absent = local-only prototype contract */
+  apiId?: number
   villageId: string
   template: TemplateKey
   title: string

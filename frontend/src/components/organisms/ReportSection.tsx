@@ -1,4 +1,5 @@
 import type { Ref } from 'react'
+import FormAlert from '@/components/atoms/FormAlert'
 import Illustration from '@/components/atoms/Illustration'
 import type { SealedContract } from '@/interfaces/contract'
 import ReportForm from './ReportForm'
@@ -8,11 +9,12 @@ interface Props {
   registry: SealedContract[]
   code: string
   onCode: (code: string) => void
-  onSubmitted: () => void
   onOpen: (code: string) => void
+  /* the picked contract's clauses could not be loaded */
+  error?: string
 }
 
-export default function ReportSection({ ref, registry, code, onCode, onSubmitted, onOpen }: Props) {
+export default function ReportSection({ ref, registry, code, onCode, onOpen, error }: Props) {
   return (
     <section className="py-120 px-0 [scroll-margin-top:1rem] lg:py-160 lg:px-0" id="lapor" ref={ref}>
       <div className="my-0 mx-auto max-w-1680 py-0 px-20 relative w-full md:py-0 md:px-40 lg:py-0 lg:px-80 [.auth>&]:relative [.auth>&]:z-1 [.page-hero>&]:relative [.page-hero>&]:z-1 grid gap-50 lg:[align-items:start] lg:gap-80 lg:grid-cols-[0.8fr_1.2fr] container">
@@ -33,7 +35,12 @@ export default function ReportSection({ ref, registry, code, onCode, onSubmitted
           </ol>
           <Illustration name="data-reports_l2u3" />
         </div>
-        {registry.length > 0 && code && <ReportForm registry={registry} code={code} onCode={onCode} onSubmitted={onSubmitted} onOpen={onOpen} />}
+        {registry.length > 0 && code && (
+          <div className="grid gap-20">
+            {error && <FormAlert>{error}</FormAlert>}
+            <ReportForm registry={registry} code={code} onCode={onCode} onOpen={onOpen} />
+          </div>
+        )}
       </div>
     </section>
   )
