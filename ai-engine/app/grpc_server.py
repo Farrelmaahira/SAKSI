@@ -6,7 +6,7 @@ import time
 import grpc
 from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
-from app import audit, contract_ai
+from app import contract_ai, llm
 from app.gen import ai_pb2_grpc
 
 SERVICE = "saksi.ai.v1.AiEngine"
@@ -40,9 +40,9 @@ async def _run(fn, request, context):
         return await fn(request, deadline)
     except ValueError as e:
         await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
-    except audit.AuditUnavailable:
+    except llm.LlmUnavailable:
         # Gagal tertutup: pesan ini ditampilkan ke pengguna, tidak pernah OK dengan hasil karangan.
-        await context.abort(grpc.StatusCode.UNAVAILABLE, audit.BUSY_MESSAGE)
+        await context.abort(grpc.StatusCode.UNAVAILABLE, llm.BUSY_MESSAGE)
 
 
 class AiEngine(ai_pb2_grpc.AiEngineServicer):
@@ -64,7 +64,7 @@ async def start(port: int, api_key: str, host: str = "[::]") -> tuple[grpc.aio.S
     health_pb2_grpc.add_HealthServicer_to_server(health_servicer, server)
     bound = server.add_insecure_port(f"{host}:{port}")
     await server.start()
-    status = health_pb2.HealthCheckResponse.SERVING if audit.chain() else health_pb2.HealthCheckResponse.NOT_SERVING
+    status = health_pb2.HealthCheckResponse.SERVING if llm.chain() else health_pb2.HealthCheckResponse.NOT_SERVING
     for name in (SERVICE, ""):
         await health_servicer.set(name, status)
     return server, bound

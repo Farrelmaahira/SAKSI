@@ -1,12 +1,11 @@
 import type { TabProps } from '@/interfaces/dash'
-import { auditStore } from '@/lib/audit/audit-store'
 import Panel from '@/components/molecules/Panel'
 import StatusBadge from '@/components/atoms/StatusBadge'
 import { fmtDateTime } from '@/lib/dates/fmt-date-time'
 import Activity from '@/components/molecules/Activity'
+import ActivityFeed from '@/components/molecules/ActivityFeed'
 
 export default function RiwayatTab({ c }: TabProps) {
-  const logs = auditStore.use()
   return (
     <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
       <Panel title="Perubahan status">
@@ -23,7 +22,7 @@ export default function RiwayatTab({ c }: TabProps) {
         </ol>
       </Panel>
       <Panel title="Jejak audit kontrak">
-        <Activity logs={logs.filter((l) => l.contractCode === c.code)} />
+        {c.apiId ? <ActivityFeed limit={50} contractId={c.apiId} /> : <Activity logs={[]} empty="Kontrak contoh ini hanya ada di perangkat ini, jadi belum punya jejak di server." />}
       </Panel>
     </div>
   )

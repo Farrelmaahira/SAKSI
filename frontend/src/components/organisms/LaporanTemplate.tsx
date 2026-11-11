@@ -1,71 +1,20 @@
-'use client'
+"use client";
 
-import { useDash } from '@/hooks/use-dash'
-import { db } from '@/lib/db/db'
-import { useEffect, useState } from 'react'
-import type { LaporanFilter } from '@/interfaces/dash'
-import NotAllowed from '@/components/molecules/NotAllowed'
-import { scopeContracts } from '@/lib/db/scope-contracts'
-import { scopeReports } from '@/lib/db/scope-reports'
-import type { DReport } from '@/interfaces/db'
-import { isClosed } from '@/lib/db/is-closed'
-import { desaAnswered } from '@/lib/db/desa-answered'
-import PageHead from '@/components/molecules/PageHead'
-import Chips from '@/components/molecules/Chips'
-import Icon from '@/components/atoms/Icon'
-import ReportCard from '@/components/organisms/ReportCard'
-import Empty from '@/components/molecules/Empty'
-import LaporanSayaTemplate from '@/components/organisms/LaporanSayaTemplate'
-import FormAlert from '@/components/atoms/FormAlert'
-import type { ApiResult } from '@/interfaces/api'
-import type { CreatedReportResponse } from '@/lib/api/reports'
-import { listReports } from '@/lib/api/list-reports'
-import { toDReport } from '@/lib/api/to-dreport'
+import Chips from "@/components/molecules/Chips";
+import NotAllowed from "@/components/molecules/NotAllowed";
+import PageHead from "@/components/molecules/PageHead";
+import SearchBox from "@/components/molecules/SearchBox";
+import LaporanList from "@/components/organisms/LaporanList";
+import LaporanSayaTemplate from "@/components/organisms/LaporanSayaTemplate";
+import { laporanHead } from "@/data/laporan-head";
+import { useLaporan } from "@/hooks/use-laporan";
 
 export default function LaporanTemplate() {
-  const { session } = useDash()
-  const d = db.use()
-  const r = session.role
-  const [filter, setFilter] = useState<LaporanFilter>('perlu')
-  const [q, setQ] = useState('')
-  const [server, setServer] = useState<ApiResult<CreatedReportResponse[]> | null>(null)
-  const [tick, setTick] = useState(0)
-  const official = r.role === 'perangkat_desa' || r.role === 'bpd' || r.role === 'inspektorat'
-  // GET /reports is scoped by role on the server (village for desa/BPD, region or assignment for Inspektorat)
-  useEffect(() => {
-    if (!official) return
-    let active = true
-    listReports().then((x) => active && setServer(x))
-    return () => {
-      active = false
-    }
-  }, [official, tick])
-  if (r.role === 'warga') return <LaporanSayaTemplate />
-  if (r.role === 'pihak_kedua' || r.role === 'admin_daerah') return <NotAllowed />
-
-  const contracts = scopeContracts(d, r)
-  // server reports, plus local demo reports on contracts that only exist on this device
-  const reports = [
-    ...(server?.ok ? server.data.map((x) => toDReport(x, contracts.find((c) => c.apiId === x.contractId)?.code)) : []),
-    ...scopeReports(d, r).filter((x) => !contracts.find((c) => c.code === x.contractCode)?.apiId),
-  ]
-  const needsMe = (x: DReport) =>
-    r.role === 'perangkat_desa' ? !isClosed(x) && !desaAnswered(x) : r.role === 'bpd' ? !isClosed(x) && x.flow !== 'diteruskan' : x.flow === 'diteruskan'
-  const match = (x: DReport) => {
-    if (filter === 'perlu' && !needsMe(x)) return false
-    if (filter === 'proses' && (isClosed(x) || x.flow === 'baru')) return false
-    if (filter === 'selesai' && !isClosed(x)) return false
-    const t = q.trim().toLowerCase()
-    return !t || [x.id, x.contractCode, x.category, x.text, x.location].some((v) => v?.toLowerCase().includes(t))
-  }
-  const list = reports.filter(match)
-  const counts = { perlu: reports.filter(needsMe).length, semua: reports.length, proses: reports.filter((x) => !isClosed(x) && x.flow !== 'baru').length, selesai: reports.filter(isClosed).length }
-
-  const head = {
-    perangkat_desa: { title: 'Laporan warga', desc: 'Tanggapi laporan supaya warga tahu tindak lanjutnya. Tanggapan tampil di portal publik.' },
-    bpd: { title: 'Laporan warga', desc: 'Verifikasi laporan, minta klarifikasi desa, atau teruskan ke Inspektorat bila perlu pemeriksaan.' },
-    inspektorat: { title: 'Laporan eskalasi', desc: 'Laporan yang diteruskan BPD dari desa-desa di wilayah Anda.' },
-  }[r.role]
+  const laporan = useLaporan();
+  const { role, counts } = laporan;
+  if (role === "warga") return <LaporanSayaTemplate />;
+  if (role === "pihak_kedua" || role === "admin_daerah") return <NotAllowed />;
+  const head = laporanHead[role];
 
   return (
     <>
@@ -73,35 +22,17 @@ export default function LaporanTemplate() {
       <div className="items-center flex flex-wrap gap-12 justify-between">
         <Chips
           items={[
-            { key: 'perlu', label: 'Perlu tindakan', count: counts.perlu },
-            { key: 'semua', label: 'Semua', count: counts.semua },
-            { key: 'proses', label: 'Diproses', count: counts.proses },
-            { key: 'selesai', label: 'Selesai', count: counts.selesai },
+            { key: "perlu", label: "Perlu tindakan", count: counts.perlu },
+            { key: "semua", label: "Semua", count: counts.semua },
+            { key: "proses", label: "Diproses", count: counts.proses },
+            { key: "selesai", label: "Selesai", count: counts.selesai },
           ]}
-          value={filter}
-          onChange={setFilter}
+          value={laporan.filter}
+          onChange={laporan.setFilter}
         />
-        <label className="items-center bg-white border-[0.15rem] border-[#dcdcd8] border-solid rounded-[3rem] flex flex-[1_1_26rem] gap-8 max-w-400 min-h-42 py-0 px-14 [transition:border-color_0.2s,_box-shadow_0.2s] focus-within:border-blue focus-within:[box-shadow:0.3rem_0.3rem_0_var(--color-blue)] [&_input]:[background:none] [&_input]:border-0 [&_input]:border-none [&_input]:flex-1 [&_input]:text-[1.4rem] [&_input]:min-w-0 [&_input]:[outline:0]">
-          <Icon name="search" />
-          <span className="[clip:rect(0_0_0_0)] h-[1px] overflow-hidden absolute whitespace-nowrap w-[1px] sr-only">Cari laporan</span>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari kode laporan, kontrak, atau isi" />
-        </label>
+        <SearchBox label="Cari laporan" placeholder="Cari kode laporan, kontrak, atau isi" value={laporan.query} onChange={laporan.setQuery} />
       </div>
-      {!server ? (
-        <p className="text-[1.4rem] text-dim" role="status">Memuat laporan warga…</p>
-      ) : !server.ok ? (
-        <FormAlert>{server.error}</FormAlert>
-      ) : list.length ? (
-        <div className="grid gap-14">
-          {list.map((x) => (
-            <ReportCard key={x.id} report={x} contract={contracts.find((c) => c.code === x.contractCode)} session={session} onChanged={() => setTick((t) => t + 1)} />
-          ))}
-        </div>
-      ) : (
-        <div className="[align-content:start] bg-white rounded-[2rem] grid gap-16 p-20 md:p-24">
-          <Empty title={filter === 'perlu' ? 'Tidak ada laporan yang menunggu Anda.' : 'Tidak ada laporan yang cocok.'} text="Laporan baru dari portal warga muncul di sini secara otomatis." />
-        </div>
-      )}
+      <LaporanList laporan={laporan} />
     </>
-  )
+  );
 }

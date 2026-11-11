@@ -244,6 +244,18 @@ func LegalRefIDs(refs []domain.LegalReference) map[int64]bool {
 	return m
 }
 
+// TemplateOrRule: bila clause_library jenis ini belum di-seed, pasal baku rule engine menjadi template (semua wajib),
+// sehingga draf AI, audit, dan editor manual memakai kode pasal yang sama.
+func TemplateOrRule(t domain.ContractTemplate, p CreateContractDraftParams) domain.ContractTemplate {
+	if len(t.Clauses) > 0 {
+		return t
+	}
+	for _, c := range RuleDraftClauses(p) {
+		t.Clauses = append(t.Clauses, domain.LibraryClause{Clause: c, Wajib: true})
+	}
+	return t
+}
+
 // MandatoryKodePasal: kode pasal wajib dari clause_library; bila template kosong, pakai daftar klausul wajib rule engine.
 func MandatoryKodePasal(t domain.ContractTemplate) []string {
 	var out []string

@@ -1,0 +1,433 @@
+[
+  {
+    "id": "pengadaan-pasal-baku",
+    "jenis": "PENGADAAN",
+    "jawaban": {
+      "lingkup_pekerjaan": "pengaspalan Jalan Dusun II sepanjang 500 meter",
+      "nilai": "150000000",
+      "tenggat": "2026-12-31",
+      "skema_pembayaran": "Termin 50% dan 50%",
+      "metode_pemilihan": "Pengadaan Langsung"
+    },
+    "legal_references": [],
+    "clauses": [
+      [
+        "P-01",
+        "RUANG LINGKUP PEKERJAAN",
+        "PIHAK KEDUA berkewajiban melaksanakan dan menyelesaikan pekerjaan: pengaspalan Jalan Dusun II sepanjang 500 meter, sesuai dengan rincian teknis dan penawaran yang telah disepakati."
+      ],
+      [
+        "P-02",
+        "NILAI KONTRAK DAN PEMBIAYAAN",
+        "1. Total nilai pekerjaan yang disepakati adalah sebesar Rp 150.000.000 (termasuk pajak sesuai ketentuan peraturan perundang-undangan yang berlaku).\n2. Sumber pembiayaan dibebankan pada Anggaran Pendapatan dan Belanja Desa (APBDes) tahun anggaran berjalan."
+      ],
+      [
+        "P-03",
+        "JANGKA WAKTU PELAKSANAAN",
+        "Pekerjaan wajib diselesaikan secara menyeluruh paling lambat tanggal 31 December 2026, dibuktikan dengan Berita Acara Serah Terima (BAST)."
+      ],
+      [
+        "P-04",
+        "SISTEM DAN TATA CARA PEMBAYARAN",
+        "1. Skema pembayaran dilaksanakan secara: Termin 50% dan 50%.\n2. Pembayaran ditransfer ke rekening resmi PIHAK KEDUA setelah verifikasi kelengkapan berkas fisik dan administrasi oleh Tim Pelaksana Kegiatan."
+      ],
+      [
+        "P-05",
+        "HAK DAN KEWAJIBAN",
+        "1. PIHAK PERTAMA berhak menerima hasil pekerjaan sesuai spesifikasi dan berkewajiban melakukan pembayaran tepat waktu.\n2. PIHAK KEDUA berkewajiban menyelesaikan pekerjaan tepat waktu, tepat mutu, serta berhak menerima pembayaran sesuai termin."
+      ],
+      [
+        "P-06",
+        "JAMINAN PEMELIHARAAN DAN GARANSI",
+        "PIHAK KEDUA memberikan jaminan pemeliharaan dan mutu atas hasil pekerjaan selama masa garansi terhitung sejak tanggal penandatanganan BAST."
+      ],
+      [
+        "P-07",
+        "SANKSI DAN DENDA KETERLAMBATAN",
+        "Apabila terjadi keterlambatan penyelesaian pekerjaan yang disebabkan oleh kelalaian PIHAK KEDUA, maka dikenakan denda keterlambatan sebesar 1/1000 (satu permil) untuk setiap hari keterlambatan."
+      ],
+      [
+        "P-08",
+        "KLAUSUL INTEGRITAS DAN ANTI KORUPSI",
+        "1. Para pihak berkomitmen menjunjung tinggi prinsip transparansi, akuntabilitas, serta bebas dari korupsi, kolusi, dan nepotisme.\n2. Dilarang keras menjanjikan, menawarkan, atau memberikan imbalan dalam bentuk apa pun (suap/gratifikasi) yang berkaitan dengan perjanjian ini."
+      ],
+      [
+        "P-09",
+        "KEADAAN KAHAR (FORCE MAJEURE)",
+        "Keadaan kahar meliputi bencana alam, kebijakan moneter mendesak, atau huru-hara yang berada di luar kemampuan wajar para pihak untuk mencegahnya."
+      ],
+      [
+        "P-10",
+        "PENYELESAIAN PERSELISIHAN",
+        "Segala perselisihan yang timbul dari pelaksanaan perjanjian ini akan diselesaikan secara musyawarah dan mufakat. Apabila musyawarah tidak tercapai, para pihak sepakat menyelesaikannya melalui Pengadilan Negeri setempat."
+      ]
+    ],
+    "expect": {
+      "P-01": [
+        [
+          "pengaspalan"
+        ],
+        [
+          "500"
+        ]
+      ],
+      "P-02": [
+        [
+          "150.000.000",
+          "150000000"
+        ],
+        [
+          "apbdes"
+        ]
+      ],
+      "P-03": [
+        [
+          "31"
+        ],
+        [
+          "2026"
+        ],
+        [
+          "desember"
+        ]
+      ],
+      "P-04": [
+        [
+          "50%"
+        ]
+      ],
+      "P-07": [
+        [
+          "1/1000",
+          "satu permil"
+        ]
+      ]
+    }
+  },
+  {
+    "id": "pengadaan-termin-retensi",
+    "jenis": "PENGADAAN",
+    "jawaban": {
+      "lingkup_pekerjaan": "pembangunan saluran irigasi tersier sepanjang 300 meter",
+      "nilai": "280000000",
+      "tenggat": "2027-03-31",
+      "skema_pembayaran": "3 termin: 30%, 40%, 30%",
+      "retensi": "5%",
+      "masa_pemeliharaan": "6 bulan"
+    },
+    "legal_references": [
+      {
+        "id": 1,
+        "peraturan": "Peraturan Desa Contoh Nomor 1 Tahun 2026 (data uji, bukan peraturan nyata)",
+        "nomor_pasal": "Pasal 4",
+        "isi": "Pembayaran dilakukan sesuai progres pekerjaan."
+      },
+      {
+        "id": 2,
+        "peraturan": "Peraturan Desa Contoh Nomor 1 Tahun 2026 (data uji, bukan peraturan nyata)",
+        "nomor_pasal": "Pasal 9",
+        "isi": "Pekerjaan konstruksi wajib dijamin pemeliharaannya."
+      }
+    ],
+    "clauses": [
+      [
+        "PG-01",
+        "Objek Pekerjaan",
+        "PIHAK KEDUA melaksanakan pekerjaan [lingkup pekerjaan] sesuai gambar kerja."
+      ],
+      [
+        "PG-02",
+        "Nilai Kontrak",
+        "Nilai kontrak sebesar [nilai kontrak], sudah termasuk pajak."
+      ],
+      [
+        "PG-03",
+        "Pembayaran",
+        "Pembayaran dilakukan dalam [jumlah termin] termin sesuai progres pekerjaan: [rincian persentase per termin].",
+        1
+      ],
+      [
+        "PG-04",
+        "Retensi dan Pemeliharaan",
+        "Ditahan retensi sebesar [persen retensi] dari nilai kontrak sebagai jaminan pemeliharaan selama [masa pemeliharaan].",
+        2
+      ],
+      [
+        "PG-05",
+        "Jangka Waktu",
+        "Pekerjaan selesai paling lambat [tanggal selesai]."
+      ]
+    ],
+    "expect": {
+      "PG-01": [
+        [
+          "irigasi"
+        ],
+        [
+          "300"
+        ]
+      ],
+      "PG-02": [
+        [
+          "280.000.000",
+          "280000000"
+        ]
+      ],
+      "PG-03": [
+        [
+          "30%"
+        ],
+        [
+          "40%"
+        ]
+      ],
+      "PG-04": [
+        [
+          "5%"
+        ],
+        [
+          "6 bulan",
+          "enam bulan"
+        ]
+      ],
+      "PG-05": [
+        [
+          "2027"
+        ],
+        [
+          "31"
+        ]
+      ]
+    }
+  },
+  {
+    "id": "hibah-kelompok-tani",
+    "jenis": "HIBAH",
+    "jawaban": {
+      "desa": "Sukamaju",
+      "penerima": "Kelompok Tani Subur Makmur",
+      "barang_hibah": "2 unit pompa air",
+      "nilai": "24000000",
+      "batas_laporan": "14 hari"
+    },
+    "legal_references": [],
+    "clauses": [
+      [
+        "HB-01",
+        "Para Pihak",
+        "Pemberi Hibah adalah Pemerintah Desa [nama desa]; Penerima Hibah adalah [nama penerima]."
+      ],
+      [
+        "HB-02",
+        "Objek Hibah",
+        "Pemberi Hibah memberikan [barang atau uang hibah] kepada Penerima Hibah."
+      ],
+      [
+        "HB-03",
+        "Nilai Hibah",
+        "Nilai hibah sebesar [nilai hibah]."
+      ],
+      [
+        "HB-04",
+        "Pertanggungjawaban",
+        "Penerima Hibah menyampaikan laporan penggunaan paling lambat [batas waktu laporan] setelah kegiatan selesai."
+      ]
+    ],
+    "expect": {
+      "HB-01": [
+        [
+          "sukamaju"
+        ],
+        [
+          "kelompok tani subur makmur"
+        ]
+      ],
+      "HB-02": [
+        [
+          "2 unit",
+          "dua unit"
+        ],
+        [
+          "pompa air"
+        ]
+      ],
+      "HB-03": [
+        [
+          "24.000.000",
+          "24000000"
+        ]
+      ],
+      "HB-04": [
+        [
+          "14 hari"
+        ]
+      ]
+    }
+  },
+  {
+    "id": "bumdes-penggilingan",
+    "jenis": "KERJA_SAMA_BUMDES",
+    "jawaban": {
+      "bumdes": "BUMDes Sejahtera",
+      "mitra": "CV Tani Makmur",
+      "usaha": "pengelolaan penggilingan padi desa",
+      "bagi_hasil_bumdes": "40%",
+      "bagi_hasil_mitra": "60%",
+      "jangka_waktu": "2 tahun sejak 2 Januari 2027"
+    },
+    "legal_references": [],
+    "clauses": [
+      [
+        "BD-01",
+        "Para Pihak",
+        "Kerja sama ini dibuat antara [nama BUMDes] dan [nama mitra]."
+      ],
+      [
+        "BD-02",
+        "Ruang Lingkup",
+        "Para pihak bekerja sama dalam [bidang usaha]."
+      ],
+      [
+        "BD-03",
+        "Bagi Hasil",
+        "Keuntungan usaha dibagi dengan perbandingan [porsi BUMDes] untuk BUMDes dan [porsi mitra] untuk mitra."
+      ],
+      [
+        "BD-04",
+        "Jangka Waktu",
+        "Kerja sama berlaku [jangka waktu kerja sama]."
+      ]
+    ],
+    "expect": {
+      "BD-01": [
+        [
+          "bumdes sejahtera"
+        ],
+        [
+          "cv tani makmur"
+        ]
+      ],
+      "BD-02": [
+        [
+          "penggilingan padi"
+        ]
+      ],
+      "BD-03": [
+        [
+          "40%"
+        ],
+        [
+          "60%"
+        ]
+      ],
+      "BD-04": [
+        [
+          "2 tahun",
+          "dua tahun"
+        ]
+      ]
+    }
+  },
+  {
+    "id": "sewa-harga-tidak-diisi",
+    "jenis": "SEWA_ASET",
+    "jawaban": {
+      "objek": "tanah kas desa seluas 2.000 m2 di Dusun II",
+      "jangka_sewa": "3 tahun"
+    },
+    "legal_references": [],
+    "clauses": [
+      [
+        "SW-01",
+        "Objek Sewa",
+        "Pemerintah Desa menyewakan [objek sewa] kepada Penyewa."
+      ],
+      [
+        "SW-02",
+        "Jangka Waktu",
+        "Sewa berlaku selama [jangka sewa] sejak penandatanganan."
+      ],
+      [
+        "SW-03",
+        "Harga Sewa",
+        "Harga sewa sebesar [harga sewa] per tahun, dibayar [cara pembayaran]."
+      ]
+    ],
+    "expect": {
+      "SW-01": [
+        [
+          "tanah kas desa"
+        ],
+        [
+          "2.000"
+        ]
+      ],
+      "SW-02": [
+        [
+          "3 tahun",
+          "tiga tahun"
+        ]
+      ],
+      "SW-03": [
+        [
+          "[diisi manual]",
+          "diisi manual"
+        ]
+      ]
+    }
+  },
+  {
+    "id": "umkm-pasokan-kopi",
+    "jenis": "UMKM",
+    "jawaban": {
+      "penjual": "UD Kopi Desa",
+      "pembeli": "Toko Sumber Rejeki",
+      "barang": "kopi bubuk",
+      "jumlah": "100 kg per bulan",
+      "harga": "90000 per kg",
+      "pembayaran": "tunai saat penyerahan"
+    },
+    "legal_references": [],
+    "clauses": [
+      [
+        "UM-01",
+        "Para Pihak",
+        "Perjanjian ini dibuat antara [nama penjual] sebagai penjual dan [nama pembeli] sebagai pembeli."
+      ],
+      [
+        "UM-02",
+        "Objek dan Harga",
+        "Penjual memasok [barang] sebanyak [jumlah] dengan harga [harga satuan]."
+      ],
+      [
+        "UM-03",
+        "Pembayaran",
+        "Pembeli membayar [cara pembayaran]."
+      ]
+    ],
+    "expect": {
+      "UM-01": [
+        [
+          "ud kopi desa"
+        ],
+        [
+          "toko sumber rejeki"
+        ]
+      ],
+      "UM-02": [
+        [
+          "100 kg"
+        ],
+        [
+          "90.000",
+          "90000"
+        ]
+      ],
+      "UM-03": [
+        [
+          "tunai"
+        ]
+      ]
+    }
+  }
+]

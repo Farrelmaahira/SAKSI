@@ -1,6 +1,8 @@
 'use client'
 
+import Btn from '@/components/atoms/Btn'
 import ErrorText from '@/components/atoms/ErrorText'
+import FormAlert from '@/components/atoms/FormAlert'
 import NotAllowed from '@/components/molecules/NotAllowed'
 import PageHead from '@/components/molecules/PageHead'
 import Panel from '@/components/molecules/Panel'
@@ -32,18 +34,25 @@ export default function BuatKontrakTemplate() {
           <BuatKontrakPeriksa info={t} template={template} partyName={w.party?.name} partyId={w.partyId} villageId={w.role.villageId!} signerName={w.session.name} answers={w.answers} clauses={draft.clauses} audit={draft.audit} critical={draft.critical} letter={w.letter} />
         )}
         {w.errors.step && <ErrorText as="p">{w.errors.step}</ErrorText>}
-        <BuatKontrakFooter
-          step={step}
-          busy={w.submitting}
-          thinking={draft.thinking}
-          loadingTemplate={draft.loadingTemplate}
-          canNext={!draft.thinking && !(step === 3 && (draft.error || !draft.audit))}
-          critical={draft.critical}
-          onBack={w.back}
-          onNext={w.next}
-          onManual={w.writeManual}
-          onFinish={w.finish}
-        />
+        {w.fin.failed ? (
+          <div className="grid gap-12 justify-items-start">
+            <FormAlert>{w.fin.failed.message}</FormAlert>
+            {w.fin.failed.code && <Btn to={`/dashboard/kontrak/${w.fin.failed.code}`}>Buka draf</Btn>}
+          </div>
+        ) : (
+          <BuatKontrakFooter
+            step={step}
+            busy={w.fin.busy}
+            thinking={draft.thinking}
+            loadingTemplate={draft.loadingTemplate}
+            canNext={!draft.thinking && !(step === 3 && (draft.error || !draft.audit))}
+            critical={draft.critical}
+            onBack={w.back}
+            onNext={w.next}
+            onManual={w.writeManual}
+            onFinish={w.fin.finish}
+          />
+        )}
       </Panel>
     </>
   )

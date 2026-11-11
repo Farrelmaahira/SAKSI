@@ -128,6 +128,10 @@ func writeDomainErr(w http.ResponseWriter, err error, notFoundMsg string) {
 		WriteErrorCode(w, http.StatusConflict, "ALREADY_PAID", "termin ini sudah dibayar")
 	case errors.Is(err, domain.ErrInvalidState):
 		WriteErrorCode(w, http.StatusConflict, "INVALID_STATE", errMsg(err, domain.ErrInvalidState, "status tidak mengizinkan aksi ini"))
+	case errors.Is(err, domain.ErrCriticalFindings):
+		WriteErrorCode(w, http.StatusConflict, "CRITICAL_FINDINGS", "masih ada temuan kritis dari audit terakhir; perbaiki pasalnya lalu audit ulang")
+	case errors.Is(err, domain.ErrContractNotEditable):
+		writeContractLocked(w, contractLockedMsg)
 	case errors.Is(err, domain.ErrConflict):
 		WriteErrorCode(w, http.StatusConflict, "CONFLICT", "data yang sama sudah ada")
 	default:

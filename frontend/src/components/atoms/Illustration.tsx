@@ -8,7 +8,7 @@ interface Props {
   loading?: 'lazy' | 'eager'
 }
 
-export default function Illustration({ name, alt = '', loading = 'eager' }: Props) {
+export default function Illustration({ name, alt = '', loading = 'lazy' }: Props) {
   const { width, height } = illustrations[name]
   return <Image src={img(name)} alt={alt} width={width} height={height} loading={loading} />
 }

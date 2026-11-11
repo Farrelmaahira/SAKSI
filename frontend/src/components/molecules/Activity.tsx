@@ -1,8 +1,8 @@
-import type { AuditLog } from '@/interfaces/audit'
+import type { ActivityItem } from '@/interfaces/activity'
 import Link from 'next/link'
 import { timeAgo } from '@/lib/dates/time-ago'
 
-interface Props { logs: AuditLog[]; empty?: string }
+interface Props { logs: ActivityItem[]; empty?: string }
 
 export default function Activity({ logs, empty = 'Belum ada aktivitas.' }: Props) {
   if (!logs.length) return <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">{empty}</p>
@@ -14,10 +14,10 @@ export default function Activity({ logs, empty = 'Belum ada aktivitas.' }: Props
           <div>
             <p>
               <strong>{l.actor}</strong> {l.action.charAt(0).toLowerCase() + l.action.slice(1)}
-              {l.contractCode && (
+              {l.contractHref && (
                 <>
                   {' '}
-                  <Link href={`/dashboard/kontrak/${l.contractCode}`}>{l.contractCode}</Link>
+                  <Link href={l.contractHref}>{l.contractLabel}</Link>
                 </>
               )}
               {l.detail && <span className="text-[1.25rem] text-dim"> · {l.detail}</span>}

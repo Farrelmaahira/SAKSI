@@ -401,8 +401,55 @@ Aturan status (`citizen_reports.status`):
 - `tindakan: "eskalasi"` → `diteruskan` (`diteruskanKeRole` `bpd`/`inspektorat`, default `inspektorat`); ditolak bila sudah `diteruskan`. Inspektorat tidak bisa eskalasi.
 - `tindakan: "klarifikasi"` tanpa `status`: `diterima` → `diverifikasi`, status lain tetap (catatan saja). Dengan `status`: `diterima` → `diverifikasi`/`ditolak`; `diverifikasi` → `ditindaklanjuti`/`ditolak`; `diteruskan` → `ditindaklanjuti`/`ditolak`.
 
-### 7.12 Operasional (2026-11-10)
+### 7.12 Pembatalan kontrak (soft-cancel, 2026-11-11)
+
+Bukan hapus permanen: baris kontrak, versi, audit, dan jejak tetap ada; hanya `status` menjadi `dibatalkan` (nilai enum yang sudah ada, skema tidak berubah).
+
+| Method | Path | Role | Request | Response | Error |
+|---|---|---|---|---|---|
+| DELETE | `/contracts/{id}` | kades, perangkat_desa dari desa kontrak itu | — | **204** tanpa body | 400 `INVALID_INPUT` (id), 401, 403 `FORBIDDEN` (role lain), 404 `NOT_FOUND` (tidak ada **atau desa lain**), 409 `CONTRACT_LOCKED` |
+
+Aturan:
+- Hanya status pra-tandatangan: `draf`, `diaudit`, `ditinjau`. Status `ditandatangani`, `dipublikasikan`, `berjalan`, `selesai` → 409 `CONTRACT_LOCKED` ("kontrak tidak dapat dibatalkan karena sudah masuk tahap penandatanganan atau selesai").
+- Kontrak berstatus `ditinjau` yang **sudah ditandatangani satu pihak** juga 409 `CONTRACT_LOCKED` (tanda tangan = sudah masuk tahap penandatanganan).
+- **Sudah `dibatalkan` → 204 (idempoten)**: tanpa riwayat, audit log, atau notifikasi baru.
+- Desa lain dijawab **404** (bukan 403 seperti `PUT /contracts/{id}`) agar id kontrak tidak bisa ditebak; role yang salah tetap 403.
+- Efek (satu transaksi): `contracts.status`, baris `contract_status_history` (status_dari → `dibatalkan`, aktor), `audit_logs` aksi `contract.cancel` (aktor, IP, status sebelum/sesudah), notifikasi `kontrak_dibatalkan` ke pihak kedua (bila punya akun) dan pembuat kontrak (bila bukan pelaku), tautan `/dashboard/kontrak/{id}`.
+- Cache: `saksi:public:contract:{id}`, daftar publik desa itu, dan semua `saksi:metrics:*` dihapus (kunci metrik per user, jadi seluruh prefix; TTL 60 dtk).
+- Kontrak `dibatalkan` tidak muncul di `/public/contracts` (sudah terfilter status), tidak dihitung di `GET /dashboard/metrics` (`activeContractsCount`, `totalRealizationBudget`, dst.; sebelumnya ikut terhitung), dan tidak muncul di `/termin`. `GET /contracts` tetap menampilkannya dengan `status: "dibatalkan"` supaya FE bisa menyaring; `GET /contracts/{id}` dan `/lifecycle` tetap bisa dibaca.
+- Terkunci setelah dibatalkan (409 `CONTRACT_LOCKED`, pesan Indonesia): `PUT /contracts/{id}`, `POST /contracts/{id}/audit`, `POST /contracts/{id}/publish`, `POST /contracts/{id}/reviews`, `POST /contracts/{id}/sign`. Kode `CONTRACT_LOCKED` sekarang juga dikirim oleh `reviews` dan `sign` (sebelumnya 409 tanpa `code`).
+
+### 7.13 Operasional (2026-11-10)
 
 - `SAKSI_SECRET` wajib (min. 16 karakter, sama di semua replika) kecuali `APP_ENV` = `development`/`local`/`test`; tanpa itu API berhenti saat start dengan log error. Minimal 16 karena panjang secret Azure belum dicek; naikkan ke 32 setelah dicek.
 - Akun demo halaman login dibuat oleh `backend/scripts/seed_demo.sql` (idempoten, sandi `saksi123` bcrypt asli): `kades@saksi.id`, `penyedia@saksi.id` (CV Maju Bersama), `bpd@saksi.id`, `inspektorat@saksi.id` (2 wilayah: Banyumas + Purbalingga), `warga@saksi.id`, `budi.santoso@warga.id`. Alias email lama di `UserByEmail` (kades@saksi.id → kades.sukamaju@desa.id, dst.) dihapus.
 - `docker-compose.yml` sekarang memuat `compat_datetime.sql` → `SAKSI.sql` → `seed_villages.sql` → `seed_demo.sql` (volume kosong saja). `scripts/seed.sql` lama dihapus.
+
+### 7.14 Kirim ke pihak kedua dan cakupan baca kontrak (2026-11-11, perbaikan bug "pihak kedua tidak menemukan kontrak")
+
+| Method | Path | Role | Request | Response | Error |
+|---|---|---|---|---|---|
+| POST | `/contracts/{id}/send` | kades, perangkat_desa dari desa kontrak itu | — | **200** `{"id": 42, "status": "ditinjau"}` | 400 `INVALID_INPUT` (id), 401, 403 `FORBIDDEN` (role lain), 404 `NOT_FOUND` (tidak ada **atau desa lain**), 409 `INVALID_STATE` (sudah dikirim / belum ada pihak kedua), 409 `CONTRACT_LOCKED` (dibatalkan atau sudah ditandatangani dst.), 409 `CRITICAL_FINDINGS` |
+
+Aturan kirim:
+- Hanya dari `draf` atau `diaudit` (`usecase.CanSend`). Status hasil: `ditinjau`.
+- 409 `CRITICAL_FINDINGS` bila audit AI **terakhir** kontrak masih punya temuan `kritis` dengan `sudah_diperbaiki = false`.
+- Efek (satu transaksi, baris kontrak dikunci): `contracts.status`, `contract_status_history` (status_dari → `ditinjau`, aktor), `audit_logs` aksi `contract.send` (aktor, IP, status sebelum/sesudah), notifikasi `kontrak_dikirim` ke akun pihak kedua dengan tautan `/dashboard/kontrak/{id}`.
+- Cache: `saksi:public:contract:{id}`, daftar publik desa itu, dan semua `saksi:metrics:*` dihapus.
+- Setelah penyedia `minta_revisi`, kades merevisi (`PUT /contracts/{id}` → status `draf`), audit ulang, lalu kirim lagi.
+
+Cakupan baca (satu aturan, `scopeCond` di `adapter/postgres`), dipakai `GET /contracts`, `GET /contracts/{id}`, `GET /contracts/{id}/lifecycle`, serta semua endpoint yang sudah memakai `scopeCond` (jejak audit, LHP, termin, segel, laporan):
+- kades, perangkat_desa: semua kontrak desanya, termasuk draf dan dibatalkan.
+- bpd: desanya atau penugasannya; inspektorat: wilayahnya (`user_roles.region_id`) atau penugasannya; admin_daerah: wilayahnya; penyedia: hanya kontrak yang pihak `kedua`-nya usaha miliknya (`counterparties.user_id` atau `contract_parties.user_id`). **Semua peran ini hanya melihat kontrak yang sudah dikirim** (status bukan `draf`, `diaudit`, `dibatalkan`), sama dengan `scopeContracts` di FE.
+- warga dan peran lain: tidak ada (warga memakai `/public/contracts`).
+- Di luar cakupan = **404** `NOT_FOUND` (sebelumnya 403 "IDOR violation"), agar id tidak bisa ditebak.
+- Perubahan perilaku: `GET /contracts` untuk penyedia sebelumnya mengembalikan semua kontrak semua desa; inspektorat sebelumnya melihat semua desa di `GET /contracts` dan `/lifecycle`, sekarang hanya wilayah/penugasannya (menyamakan dengan endpoint baru, tugas BE no. 7).
+
+`POST /contracts/{id}/reviews`:
+- Bukan pihak kedua kontrak itu → **404** (sebelumnya 403).
+- Status bukan `ditinjau` → 409 `INVALID_STATE` (termasuk draf, dibatalkan, dan sesudah tanda tangan; sebelumnya draf diterima lalu otomatis diubah ke `ditinjau`, dan dibatalkan/ditandatangani dijawab `CONTRACT_LOCKED`).
+- Tinjauan tidak lagi mengubah status kontrak.
+
+Hidrasi halaman detail di FE: `GET /contracts/{id}/lifecycle` (kontrak, semua versi + pasal, tinjauan, tanda tangan, segel) + `GET /contracts/{id}/audit/latest`.
+
+Tes: `usecase.TestCanSend`, `handlers.TestHandleSendContract` (peran dan kode error), `postgres.TestStore_SendContract_SecondPartyFlow` (akun demo: draf tak terlihat penyedia/BPD → kirim → penyedia pemilik dan BPD melihat di daftar + detail + lifecycle, penyedia lain 404 → tinjauan → riwayat, audit log, notifikasi) dan `TestStore_SendContract_BlockedByCriticalFindings`.

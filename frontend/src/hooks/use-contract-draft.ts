@@ -8,6 +8,7 @@ import { applyFinding } from '@/lib/drafting/apply-finding'
 import { auditDraft } from '@/lib/drafting/audit-draft'
 import { draftClauses } from '@/lib/drafting/draft-clauses'
 import { reaudit } from '@/lib/drafting/reaudit'
+import { PARTY_NOT_ON_SERVER, partyApiId } from '@/lib/drafting/party-api-id'
 import { wizardPayload } from '@/lib/drafting/wizard-payload'
 
 interface Options {
@@ -40,10 +41,12 @@ export function useContractDraft({ template, answers, partyId, regionId, village
   // AI mode: the backend drafts. On failure (e.g. 503 AI_UNAVAILABLE) we show the error, never a local stand-in; manual mode stays open.
   const draftWithAI = async () => {
     if (!template) return
+    const party = partyApiId(partyId)
+    if (party === null) return setError(PARTY_NOT_ON_SERVER)
     setThinking(true)
     setError('')
     setAudit(null)
-    const r = await previewDraft(wizardPayload(template, answers, partyId))
+    const r = await previewDraft(wizardPayload(template, answers, party))
     setThinking(false)
     if (!r.ok) return setError(r.code === 'AI_UNAVAILABLE' ? r.error : `Draf AI belum bisa dibuat. ${r.error}`)
     setModel(r.data.model)

@@ -1,6 +1,5 @@
 import type { RegisterInput, RegisterResult, StoredUser } from '@/interfaces/auth'
 import type { CounterpartyType } from '@/interfaces/master'
-import { addAudit } from '@/lib/audit/add-audit'
 import { nowIso } from '@/lib/dates/now-iso'
 import { uid } from '@/lib/dates/uid'
 import { addCounterparty } from '@/lib/master/add-counterparty'
@@ -37,6 +36,5 @@ export async function registerCounterparty(input: RegisterInput): Promise<Regist
     roles: [{ id: uid('r-'), role: 'pihak_kedua', title: cp.type, counterpartyId: cp.id }],
   }
   users.set((list) => [...list, user])
-  addAudit({ actor: user.name, role: 'Pihak Kedua', action: 'Mendaftar akun', detail: cp.name })
   return { ok: true, token: issueToken(user.id, 'verifikasi', 24 * 60), email }
 }

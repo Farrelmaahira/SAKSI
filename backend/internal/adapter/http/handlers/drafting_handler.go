@@ -130,6 +130,10 @@ func HandleAuditContractByID(d *Deps) http.HandlerFunc {
 		if !ok {
 			return
 		}
+		if st.Status == domain.StatusCancelled { // jangan menghabiskan kuota AI untuk kontrak yang sudah dibatalkan
+			writeContractLocked(w, contractLockedMsg)
+			return
+		}
 		village := st.VillageID
 		opts, err := loadDraftingOptions(r, d, &village)
 		if err != nil {
@@ -138,7 +142,7 @@ func HandleAuditContractByID(d *Deps) http.HandlerFunc {
 			return
 		}
 
-		audit, err := usecase.AuditClauses(r.Context(), d.AIEngine, d.Cache, auditInput(st.Jenis, st.Clauses, opts.Template(st.Jenis), opts))
+		audit, err := usecase.AuditClauses(r.Context(), d.AIEngine, d.Cache, auditInput(st.Jenis, st.Clauses, usecase.TemplateOrRule(opts.Template(st.Jenis), usecase.CreateContractDraftParams{}), opts))
 		if err != nil {
 			WriteAIError(w, err)
 			return
@@ -147,6 +151,10 @@ func HandleAuditContractByID(d *Deps) http.HandlerFunc {
 			ContractID: id, VersionID: st.VersionID, ActorID: uid, ActorIP: ClientIP(r, d.TrustedProxies), Result: audit,
 		})
 		if err != nil {
+			if errors.Is(err, domain.ErrContractNotEditable) { // dibatalkan di tengah jalan (balapan dengan DELETE)
+				writeContractLocked(w, contractLockedMsg)
+				return
+			}
 			slog.Error("gagal menyimpan audit", "contract_id", id, "err", err)
 			WriteError(w, http.StatusInternalServerError, "gagal menyimpan hasil audit")
 			return
@@ -207,6 +215,10 @@ func HandlePublishContract(d *Deps) http.HandlerFunc {
 		}
 		st, ok := loadScopedState(w, r, d, id, role, vID)
 		if !ok {
+			return
+		}
+		if st.Status == domain.StatusCancelled {
+			writeContractLocked(w, contractLockedMsg)
 			return
 		}
 		if st.Status != domain.StatusSigned {

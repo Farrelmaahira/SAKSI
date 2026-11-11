@@ -5,7 +5,7 @@ import Illustration from "@/components/atoms/Illustration";
 import Btn from "@/components/atoms/Btn";
 import type { IllustrationName } from "@/data/illustrations";
 
-interface Props {
+interface ConfirmDialogProps {
   open: boolean;
   title: string;
   text: string;
@@ -27,7 +27,7 @@ export default function ConfirmDialog({
   tone = "primary",
   onConfirm,
   onCancel,
-}: Props) {
+}: ConfirmDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export default function ConfirmDialog({
           </svg>
         </button>
         <div className="mb-8 w-[min(26rem,_70%)] [&_img]:h-auto [&_img]:w-full">
-          <Illustration name={art} loading="lazy" />
+          <Illustration name={art} />
         </div>
         <h2 id="d-dialog-title">{title}</h2>
         <p id="d-dialog-text">{text}</p>

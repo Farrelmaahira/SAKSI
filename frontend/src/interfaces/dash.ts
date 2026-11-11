@@ -9,7 +9,7 @@ export interface ReportOption { kind: ActionKind; label: string; variant: 'prima
 
 export interface Todo { key: string; c: DContract; text: string; tab: string; tone: 'blue' | 'red' | 'ink'; when?: string }
 
-export type KontrakFilter = 'semua' | 'tindakan' | 'draf' | 'proses' | 'aktif' | 'selesai'
+export type KontrakFilter = 'semua' | 'tindakan' | 'draf' | 'proses' | 'aktif' | 'selesai' | 'batal'
 
 export type LaporanFilter = 'perlu' | 'semua' | 'proses' | 'selesai'
 

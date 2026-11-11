@@ -29,6 +29,7 @@ type monitorStore struct {
 	lastRule     usecase.CreateRegionRuleParams
 	lastAssign   usecase.AssignOversightParams
 	lastProfile  usecase.UpdateProfileParams
+	lastCancel   usecase.CancelContractParams
 	verifyHash   string
 	verifier     *int64
 	regions      []int64
@@ -38,6 +39,10 @@ type monitorStore struct {
 	changedTo    string
 }
 
+func (m *monitorStore) CancelContract(_ context.Context, p usecase.CancelContractParams) (int64, error) {
+	m.lastCancel = p
+	return 1, m.err
+}
 func (m *monitorStore) ListTerminSummaries(_ context.Context, sc usecase.Scope) ([]domain.TerminSummary, error) {
 	m.lastScope = sc
 	return []domain.TerminSummary{{ContractID: 12, Terms: []domain.PaymentTerm{}}}, m.err
@@ -177,6 +182,7 @@ func newMonitorMux(m *monitorStore, cache usecase.Cache, dev bool) *http.ServeMu
 	auth, opt := handlers.RequireAuth(monSecret), handlers.OptionalAuth(monSecret)
 	mux := http.NewServeMux()
 	routes := map[string]http.Handler{
+		"DELETE /api/v1/contracts/{id}":                     auth(handlers.HandleCancelContract(d)),
 		"GET /api/v1/termin":                                auth(handlers.HandleListTermin(d)),
 		"GET /api/v1/contracts/{id}/termin":                 auth(handlers.HandleGetContractTermin(d)),
 		"PUT /api/v1/contracts/{id}/termin":                 auth(handlers.HandleSetPaymentTerms(d)),
@@ -531,5 +537,82 @@ func TestForgotAndResetPassword(t *testing.T) {
 	}
 	if w := do(newMonitorMux(&monitorStore{}, nil, false), "POST", "/api/v1/auth/password/forgot", "", `{"email":"bukan-email"}`); w.Code != 400 {
 		t.Fatalf("email tidak valid harus 400, dapat %d", w.Code)
+	}
+}
+
+func TestCancelContractHandler(t *testing.T) {
+	v := int64(1)
+	kades, perangkat := tok(t, 10, domain.RoleKades, &v), tok(t, 11, domain.RolePerangkatDesa, &v)
+
+	// Hanya kades/perangkat_desa; role lain 403 FORBIDDEN sebelum menyentuh store.
+	for name, token := range map[string]string{
+		"warga": tok(t, 20, domain.RoleWarga, &v), "penyedia": tok(t, 30, domain.RolePenyedia, nil),
+		"bpd": tok(t, 50, domain.RoleBPD, &v), "inspektorat": tok(t, 40, domain.RoleInspektorat, nil),
+	} {
+		m := &monitorStore{}
+		w := do(newMonitorMux(m, nil, false), "DELETE", "/api/v1/contracts/12", token, "")
+		if w.Code != 403 || monCode(t, w) != "FORBIDDEN" || m.lastCancel.ContractID != 0 {
+			t.Errorf("%s: want 403 FORBIDDEN tanpa menyentuh store, got %d %s", name, w.Code, w.Body.String())
+		}
+	}
+	if w := do(newMonitorMux(&monitorStore{}, nil, false), "DELETE", "/api/v1/contracts/12", "", ""); w.Code != 401 {
+		t.Errorf("tanpa token harus 401, dapat %d", w.Code)
+	}
+	if w := do(newMonitorMux(&monitorStore{}, nil, false), "DELETE", "/api/v1/contracts/abc", kades, ""); w.Code != 400 || monCode(t, w) != "INVALID_INPUT" {
+		t.Errorf("id bukan angka harus 400, dapat %d", w.Code)
+	}
+
+	// Sukses: 204 tanpa body, scope dan id dari token/path.
+	for _, token := range []string{kades, perangkat} {
+		m := &monitorStore{}
+		w := do(newMonitorMux(m, nil, false), "DELETE", "/api/v1/contracts/12", token, "")
+		if w.Code != 204 || w.Body.Len() != 0 {
+			t.Fatalf("want 204 tanpa body, got %d %q", w.Code, w.Body.String())
+		}
+		if m.lastCancel.ContractID != 12 || m.lastCancel.Scope.VillageID == nil || *m.lastCancel.Scope.VillageID != 1 {
+			t.Fatalf("param pembatalan salah: %+v", m.lastCancel)
+		}
+	}
+
+	// Status terlarang: 409 CONTRACT_LOCKED (pesan Indonesia); desa lain/tidak ada: 404 NOT_FOUND.
+	w := do(newMonitorMux(&monitorStore{err: domain.ErrContractNotEditable}, nil, false), "DELETE", "/api/v1/contracts/12", kades, "")
+	if w.Code != 409 || monCode(t, w) != "CONTRACT_LOCKED" || !strings.Contains(w.Body.String(), "penandatanganan") {
+		t.Errorf("want 409 CONTRACT_LOCKED, got %d %s", w.Code, w.Body.String())
+	}
+	w = do(newMonitorMux(&monitorStore{err: domain.ErrNotFound}, nil, false), "DELETE", "/api/v1/contracts/12", kades, "")
+	if w.Code != 404 || monCode(t, w) != "NOT_FOUND" {
+		t.Errorf("want 404 NOT_FOUND, got %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestCancelContractInvalidatesCaches(t *testing.T) {
+	cache := newMemCache()
+	ctx := context.Background()
+	_ = cache.Set(ctx, usecase.KeyPublicContract(12), []byte(`{}`), time.Minute)
+	_ = cache.Set(ctx, usecase.KeyPublicContracts(1, 0), []byte(`[]`), time.Minute)
+	_ = cache.Set(ctx, usecase.KeyMetrics(10), []byte(`{}`), time.Minute)
+	_ = cache.Set(ctx, usecase.KeyMetrics(77), []byte(`{}`), time.Minute)
+	v := int64(1)
+	if w := do(newMonitorMux(&monitorStore{}, cache, false), "DELETE", "/api/v1/contracts/12", tok(t, 10, domain.RoleKades, &v), ""); w.Code != 204 {
+		t.Fatalf("pembatalan gagal: %d", w.Code)
+	}
+	for _, k := range []string{usecase.KeyPublicContract(12), usecase.KeyPublicContracts(1, 0), usecase.KeyMetrics(10), usecase.KeyMetrics(77)} {
+		if cache.has(k) {
+			t.Errorf("cache %s harus dihapus setelah pembatalan", k)
+		}
+	}
+}
+
+// Kontrak dibatalkan terkunci di handler audit dan publikasi: 409 CONTRACT_LOCKED sebelum memanggil AI.
+func TestCancelledContractLockedForAuditAndPublish(t *testing.T) {
+	c := newTC(t, domain.StatusCancelled)
+	for _, path := range []string{"/api/v1/contracts/42/audit", "/api/v1/contracts/42/publish"} {
+		w := c.do("POST", path, 1, domain.RoleKades, 1, nil)
+		if w.Code != http.StatusConflict || monCode(t, w) != "CONTRACT_LOCKED" {
+			t.Errorf("%s: want 409 CONTRACT_LOCKED, got %d %s", path, w.Code, w.Body.String())
+		}
+	}
+	if c.ai.auditCalls != 0 || c.ai.redactCalls != 0 || len(c.store.savedAudits) != 0 || c.store.published != nil {
+		t.Fatalf("AI tidak boleh dipanggil dan tidak ada yang disimpan: audit=%d redact=%d", c.ai.auditCalls, c.ai.redactCalls)
 	}
 }

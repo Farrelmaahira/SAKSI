@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Header, HTTPException
 
 from app import grpc_server
-from app.audit import AuditRequest, AuditResponse, BUSY_MESSAGE, AuditUnavailable, chain, run_audit
+from app.llm import BUSY_MESSAGE, LlmUnavailable, chain
+from app.rest_audit import AuditRequest, AuditResponse, run_audit
 
 log = logging.getLogger("ai-engine")
 
@@ -48,6 +49,6 @@ def healthz() -> dict:
 async def audit(req: AuditRequest) -> AuditResponse:
     try:
         return await run_audit(req)
-    except AuditUnavailable:
+    except LlmUnavailable:
         # Gagal tertutup: pesan ini diteruskan ke pengguna, tidak pernah menganggap kontrak lolos.
         raise HTTPException(status_code=503, detail=BUSY_MESSAGE)

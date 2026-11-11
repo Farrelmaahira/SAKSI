@@ -32,7 +32,7 @@ export default function SegelTab({ c, session }: TabProps) {
 
   const seal = async () => {
     setBusy(true)
-    await sealContract(c.code, session)
+    await sealContract(c.code)
     setBusy(false)
   }
   const download = () => {

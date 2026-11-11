@@ -4,7 +4,7 @@ import FormAlert from "@/components/atoms/FormAlert";
 import Hint from "@/components/atoms/Hint";
 import StepTitle from "@/components/atoms/StepTitle";
 import AuditPanel from "@/components/organisms/AuditPanel";
-import ClauseEditor from "@/components/organisms/ClauseEditor";
+import ClauseEditor from "@/components/organisms/ClauseEditorLazy";
 import ClauseList from "@/components/organisms/ClauseList";
 import type { TemplateInfo, TemplateKey } from "@/interfaces/drafting";
 import type { useContractDraft } from "@/hooks/use-contract-draft";

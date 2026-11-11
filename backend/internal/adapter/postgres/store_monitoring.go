@@ -26,6 +26,10 @@ func scopeCond(sc usecase.Scope, args *[]any) string {
 	assigned := func(u string) string {
 		return `c.id IN (SELECT oa.contract_id FROM oversight_assignments oa WHERE oa.pengawas_user_id = ` + u + `)`
 	}
+	// Pihak di luar desa hanya melihat kontrak yang sudah dikirim (sama dengan scopeContracts di FE).
+	sent := func(cond string) string {
+		return "(" + cond + ` AND c.status NOT IN ('draf', 'diaudit', 'dibatalkan'))`
+	}
 	inRegion := func(u, role string) string {
 		return `c.village_id IN (SELECT v2.id FROM villages v2 JOIN user_roles ur2 ON ur2.region_id = v2.region_id
 			WHERE ur2.user_id = ` + u + ` AND ur2.role = '` + role + `')`
@@ -39,18 +43,18 @@ func scopeCond(sc usecase.Scope, args *[]any) string {
 	case domain.RoleBPD:
 		u := add(sc.UserID)
 		if sc.VillageID == nil {
-			return assigned(u)
+			return sent(assigned(u))
 		}
-		return "(c.village_id = " + add(*sc.VillageID) + " OR " + assigned(u) + ")"
+		return sent("(c.village_id = " + add(*sc.VillageID) + " OR " + assigned(u) + ")")
 	case domain.RoleInspektorat:
 		u := add(sc.UserID)
-		return "(" + inRegion(u, "inspektorat") + " OR " + assigned(u) + ")"
+		return sent("(" + inRegion(u, "inspektorat") + " OR " + assigned(u) + ")")
 	case domain.RoleAdminDaerah:
-		return inRegion(add(sc.UserID), "admin_daerah")
+		return sent(inRegion(add(sc.UserID), "admin_daerah"))
 	case domain.RolePenyedia:
 		u := add(sc.UserID)
-		return `c.id IN (SELECT cp2.contract_id FROM contract_parties cp2 LEFT JOIN counterparties k2 ON k2.id = cp2.counterparty_id
-			WHERE cp2.peran_pihak = 'kedua' AND (cp2.user_id = ` + u + ` OR k2.user_id = ` + u + `))`
+		return sent(`c.id IN (SELECT cp2.contract_id FROM contract_parties cp2 LEFT JOIN counterparties k2 ON k2.id = cp2.counterparty_id
+			WHERE cp2.peran_pihak = 'kedua' AND (cp2.user_id = ` + u + ` OR k2.user_id = ` + u + `))`)
 	}
 	return "FALSE"
 }
@@ -128,6 +132,19 @@ func notify(ctx context.Context, tx pgx.Tx, userID int64, jenis, pesan, tautan s
 	return err
 }
 
+// notifyVendor memberi tahu pihak kedua (bila punya akun dan bukan pelaku aksi) tentang perubahan pada kontrak.
+func notifyVendor(ctx context.Context, tx pgx.Tx, contractID, actorID int64, jenis, apa string) error {
+	vendor, err := vendorUserID(ctx, tx, contractID)
+	if err != nil || vendor == 0 || vendor == actorID {
+		return err
+	}
+	var judul string
+	if err := tx.QueryRow(ctx, `SELECT judul FROM contracts WHERE id = $1`, contractID).Scan(&judul); err != nil {
+		return err
+	}
+	return notify(ctx, tx, vendor, jenis, fmt.Sprintf("Kontrak \"%s\" %s.", judul, apa), contractLink(contractID))
+}
+
 // vendorUserID mengembalikan akun pihak kedua kontrak (0 bila belum terikat akun).
 func vendorUserID(ctx context.Context, q querier, contractID int64) (int64, error) {
 	var uid *int64
@@ -142,6 +159,58 @@ func vendorUserID(ctx context.Context, q querier, contractID int64) (int64, erro
 }
 
 func contractLink(id int64) string { return fmt.Sprintf("/dashboard/kontrak/%d", id) }
+
+// ---- Kirim ke pihak kedua ----
+
+// SendContract: draf/diaudit -> ditinjau. Riwayat status, audit log, dan notifikasi pihak kedua dalam satu transaksi.
+func (s *Store) SendContract(ctx context.Context, p usecase.SendContractParams) (int64, error) {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+
+	lc, err := lockContract(ctx, tx, p.ContractID, p.Scope)
+	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			return 0, domain.ErrNotFound
+		}
+		return 0, err
+	}
+	if err := usecase.CanSend(lc.Status); err != nil {
+		return 0, err
+	}
+	var hasParty, critical bool
+	if err := tx.QueryRow(ctx, `SELECT
+		EXISTS (SELECT 1 FROM contract_parties WHERE contract_id = $1 AND peran_pihak = 'kedua'),
+		EXISTS (SELECT 1 FROM ai_audit_findings f WHERE f.tingkat = 'kritis' AND NOT f.sudah_diperbaiki AND f.audit_id = (
+			SELECT a.id FROM ai_audits a JOIN contract_versions cv ON cv.id = a.version_id
+			WHERE cv.contract_id = $1 ORDER BY a.id DESC LIMIT 1))`, p.ContractID).Scan(&hasParty, &critical); err != nil {
+		return 0, err
+	}
+	if !hasParty {
+		return 0, fmt.Errorf("%w: kontrak belum punya pihak kedua", domain.ErrInvalidState)
+	}
+	if critical {
+		return 0, domain.ErrCriticalFindings
+	}
+	if err := setStatusTx(ctx, tx, p.ContractID, lc.Status, domain.StatusInReview, p.Scope.UserID); err != nil {
+		return 0, err
+	}
+	if err := insertAuditLog(ctx, tx, p.Scope.UserID, "contract.send", p.ContractID,
+		map[string]any{"status": lc.Status}, map[string]any{"status": domain.StatusInReview}, p.ActorIP); err != nil {
+		return 0, err
+	}
+	vendor, err := vendorUserID(ctx, tx, p.ContractID)
+	if err != nil {
+		return 0, err
+	}
+	if err := notify(ctx, tx, vendor, "kontrak_dikirim",
+		fmt.Sprintf("Desa mengirim kontrak \"%s\" untuk Anda tinjau.", lc.Judul), contractLink(p.ContractID)); err != nil {
+		return 0, err
+	}
+	return lc.VillageID, tx.Commit(ctx)
+}
 
 // ---- Termin, SPK, progres ----
 
@@ -334,6 +403,9 @@ func (s *Store) SetPaymentTerms(ctx context.Context, p usecase.SetTermsParams) (
 		map[string]any{"jumlahTermin": total}, map[string]any{"jumlahTermin": len(terms)}, p.ActorIP); err != nil {
 		return domain.ContractTermin{}, err
 	}
+	if err := notifyVendor(ctx, tx, p.ContractID, p.Scope.UserID, "termin_diatur", "memiliki jadwal termin pembayaran baru"); err != nil {
+		return domain.ContractTermin{}, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return domain.ContractTermin{}, err
 	}
@@ -372,6 +444,9 @@ func (s *Store) SetSPK(ctx context.Context, p usecase.SetSPKParams) (domain.Cont
 	}
 	if err := insertAuditLogObj(ctx, tx, p.Scope.UserID, "contract.spk_set", "contract", p.ContractID, nil,
 		map[string]any{"nomor": p.SPK.Nomor}, p.ActorIP); err != nil {
+		return domain.ContractTermin{}, err
+	}
+	if err := notifyVendor(ctx, tx, p.ContractID, p.Scope.UserID, "spk_diterbitkan", fmt.Sprintf("memiliki SPK baru (%s)", p.SPK.Nomor)); err != nil {
 		return domain.ContractTermin{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -540,7 +615,34 @@ func (s *Store) PayTerm(ctx context.Context, p usecase.PayTermParams) (domain.Pa
 
 // ---- Segel ----
 
+// VerifySeal: hash = SHA-256 penuh atau awalan (>= usecase.MinSealPrefix). Awalan yang cocok ke lebih dari
+// satu hash dianggap tidak cocok. Hasil tidak cocok juga dicatat (seal_id NULL, hash_dicari terisi).
 func (s *Store) VerifySeal(ctx context.Context, hash string, verifierID *int64) (domain.SealVerifyResult, error) {
+	searched := hash
+	if len(hash) < 64 {
+		rows, err := s.db.Query(ctx, `SELECT DISTINCT sha256 FROM document_seals WHERE sha256 LIKE $1 LIMIT 2`, hash+"%")
+		if err != nil {
+			return domain.SealVerifyResult{}, err
+		}
+		var full []string
+		for rows.Next() {
+			var h string
+			if err := rows.Scan(&h); err != nil {
+				rows.Close()
+				return domain.SealVerifyResult{}, err
+			}
+			full = append(full, h)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return domain.SealVerifyResult{}, err
+		}
+		if len(full) != 1 {
+			s.recordSealVerification(ctx, nil, verifierID, "tidak_cocok", searched)
+			return domain.SealVerifyResult{Cocok: false}, nil
+		}
+		hash = full[0]
+	}
 	var seg domain.SealInfo
 	var k domain.SealContractInfo
 	var villageID int64
@@ -555,18 +657,24 @@ func (s *Store) VerifySeal(ctx context.Context, hash string, verifierID *int64) 
 		Scan(&seg.ID, &seg.VersionID, &seg.NomorVersi, &seg.SHA256, &seg.WaktuSegel, &seg.SegelSebelumnyaID,
 			&seg.Chain, &seg.TxHash, &k.ID, &villageID, &k.Judul, &k.VillageName)
 	if errors.Is(err, pgx.ErrNoRows) {
+		s.recordSealVerification(ctx, nil, verifierID, "tidak_cocok", searched)
 		return domain.SealVerifyResult{Cocok: false}, nil
 	}
 	if err != nil {
 		return domain.SealVerifyResult{}, err
 	}
 	k.Nomor = contractNomor(villageID, k.ID)
-	// Pencatatan verifikasi tidak boleh menggagalkan jawaban verifikasi.
-	if _, err := s.db.Exec(ctx, `INSERT INTO seal_verifications (seal_id, diverifikasi_oleh, hasil, waktu) VALUES ($1, $2, 'cocok', NOW())`,
-		seg.ID, verifierID); err != nil {
-		slog.Warn("gagal mencatat seal_verifications", "seal_id", seg.ID, "err", err)
-	}
+	s.recordSealVerification(ctx, &seg.ID, verifierID, "cocok", searched)
 	return domain.SealVerifyResult{Cocok: true, Segel: &seg, Kontrak: &k}, nil
+}
+
+// recordSealVerification: pencatatan tidak boleh menggagalkan jawaban verifikasi.
+// Butuh scripts/migrate_seal_verifications.sql (seal_id nullable + hash_dicari); bila belum, hanya warning.
+func (s *Store) recordSealVerification(ctx context.Context, sealID, verifierID *int64, hasil, searched string) {
+	if _, err := s.db.Exec(ctx, `INSERT INTO seal_verifications (seal_id, diverifikasi_oleh, hasil, hash_dicari, waktu) VALUES ($1, $2, $3, $4, NOW())`,
+		sealID, verifierID, hasil, searched); err != nil {
+		slog.Warn("gagal mencatat seal_verifications", "hasil", hasil, "err", err)
+	}
 }
 
 func (s *Store) ListSeals(ctx context.Context, sc usecase.Scope) ([]domain.SealSummary, error) {
@@ -726,4 +834,59 @@ func (s *Store) publicProgress(ctx context.Context, contractID int64, nilai floa
 		pp.PersenDibayar = math.Round(paid/nilai*10000) / 100
 	}
 	return pp, rows.Err()
+}
+
+// ---- Pembatalan kontrak ----
+
+func (s *Store) CancelContract(ctx context.Context, p usecase.CancelContractParams) (int64, error) {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+
+	lc, err := lockContract(ctx, tx, p.ContractID, p.Scope)
+	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			return 0, domain.ErrNotFound // desa lain = 404, bukan 403, agar id kontrak tidak bisa ditebak
+		}
+		return 0, err
+	}
+	already, err := usecase.CanCancel(lc.Status)
+	if err != nil {
+		return 0, err
+	}
+	if already {
+		return lc.VillageID, nil
+	}
+	// Status ditinjau tetap bisa sudah ditandatangani satu pihak; tanda tangan = sudah masuk tahap penandatanganan.
+	var signed int
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM signatures sg JOIN contract_versions cv ON cv.id = sg.version_id WHERE cv.contract_id = $1`,
+		p.ContractID).Scan(&signed); err != nil {
+		return 0, err
+	}
+	if signed > 0 {
+		return 0, domain.ErrContractNotEditable
+	}
+	if err := setStatusTx(ctx, tx, p.ContractID, lc.Status, domain.StatusCancelled, p.Scope.UserID); err != nil {
+		return 0, err
+	}
+	if err := insertAuditLog(ctx, tx, p.Scope.UserID, "contract.cancel", p.ContractID,
+		map[string]any{"status": lc.Status}, map[string]any{"status": domain.StatusCancelled}, p.ActorIP); err != nil {
+		return 0, err
+	}
+	vendor, err := vendorUserID(ctx, tx, p.ContractID)
+	if err != nil {
+		return 0, err
+	}
+	pesan := fmt.Sprintf("Kontrak \"%s\" dibatalkan oleh desa.", lc.Judul)
+	for _, uid := range uniqueIDs(vendor, lc.CreatorID) {
+		if uid == p.Scope.UserID {
+			continue
+		}
+		if err := notify(ctx, tx, uid, "kontrak_dibatalkan", pesan, contractLink(p.ContractID)); err != nil {
+			return 0, err
+		}
+	}
+	return lc.VillageID, tx.Commit(ctx)
 }

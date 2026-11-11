@@ -1,5 +1,4 @@
 import type { VerifyEmailResult } from '@/interfaces/auth'
-import { addAudit } from '@/lib/audit/add-audit'
 import { markUsed } from './mark-used'
 import { readToken } from './read-token'
 import { updateUser } from './update-user'
@@ -12,6 +11,5 @@ export function verifyEmail(token: string): VerifyEmailResult {
   if (!u) return { ok: false, field: 'token', error: 'Akun tidak ditemukan.' }
   updateUser(u.id, { status: 'aktif' })
   markUsed(token)
-  addAudit({ actor: u.name, role: 'Pihak Kedua', action: 'Memverifikasi email' })
   return { ok: true, email: u.email }
 }

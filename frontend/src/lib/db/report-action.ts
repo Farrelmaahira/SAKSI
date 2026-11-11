@@ -5,8 +5,6 @@ import { allReports } from '@/lib/db/all-reports'
 import { nextFlow } from '@/lib/db/next-flow'
 import { uid } from '@/lib/dates/uid'
 import { nowIso } from '@/lib/dates/now-iso'
-import { log } from '@/lib/db/log'
-import { actionLabels } from '@/data/db'
 
 export function reportAction(id: string, kind: ActionKind, text: string, s: Session) {
   db.set((d) => {
@@ -22,7 +20,4 @@ export function reportAction(id: string, kind: ActionKind, text: string, s: Sess
       ),
     }
   })
-  const r = allReports(db.get()).find((x) => x.id === id)
-  const c = db.get().contracts.find((x) => x.code === r?.contractCode)
-  log(s, `${actionLabels[kind]} pada laporan`, c, id)
 }

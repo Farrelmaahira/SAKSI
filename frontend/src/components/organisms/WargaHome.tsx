@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { useDash } from '@/hooks/use-dash'
 import { isClosed } from '@/lib/db/is-closed'
 import { greeting } from '@/lib/dash/greeting'
@@ -18,7 +17,12 @@ import Stat from '@/components/molecules/Stat'
 import Panel from '@/components/molecules/Panel'
 import NotifList from '@/components/molecules/NotifList'
 import ReportMini from '@/components/molecules/ReportMini'
+import Badge from '@/components/atoms/Badge'
 import Btn from '@/components/atoms/Btn'
+import TextLink from '@/components/atoms/TextLink'
+import ContractLink from '@/components/molecules/ContractLink'
+import DataTable from '@/components/molecules/DataTable'
+import { formatRp } from '@/lib/contracts/format-rp'
 
 export default function WargaHome() {
   const { session } = useDash()
@@ -67,10 +71,10 @@ export default function WargaHome() {
         <Stat label="Selesai" value={reports.filter(isClosed).length} icon="shield" />
       </div>
       <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
-        <Panel title="Notifikasi terbaru" action={<Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" href="/dashboard/notifikasi">Semua notifikasi</Link>}>
+        <Panel title="Notifikasi terbaru" action={<TextLink href="/dashboard/notifikasi">Semua notifikasi</TextLink>}>
           {notifs.length ? <NotifList items={notifs.slice(0, 4)} read={read} userId={session.userId} /> : <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">{server.status === 'error' ? server.error : server.status === 'ok' ? 'Belum ada kabar. Notifikasi muncul saat laporan Anda ditanggapi.' : 'Memuat notifikasi…'}</p>}
         </Panel>
-        <Panel title="Laporan terakhir" action={<Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" href="/dashboard/laporan">Laporan saya</Link>}>
+        <Panel title="Laporan terakhir" action={<TextLink href="/dashboard/laporan">Laporan saya</TextLink>}>
           {reports.length ? (
             <div className="grid gap-10">
               {reports.slice(0, 3).map((r) => (
@@ -85,42 +89,22 @@ export default function WargaHome() {
       <Panel
         title={`Kontrak desa yang berjalan (${contracts.length})`}
         desc="Pantau rincian kegiatan, rekanan, dan klausul kontrak yang sedang berjalan di desa Anda."
-        action={<Link className="d-link" href="/dashboard/kontrak">Lihat semua kontrak</Link>}
+        action={<TextLink href="/dashboard/kontrak">Lihat semua kontrak</TextLink>}
       >
         {contracts.length > 0 ? (
-          <div className="d-table-wrap">
-            <table className="d-table">
-              <thead>
-                <tr>
-                  <th>Nomor / Judul</th>
-                  <th>Jenis</th>
-                  <th>Rekanan</th>
-                  <th>Nilai</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contracts.slice(0, 5).map((c) => (
-                  <tr key={c.id}>
-                    <td>
-                      <div className="d-contract-cell">
-                        <Link href={`/dashboard/kontrak/${c.id}`} className="d-strong d-link">
-                          {c.nomor}
-                        </Link>
-                        <span className="d-muted">{c.judul}</span>
-                      </div>
-                    </td>
-                    <td><span className="d-tag">{c.jenis}</span></td>
-                    <td>{c.counterpartyNama || '-'}</td>
-                    <td>Rp {c.nilai.toLocaleString('id-ID')}</td>
-                    <td><span className="d-status-pill">{c.status}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable columns={['Nomor / Judul', 'Jenis', 'Rekanan', 'Nilai', 'Status']}>
+            {contracts.slice(0, 5).map((c) => (
+              <tr key={c.id}>
+                <td><ContractLink href={`/dashboard/kontrak/${c.id}`} code={c.nomor} title={c.judul} /></td>
+                <td data-label="Jenis"><Badge tone="tint">{c.jenis}</Badge></td>
+                <td data-label="Rekanan">{c.counterpartyNama || '-'}</td>
+                <td data-label="Nilai">{formatRp(c.nilai)}</td>
+                <td data-label="Status"><Badge tone="blue">{c.status}</Badge></td>
+              </tr>
+            ))}
+          </DataTable>
         ) : (
-          <div className="d-btn-row">
+          <div>
             <Btn to="/dashboard/kontrak" variant="light" icon="file">Lihat kontrak desa</Btn>
           </div>
         )}

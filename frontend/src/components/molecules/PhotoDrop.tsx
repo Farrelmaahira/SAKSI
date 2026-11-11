@@ -35,7 +35,7 @@ export default function PhotoDrop({ photos, onFiles, onRemove }: Props) {
       >
         <input type="file" accept="image/*" multiple onChange={(e) => onFiles(e.target.files)} />
         <span className="block mt-0 mx-auto mb-10 w-[min(20rem,_60%)] [&_img]:h-auto [&_img]:w-full [.app_&]:block [.app_&]:w-[min(20rem,_60%)] [.app_&_img]:h-auto [.app_&_img]:w-full">
-          <Illustration name="image-dropzone_zdre" loading="lazy" />
+          <Illustration name="image-dropzone_zdre" />
         </span>
         <span>
           <strong>Seret foto ke sini</strong> atau klik untuk memilih

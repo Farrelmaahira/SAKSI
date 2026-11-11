@@ -5,7 +5,7 @@ import PasswordStrength from "@/components/molecules/PasswordStrength";
 import type { AuthError } from "@/interfaces/auth";
 import { cn } from "@/lib/utils";
 
-interface Props {
+interface RegisterPasswordStepProps {
   password: string;
   confirm: string;
   agree: boolean;
@@ -27,7 +27,7 @@ export default function RegisterPasswordStep({
   onConfirm,
   onAgree,
   onBack,
-}: Props) {
+}: RegisterPasswordStepProps) {
   const fieldError = (f: string) =>
     error?.field === f ? error.error : undefined;
 

@@ -12,7 +12,7 @@ export default function FeatureCard({ feature, index }: Props) {
       <div className="items-center bg-soft rounded-[1.5rem] flex h-260 justify-center mb-24 overflow-hidden p-40 relative [&_img]:max-h-full [&_img]:[transition:transform_0.6s_ease-out] [.feature-card:hover_&_img]:[transform:scale(1.05)] md:h-360 feat:rounded-[2rem] feat:h-400 feat:p-50">
         <span className="text-[1.3rem] absolute top-20 text-blue left-24">0{index + 1}</span>
         {feature.tag && <span className="text-[1.3rem] absolute top-20 border-[0.1rem] border-ink border-solid rounded-[3rem] py-4 px-12 right-20 uppercase">{feature.tag}</span>}
-        <Illustration name={feature.image} loading="lazy" />
+        <Illustration name={feature.image} />
       </div>
       <h3>{feature.title}</h3>
       <p>{feature.text}</p>

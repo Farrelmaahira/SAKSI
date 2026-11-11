@@ -146,3 +146,49 @@ func TestNextReportStatus(t *testing.T) {
 		}
 	}
 }
+
+func TestCanCancel(t *testing.T) {
+	for _, st := range []domain.ContractStatus{domain.StatusDraft, domain.StatusAudited, domain.StatusInReview} {
+		if already, err := CanCancel(st); already || err != nil {
+			t.Errorf("%s harus bisa dibatalkan, dapat already=%v err=%v", st, already, err)
+		}
+	}
+	for _, st := range []domain.ContractStatus{domain.StatusSigned, domain.StatusPublished, domain.StatusRunning, domain.StatusDone} {
+		if _, err := CanCancel(st); !errors.Is(err, domain.ErrContractNotEditable) {
+			t.Errorf("%s harus terkunci, dapat %v", st, err)
+		}
+	}
+	if already, err := CanCancel(domain.StatusCancelled); !already || err != nil {
+		t.Errorf("dibatalkan harus idempoten, dapat already=%v err=%v", already, err)
+	}
+}
+
+func TestNormalizeSealQuery(t *testing.T) {
+	for _, ok := range []string{strings.Repeat("a", 12), strings.Repeat("Ab", 32), "  " + strings.Repeat("0", 20) + " "} {
+		if _, err := NormalizeSealQuery(ok); err != nil {
+			t.Errorf("%q harus diterima: %v", ok, err)
+		}
+	}
+	for _, bad := range []string{"", "abc", strings.Repeat("a", 11), strings.Repeat("a", 65), strings.Repeat("g", 12)} {
+		if _, err := NormalizeSealQuery(bad); err == nil {
+			t.Errorf("%q harus ditolak", bad)
+		}
+	}
+}
+
+func TestCanSend(t *testing.T) {
+	for st, want := range map[domain.ContractStatus]error{
+		domain.StatusDraft:     nil,
+		domain.StatusAudited:   nil,
+		domain.StatusInReview:  domain.ErrInvalidState,
+		domain.StatusSigned:    domain.ErrContractNotEditable,
+		domain.StatusPublished: domain.ErrContractNotEditable,
+		domain.StatusRunning:   domain.ErrContractNotEditable,
+		domain.StatusDone:      domain.ErrContractNotEditable,
+		domain.StatusCancelled: domain.ErrContractNotEditable,
+	} {
+		if err := CanSend(st); !errors.Is(err, want) || (want == nil && err != nil) {
+			t.Errorf("CanSend(%s) = %v, mau %v", st, err, want)
+		}
+	}
+}

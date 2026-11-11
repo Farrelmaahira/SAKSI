@@ -273,6 +273,12 @@ func (s *Store) CreateCitizenReport(ctx context.Context, r domain.CitizenReport,
 		return domain.CitizenReport{}, err
 	}
 
+	// Aktor sengaja kosong: Jejak Audit terlihat oleh desa, identitas pelapor tidak boleh bocor.
+	if err := insertAuditLogObj(ctx, tx, 0, "contract.report_create", "contract", r.ContractID, nil,
+		map[string]any{"kode": r.KodePelacakan, "kategori": r.Kategori}, ""); err != nil {
+		return domain.CitizenReport{}, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return domain.CitizenReport{}, err
 	}

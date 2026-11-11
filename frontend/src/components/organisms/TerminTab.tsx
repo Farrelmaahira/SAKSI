@@ -48,7 +48,7 @@ export default function TerminTab({ c: local, session }: TabProps) {
     t.reload()
   }
   const pay = async (no: number, apiId?: number) => {
-    if (!c.apiId || !apiId) return markPaid(c.code, no, session)
+    if (!c.apiId || !apiId) return markPaid(c.code, no)
     setBusy(true)
     setError('')
     const r = await payTerm(c.apiId, apiId)

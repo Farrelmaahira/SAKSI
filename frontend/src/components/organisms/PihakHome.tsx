@@ -2,7 +2,6 @@
 
 import { useDash } from '@/hooks/use-dash'
 import { db } from '@/lib/db/db'
-import { auditStore } from '@/lib/audit/audit-store'
 import { counterpartyById } from '@/lib/master/counterparty-by-id'
 import { scopeContracts } from '@/lib/db/scope-contracts'
 import { daysUntil } from '@/lib/dates/days-until'
@@ -19,13 +18,11 @@ import Link from 'next/link'
 import { formatRp } from '@/lib/contracts/format-rp'
 import Badge from '@/components/atoms/Badge'
 import ContractMini from '@/components/molecules/ContractMini'
-import Activity from '@/components/molecules/Activity'
-import { scopeLogs } from '@/lib/db/scope-logs'
+import ActivityFeed from '@/components/molecules/ActivityFeed'
 
 export default function PihakHome() {
   const { session } = useDash()
   const d = db.use()
-  const logs = auditStore.use()
   const r = session.role
   const cp = counterpartyById(r.counterpartyId)
   const contracts = scopeContracts(d, r)
@@ -82,7 +79,7 @@ export default function PihakHome() {
           {running.length ? <div className="grid gap-10">{running.map((c) => <ContractMini key={c.code} c={c} />)}</div> : <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">Belum ada kontrak berjalan.</p>}
         </Panel>
         <Panel title="Aktivitas terakhir">
-          <Activity logs={scopeLogs(logs, r, d, session.name).slice(0, 6)} />
+          <ActivityFeed limit={6} />
         </Panel>
       </div>
     </>

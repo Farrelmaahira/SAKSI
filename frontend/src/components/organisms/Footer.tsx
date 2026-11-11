@@ -1,14 +1,11 @@
-'use client'
-
 import Link from 'next/link'
 import Logo from '@/components/atoms/Logo'
-import PillButton from '@/components/atoms/PillButton'
 import Underline from '@/components/atoms/Underline'
-import { useNavLinks } from '@/hooks/use-nav-links'
+import ScrollTopButton from '@/components/molecules/ScrollTopButton'
+import SessionNavLink from '@/components/molecules/SessionNavLink'
+import { navLinks } from '@/data/nav-links'
 
 export default function Footer() {
-  const navLinks = useNavLinks()
-
   return (
     <footer className="bg-blue text-white overflow-hidden pt-100 px-0 pb-30 lg:pt-160 lg:px-0 lg:pb-50">
       <div className="my-0 mx-auto max-w-1680 py-0 px-20 relative w-full md:py-0 md:px-40 lg:py-0 lg:px-80 [.auth>&]:relative [.auth>&]:z-1 [.page-hero>&]:relative [.page-hero>&]:z-1 container">
@@ -21,7 +18,7 @@ export default function Footer() {
                 <Underline className="bottom-[-0.12em] h-[0.26em] left-[-2%] absolute w-[104%]" />
               </span>
             </p>
-            <PillButton onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Kembali ke atas</PillButton>
+            <ScrollTopButton />
           </div>
           <nav className="flex flex-col text-[2.4rem] font-[320] gap-10 tracking-[-0.02em] [&_a]:[transition:opacity_0.3s,_transform_0.5s_var(--ease-saksi)] [&_a]:w-fit [&_a:hover]:opacity-[0.6] [&_a:hover]:[transform:translateX(0.8rem)] lg:items-end lg:text-[3rem]" aria-label="Navigasi footer">
             {navLinks.map(({ label, href }) => (
@@ -29,6 +26,7 @@ export default function Footer() {
                 {label}
               </Link>
             ))}
+            <SessionNavLink />
           </nav>
         </div>
         <div className="flex flex-col gap-30 mt-100 lg:items-end lg:flex-row lg:justify-between lg:mt-140">

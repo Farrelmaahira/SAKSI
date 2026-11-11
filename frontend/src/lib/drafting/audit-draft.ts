@@ -10,6 +10,7 @@ import { regionRules } from "@/data/master";
 import { formatRp } from "@/lib/contracts/format-rp";
 import { daysUntil } from "@/lib/dates/days-until";
 import { nowIso } from "@/lib/dates/now-iso";
+import { findClause } from "@/lib/drafting/find-clause";
 import { scoreOf } from "@/lib/drafting/score-of";
 
 export function auditDraft(
@@ -19,14 +20,14 @@ export function auditDraft(
   regionId: string,
 ): Audit {
   const findings: Finding[] = [];
-  const sanction = clauses.find((c) => c.key === "sanksi");
+  const sanction = findClause(clauses, "sanksi");
   if (!sanction || sanction.text === VAGUE_SANCTION)
     findings.push({
       id: "sanksi",
       severity: "kritis",
       title: "Sanksi belum jelas",
       text: "Besaran sanksi belum ditulis. Tanpa angka pasti, sanksi sulit ditagih bila terjadi keterlambatan.",
-      clauseKey: "sanksi",
+      clauseKey: sanction?.key ?? "sanksi",
       fixable: true,
     });
   const rule = regionRules[regionId];
@@ -41,10 +42,10 @@ export function auditDraft(
       severity: "kritis",
       title: "Melewati ambang pengadaan langsung",
       text: `Nilai ${formatRp(a.value)} di atas batas ${formatRp(rule.directMax)} (${rule.basis}). Gunakan lelang terbatas.`,
-      clauseKey: "objek",
+      clauseKey: findClause(clauses, "objek")?.key ?? "objek",
       fixable: true,
     });
-  if (!clauses.some((c) => c.key === "kahar"))
+  if (!findClause(clauses, "kahar"))
     findings.push({
       id: "kahar",
       severity: "saran",
@@ -56,14 +57,14 @@ export function auditDraft(
     t === "pengadaan" &&
     a.scheme === "Termin" &&
     a.terms >= 2 &&
-    !clauses.some((c) => c.key === "retensi")
+    !findClause(clauses, "retensi")
   )
     findings.push({
       id: "retensi",
       severity: "saran",
       title: "Tambahkan retensi",
       text: "Tahan 5 persen pembayaran terakhir sampai masa pemeliharaan selesai, untuk menjamin kualitas pekerjaan.",
-      clauseKey: "pembayaran",
+      clauseKey: findClause(clauses, "pembayaran")?.key ?? "pembayaran",
       fixable: true,
     });
   if (a.deadline && daysUntil(a.deadline) < 14)
@@ -72,7 +73,7 @@ export function auditDraft(
       severity: "saran",
       title: "Tenggat sangat singkat",
       text: "Tenggat kurang dari 14 hari. Pastikan waktunya masuk akal, atau ubah tenggat di langkah Pertanyaan.",
-      clauseKey: "jangka_waktu",
+      clauseKey: findClause(clauses, "jangka_waktu")?.key ?? "jangka_waktu",
       fixable: false,
     });
   return { at: nowIso(), score: scoreOf(findings), findings };

@@ -110,8 +110,8 @@ type Store interface {
 	CreateContractWithDetails(ctx context.Context, p CreateContractParams) (domain.ContractDetail, error)
 	GetContractDetail(ctx context.Context, id int64) (domain.ContractDetail, error)
 
-	ListContracts(ctx context.Context, villageID string, role domain.UserRole, query string) ([]domain.Contract, error)
-	ContractByID(ctx context.Context, id string) (domain.Contract, error)
+	ListContracts(ctx context.Context, sc Scope, query string) ([]domain.Contract, error)
+	ContractByID(ctx context.Context, id string, sc Scope) (domain.Contract, error)
 	CreateContract(ctx context.Context, c domain.Contract) (domain.Contract, error)
 	UpdateContractStatus(ctx context.Context, id string, status domain.ContractStatus, hash string, score float64) error
 
@@ -145,6 +145,12 @@ type Store interface {
 	// LatestContractAudit: villageID kontrak untuk otorisasi; audit nil bila belum pernah diaudit.
 	LatestContractAudit(ctx context.Context, contractID int64) (villageID int64, audit *domain.ContractAudit, err error)
 	PublishContract(ctx context.Context, p PublishParams) (domain.Publication, error)
+
+	// CancelContract membatalkan (soft-cancel) kontrak pra-tandatangan; mengembalikan village_id kontrak untuk invalidasi cache.
+	// ErrNotFound juga untuk kontrak di luar cakupan; ErrContractNotEditable bila sudah masuk tahap tanda tangan.
+	CancelContract(ctx context.Context, p CancelContractParams) (villageID int64, err error)
+	// SendContract mengirim kontrak draf/diaudit ke pihak kedua (status ditinjau); mengembalikan village_id untuk invalidasi cache.
+	SendContract(ctx context.Context, p SendContractParams) (villageID int64, err error)
 
 	// Termin, SPK, progres pekerjaan
 	ListTerminSummaries(ctx context.Context, sc Scope) ([]domain.TerminSummary, error)

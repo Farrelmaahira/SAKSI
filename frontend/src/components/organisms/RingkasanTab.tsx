@@ -1,7 +1,6 @@
 'use client'
 
 import type { TabProps } from '@/interfaces/dash'
-import { auditStore } from '@/lib/audit/audit-store'
 import { nextStep } from '@/lib/db/next-step'
 import { counterpartyById } from '@/lib/master/counterparty-by-id'
 import { villageById } from '@/lib/master/village-by-id'
@@ -24,9 +23,9 @@ import { progressOf } from '@/lib/db/progress-of'
 import Bar from '@/components/atoms/Bar'
 import { paidOf } from '@/lib/db/paid-of'
 import Activity from '@/components/molecules/Activity'
+import ActivityFeed from '@/components/molecules/ActivityFeed'
 
 export default function RingkasanTab({ c, session, go }: TabProps) {
-  const logs = auditStore.use()
   const step = nextStep(c)
   const mine = step?.who === session.role.role
   const cp = counterpartyById(c.counterpartyId)
@@ -152,7 +151,7 @@ export default function RingkasanTab({ c, session, go }: TabProps) {
         </Panel>
       </div>
       <Panel title="Aktivitas terakhir" action={<button className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" type="button" onClick={() => go('riwayat')}>Riwayat lengkap</button>}>
-        <Activity logs={logs.filter((l) => l.contractCode === c.code).slice(0, 5)} />
+        {c.apiId ? <ActivityFeed limit={5} contractId={c.apiId} /> : <Activity logs={[]} empty="Kontrak contoh ini hanya ada di perangkat ini, jadi belum punya jejak di server." />}
       </Panel>
     </div>
   )

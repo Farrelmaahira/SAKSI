@@ -12,7 +12,7 @@ export default function BenefitCard({ benefit }: Props) {
       data-reveal
     >
       <div className="items-center bg-soft rounded-[1.5rem] flex h-240 justify-center mb-24 overflow-hidden p-40 [&_img]:max-h-full [&_img]:[transition:transform_0.6s_ease-out] [.benefit-card:hover_&_img]:[transform:scale(1.05)] lg:rounded-[2rem] lg:h-340">
-        <Illustration name={benefit.image} loading="lazy" />
+        <Illustration name={benefit.image} />
       </div>
       <h3>{benefit.title}</h3>
       <p>{benefit.text}</p>
