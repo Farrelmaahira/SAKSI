@@ -127,10 +127,11 @@ func (c *Client) AuditClauses(ctx context.Context, in usecase.AuditInput) (domai
 		err = wrapErr("AuditContract", err)
 		if c.rest != nil {
 			slog.Warn("audit gRPC gagal, mencoba REST", "err", err)
-			return c.rest.AuditClauses(ctx, in)
+			return c.rest.AuditClauses(ctx, in) // REST mencatat transport=rest sendiri
 		}
 		return domain.AuditResult{}, err
 	}
+	slog.Info("ai", "transport", "grpc", "op", "AuditContract")
 	findings := make([]domain.AuditFinding, 0, len(resp.GetFindings()))
 	for _, f := range resp.GetFindings() {
 		af := domain.AuditFinding{Tingkat: "saran", Pesan: f.GetPesan()}
@@ -157,6 +158,7 @@ func (c *Client) DraftContract(ctx context.Context, in usecase.DraftInput) (usec
 	if err != nil {
 		return usecase.DraftOutput{}, wrapErr("DraftContract", err)
 	}
+	slog.Info("ai", "transport", "grpc", "op", "DraftContract")
 	out := usecase.DraftOutput{Model: resp.GetModel(), Clauses: make([]domain.Clause, 0, len(resp.GetClauses()))}
 	for _, cl := range resp.GetClauses() {
 		out.Clauses = append(out.Clauses, domain.Clause{
@@ -174,6 +176,7 @@ func (c *Client) RedactText(ctx context.Context, text string) (usecase.RedactOut
 	if err != nil {
 		return usecase.RedactOutput{}, wrapErr("RedactText", err)
 	}
+	slog.Info("ai", "transport", "grpc", "op", "RedactText")
 	return usecase.RedactOutput{Text: resp.GetText(), RedactedKinds: resp.GetRedactedKinds()}, nil
 }
 

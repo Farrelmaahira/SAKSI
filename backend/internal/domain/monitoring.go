@@ -9,6 +9,9 @@ import (
 // ErrInvalidState: status kontrak/termin tidak mengizinkan aksi ini (HTTP 409 INVALID_STATE).
 var ErrInvalidState = errors.New("domain: invalid state")
 
+// ErrCriticalFindings: audit AI terakhir masih punya temuan kritis yang belum diperbaiki (HTTP 409 CRITICAL_FINDINGS).
+var ErrCriticalFindings = errors.New("domain: critical audit findings still open")
+
 // ErrAlreadyPaid: termin sudah berstatus dibayar.
 var ErrAlreadyPaid = errors.New("domain: payment term already paid")
 

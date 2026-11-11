@@ -202,12 +202,8 @@ func HandleSubmitContractReview(d *Deps) http.HandlerFunc {
 				WriteError(w, http.StatusNotFound, "kontrak tidak ditemukan")
 				return
 			}
-			if errors.Is(err, domain.ErrForbidden) {
-				WriteError(w, http.StatusForbidden, "akun penyedia Anda tidak terdaftar pada kontrak ini")
-				return
-			}
-			if errors.Is(err, domain.ErrContractNotEditable) {
-				WriteError(w, http.StatusConflict, "kontrak tidak dalam status yang dapat diulas")
+			if errors.Is(err, domain.ErrInvalidState) {
+				writeDomainErr(w, err, "kontrak tidak ditemukan")
 				return
 			}
 			WriteError(w, http.StatusBadRequest, err.Error())
@@ -313,7 +309,7 @@ func HandleSignContract(d *Deps) http.HandlerFunc {
 				return
 			}
 			if errors.Is(err, domain.ErrContractNotEditable) {
-				WriteError(w, http.StatusConflict, "kontrak tidak dalam status yang dapat ditandatangani")
+				writeContractLocked(w, "kontrak tidak dalam status yang dapat ditandatangani (sudah dibatalkan)")
 				return
 			}
 			WriteError(w, http.StatusBadRequest, err.Error())

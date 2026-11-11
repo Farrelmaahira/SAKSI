@@ -1,17 +1,24 @@
-import PillButton from '@/components/atoms/PillButton'
-import TextField from '@/components/molecules/TextField'
-import type { AuthError } from '@/interfaces/auth'
+import PillButton from "@/components/atoms/PillButton";
+import TextField from "@/components/molecules/TextField";
+import type { AuthError } from "@/interfaces/auth";
 
-interface Props {
-  name: string
-  email: string
-  error: AuthError | null
-  onName: (v: string) => void
-  onEmail: (v: string) => void
+interface RegisterAccountProps {
+  name: string;
+  email: string;
+  error: AuthError | null;
+  onName: (v: string) => void;
+  onEmail: (v: string) => void;
 }
 
-export default function RegisterAccountStep({ name, email, error, onName, onEmail }: Props) {
-  const fieldError = (f: string) => (error?.field === f ? error.error : undefined)
+export default function RegisterAccountStep({
+  name,
+  email,
+  error,
+  onName,
+  onEmail,
+}: RegisterAccountProps) {
+  const fieldError = (f: string) =>
+    error?.field === f ? error.error : undefined;
 
   return (
     <div className="[animation:pop_0.35s_ease-out] grid gap-20" key="account">
@@ -23,7 +30,7 @@ export default function RegisterAccountStep({ name, email, error, onName, onEmai
         autoFocus
         value={name}
         onChange={(e) => onName(e.target.value)}
-        error={fieldError('name')}
+        error={fieldError("name")}
       />
       <TextField
         id="reg-email"
@@ -33,7 +40,7 @@ export default function RegisterAccountStep({ name, email, error, onName, onEmai
         placeholder="nama@usaha.id"
         value={email}
         onChange={(e) => onEmail(e.target.value)}
-        error={fieldError('email')}
+        error={fieldError("email")}
         hint="Link aktivasi akan dikirim ke email ini."
       />
       <div className="items-center flex gap-24 justify-between mt-8 [&.is-end]:justify-end auth-actions is-end">
@@ -42,5 +49,5 @@ export default function RegisterAccountStep({ name, email, error, onName, onEmai
         </PillButton>
       </div>
     </div>
-  )
+  );
 }

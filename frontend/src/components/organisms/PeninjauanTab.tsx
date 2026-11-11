@@ -39,7 +39,7 @@ export default function PeninjauanTab({ c, session }: TabProps) {
   }
   const decide = (d: 'setuju' | 'revisi') => {
     if (d === 'revisi' && decisionNote.trim().length < 5) return setErr('Jelaskan apa yang perlu direvisi.')
-    decideReview(c.code, d, decisionNote.trim(), session)
+    decideReview(c.code, d, decisionNote.trim())
     setDecisionNote('')
     setErr('')
   }
@@ -90,7 +90,7 @@ export default function PeninjauanTab({ c, session }: TabProps) {
                       >
                         Balas
                       </Btn>
-                      <Btn small variant="ghost" icon="check" onClick={() => resolveReview(c.code, rv.id, session)}>
+                      <Btn small variant="ghost" icon="check" onClick={() => resolveReview(c.code, rv.id)}>
                         Selesai
                       </Btn>
                     </div>

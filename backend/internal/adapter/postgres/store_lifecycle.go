@@ -146,6 +146,9 @@ func (s *Store) ReviseContract(ctx context.Context, p usecase.ReviseContractPara
 		p.ActorIP); err != nil {
 		return domain.ContractVersion{}, err
 	}
+	if err := notifyVendor(ctx, tx, contractID, p.KadesUserID, "kontrak_direvisi", fmt.Sprintf("direvisi menjadi versi %d", nextVersion)); err != nil {
+		return domain.ContractVersion{}, err
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return domain.ContractVersion{}, err
@@ -181,20 +184,21 @@ func (s *Store) SubmitContractReview(ctx context.Context, p usecase.SubmitReview
 		WHERE c.id = $1 
 		  AND (cparty.user_id = $2 OR cp.user_id = $2)
 		  AND cp.peran_pihak = 'kedua'
+		FOR UPDATE OF c
 	`
 	var partyID int64
 	var contractStatus string
 	err = tx.QueryRow(ctx, queryParty, p.ContractID, p.VendorUserID).Scan(&partyID, &contractStatus)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return domain.ContractReview{}, domain.ErrForbidden
+			return domain.ContractReview{}, domain.ErrNotFound // bukan pihak kedua kontrak ini: 404, id tidak bisa ditebak
 		}
 		return domain.ContractReview{}, err
 	}
 
-	// Periksa apakah kontrak masih dalam status yang dapat di-review
-	if contractStatus == string(domain.StatusSigned) || contractStatus == string(domain.StatusCancelled) || contractStatus == string(domain.StatusPublished) {
-		return domain.ContractReview{}, domain.ErrContractNotEditable
+	// Tinjauan hanya setelah desa mengirim kontrak (POST /contracts/{id}/send) dan sebelum tanda tangan.
+	if contractStatus != string(domain.StatusInReview) {
+		return domain.ContractReview{}, fmt.Errorf("%w: kontrak belum dikirim untuk ditinjau atau sudah lewat tahap peninjauan", domain.ErrInvalidState)
 	}
 
 	// 2. Ambil versi terbaru kontrak
@@ -230,21 +234,6 @@ func (s *Store) SubmitContractReview(ctx context.Context, p usecase.SubmitReview
 	err = tx.QueryRow(ctx, insertReviewQuery, versionID, partyID, p.ClauseID, p.Komentar, reviewStatus).Scan(&reviewID, &waktu)
 	if err != nil {
 		return domain.ContractReview{}, err
-	}
-
-	// 4. Update status kontrak ke "peninjauan"
-	if contractStatus != string(domain.StatusInReview) {
-		newStatus := string(domain.StatusInReview)
-		if _, err := tx.Exec(ctx, `UPDATE contracts SET status = $1 WHERE id = $2`, newStatus, p.ContractID); err != nil {
-			return domain.ContractReview{}, err
-		}
-		insertHistoryQuery := `
-			INSERT INTO contract_status_history (contract_id, status_ke, aktor_user_id, waktu)
-			VALUES ($1, $2, $3, NOW())
-		`
-		if _, err := tx.Exec(ctx, insertHistoryQuery, p.ContractID, newStatus, p.VendorUserID); err != nil {
-			return domain.ContractReview{}, err
-		}
 	}
 
 	if err := insertAuditLog(ctx, tx, p.VendorUserID, "contract.review", p.ContractID, nil,
@@ -516,30 +505,12 @@ func (s *Store) GetContractLifecycleDetail(ctx context.Context, contractID int64
 		return domain.ContractLifecycleDetail{}, err
 	}
 
-	// 2. Validasi Otorisasi IDOR
-	switch callerRole {
-	case domain.RoleInspektorat:
-		// Inspektorat boleh membaca semua kontrak di wilayahnya
-	case domain.RoleKades, domain.RolePerangkatDesa, domain.RoleBPD:
-		if callerVillageID == nil || contractDetail.VillageID == nil || *callerVillageID != *contractDetail.VillageID {
-			return domain.ContractLifecycleDetail{}, domain.ErrForbidden
+	// 2. Otorisasi IDOR dengan aturan cakupan bersama; di luar cakupan = 404 agar id tidak bisa ditebak.
+	if err := contractInScope(ctx, s.db, contractID, usecase.Scope{UserID: callerUserID, Role: callerRole, VillageID: callerVillageID}); err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			return domain.ContractLifecycleDetail{}, domain.ErrNotFound
 		}
-	case domain.RolePenyedia:
-		// Penyedia hanya boleh membaca kontrak di mana perusahaannya terdaftar sebagai pihak
-		var isParty bool
-		checkPartyQuery := `
-			SELECT EXISTS (
-				SELECT 1 FROM contract_parties cp
-				LEFT JOIN counterparties cparty ON cp.counterparty_id = cparty.id
-				WHERE cp.contract_id = $1 
-				  AND (cparty.user_id = $2 OR cp.user_id = $2)
-			)
-		`
-		if err := s.db.QueryRow(ctx, checkPartyQuery, contractID, callerUserID).Scan(&isParty); err != nil || !isParty {
-			return domain.ContractLifecycleDetail{}, domain.ErrForbidden
-		}
-	default:
-		return domain.ContractLifecycleDetail{}, domain.ErrForbidden
+		return domain.ContractLifecycleDetail{}, err
 	}
 
 	// 3. Ambil seluruh riwayat versi kontrak

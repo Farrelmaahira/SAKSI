@@ -1,44 +1,18 @@
-import asyncio
 import json
 from pathlib import Path
 
 import grpc
 import httpx
 import pytest
-from grpc_health.v1 import health_pb2, health_pb2_grpc
+from grpc_health.v1 import health_pb2
 
-from app import audit, grpc_server
-from app.gen import ai_pb2, ai_pb2_grpc
-from conftest import fake
+from app import grpc_server, llm, pii
+from app.gen import ai_pb2
+from support import clauses, code_of, fake, rpc
 
 GOLDEN = json.loads((Path(__file__).parent / "golden" / "audit_missing_mandatory.json").read_text())
 NO_FINDINGS = json.dumps({"findings": []})
 DOWN = httpx.ConnectError("mati")
-
-
-def rpc(method, request, key="test-key"):
-    """Menjalankan satu panggilan lewat server gRPC sungguhan di port acak."""
-    async def go():
-        server, port = await grpc_server.start(0, "test-key", host="127.0.0.1")
-        try:
-            async with grpc.aio.insecure_channel(f"127.0.0.1:{port}") as ch:
-                metadata = (("x-api-key", key),) if key is not None else None
-                if method == "Health":
-                    return await health_pb2_grpc.HealthStub(ch).Check(request)
-                return await getattr(ai_pb2_grpc.AiEngineStub(ch), method)(request, metadata=metadata, timeout=13)
-        finally:
-            await server.stop(None)
-    return asyncio.run(go())
-
-
-def code_of(method, request, key="test-key"):
-    with pytest.raises(grpc.aio.AioRpcError) as e:
-        rpc(method, request, key)
-    return e.value.code()
-
-
-def clauses(rows, ref=0):
-    return [ai_pb2.Clause(kode_pasal=k, judul=j, isi=i, urutan=n, legal_reference_id=ref) for n, (k, j, i) in enumerate(rows, 1)]
 
 
 AUDIT = ai_pb2.AuditContractRequest(
@@ -53,7 +27,7 @@ AUDIT = ai_pb2.AuditContractRequest(
 
 @pytest.mark.parametrize("case", GOLDEN, ids=[c["jenis"] for c in GOLDEN])
 def test_golden_missing_mandatory(monkeypatch, case):
-    monkeypatch.setattr(audit, "call_provider", fake({"groq": NO_FINDINGS}))
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": NO_FINDINGS}))
     res = rpc("AuditContract", ai_pb2.AuditContractRequest(
         jenis=ai_pb2.ContractType.Value(case["jenis"]), clauses=clauses(case["clauses"]), mandatory_kode_pasal=case["mandatory"],
     ))
@@ -66,20 +40,20 @@ def test_golden_missing_mandatory(monkeypatch, case):
 
 
 def test_audit_llm_finding_lowers_score(monkeypatch):
-    llm = json.dumps({"findings": [{"kode_pasal": "P-02", "tingkat": "KRITIS", "pesan": "Sanksi tanpa besaran."}]})
-    monkeypatch.setattr(audit, "call_provider", fake({"groq": llm}))
+    answer = json.dumps({"findings": [{"kode_pasal": "P-02", "tingkat": "KRITIS", "pesan": "Sanksi tanpa besaran."}]})
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": answer}))
     res = rpc("AuditContract", AUDIT)
     assert res.skor == 50.0 and [(f.kode_pasal, f.tingkat) for f in res.findings] == [("P-02", ai_pb2.KRITIS)]
 
 
 def test_audit_unknown_kode_from_llm_counts_as_failure(monkeypatch):
     bad = json.dumps({"findings": [{"kode_pasal": "P-99", "tingkat": "SARAN", "pesan": "x"}]})
-    monkeypatch.setattr(audit, "call_provider", fake({"groq": bad, "gemini": NO_FINDINGS}))
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": bad, "gemini": NO_FINDINGS}))
     assert rpc("AuditContract", AUDIT).model == "gemini:test"
 
 
 def test_audit_flags_legal_reference_not_sent(monkeypatch):
-    monkeypatch.setattr(audit, "call_provider", fake({"groq": NO_FINDINGS}))
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": NO_FINDINGS}))
     req = ai_pb2.AuditContractRequest(jenis=ai_pb2.HIBAH, clauses=clauses([("H-01", "Dasar", "isi")], ref=99),
                                       legal_references=[ai_pb2.LegalReference(id=1, peraturan="Perlem LKPP 12/2019")])
     assert [f.tingkat for f in rpc("AuditContract", req).findings] == [ai_pb2.KRITIS]
@@ -90,7 +64,7 @@ def test_audit_flags_legal_reference_not_sent(monkeypatch):
     ("DraftContract", ai_pb2.DraftContractRequest(jenis=ai_pb2.UMKM, clause_library=clauses([("U-01", "Pihak", "isi")]))),
 ])
 def test_all_providers_down_is_unavailable(monkeypatch, method, request_):
-    monkeypatch.setattr(audit, "call_provider", fake({"groq": DOWN, "gemini": "bukan json"}))
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": DOWN, "gemini": "bukan json"}))
     assert code_of(method, request_) == grpc.StatusCode.UNAVAILABLE
 
 
@@ -145,7 +119,7 @@ def draft_json(*rows):
 
 def test_draft_keeps_every_clause_and_order(monkeypatch):
     out = draft_json(("P-02", "Denda 1/1000 per hari.", 8), ("P-01", "Nilai kontrak Rp 150.000.000.", 0))
-    monkeypatch.setattr(audit, "call_provider", fake({"groq": out}))
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": out}))
     res = rpc("DraftContract", DRAFT)
     assert [(c.kode_pasal, c.judul, c.urutan, c.legal_reference_id) for c in res.clauses] == [("P-01", "Nilai", 1, 7), ("P-02", "Sanksi", 2, 8)]
     assert res.clauses[0].isi == "Nilai kontrak Rp 150.000.000." and res.model == "groq:test"
@@ -158,10 +132,37 @@ def test_draft_keeps_every_clause_and_order(monkeypatch):
 ])
 def test_draft_invalid_output_falls_back_then_unavailable(monkeypatch, bad):
     good = draft_json(("P-01", "a", 0), ("P-02", "b", 0))
-    monkeypatch.setattr(audit, "call_provider", fake({"groq": bad, "gemini": good}))
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": bad, "gemini": good}))
     assert rpc("DraftContract", DRAFT).model == "gemini:test"
-    monkeypatch.setattr(audit, "call_provider", fake({"groq": bad, "gemini": bad}))
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": bad, "gemini": bad}))
     assert code_of("DraftContract", DRAFT) == grpc.StatusCode.UNAVAILABLE
+
+
+def _draft_with(template_isi, llm_isi, monkeypatch):
+    request = ai_pb2.DraftContractRequest(jenis=ai_pb2.PENGADAAN, clause_library=clauses([("P-02", "Nilai", template_isi)]))
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": draft_json(("P-02", llm_isi, 0))}))
+    return rpc("DraftContract", request).clauses[0].isi
+
+
+def test_draft_keeps_concrete_template_text_the_llm_blanked(monkeypatch):
+    template = "1. Nilai Rp 150.000.000.\n2. Dibebankan pada APBDes tahun berjalan."
+    assert _draft_with(template, "1. Nilai Rp 150.000.000. 2. Dibebankan pada [diisi manual].", monkeypatch) == template
+
+
+def test_draft_restores_line_breaks_when_only_whitespace_changed(monkeypatch):
+    template = "1. Pihak pertama membayar.\n2. Pihak kedua bekerja."
+    assert _draft_with(template, "1. Pihak pertama membayar. 2. Pihak kedua bekerja.", monkeypatch) == template
+
+
+def test_draft_drops_copied_title_line(monkeypatch):
+    # Judul pasal ("Nilai") ikut tersalin sebagai baris pertama isi; harus dibuang.
+    assert _draft_with("Nilai kontrak Rp 1.000.", "Nilai\nNilai kontrak Rp 1.000.", monkeypatch) == "Nilai kontrak Rp 1.000."
+
+
+def test_draft_uses_llm_text_for_empty_fields(monkeypatch):
+    # Kolom kosong yang diisi (atau ditandai [diisi manual]) harus dipakai, bukan dibuang.
+    assert _draft_with("Nilai sebesar [nilai kontrak].", "Nilai sebesar Rp 85.000.000.", monkeypatch) == "Nilai sebesar Rp 85.000.000."
+    assert _draft_with("Harga [harga sewa] per tahun.", "Harga [diisi manual] per tahun.", monkeypatch) == "Harga [diisi manual] per tahun."
 
 
 # ---------- RedactText ----------
@@ -170,21 +171,21 @@ PERSONAL = "Penyewa Budi Santoso, NIK 3201234567890001, HP 0812-3456-7890, tingg
 
 
 def test_redact_regex_then_llm(monkeypatch):
-    llm = json.dumps({"items": [{"jenis": "nama", "teks": "Budi Santoso"}, {"jenis": "alamat", "teks": "Jl. Melati 5 RT 01"},
+    answer = json.dumps({"items": [{"jenis": "nama", "teks": "Budi Santoso"}, {"jenis": "alamat", "teks": "Jl. Melati 5 RT 01"},
                                 {"jenis": "nama", "teks": "Tidak Ada Di Teks"}]})
-    monkeypatch.setattr(audit, "call_provider", fake({"groq": llm}))
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": answer}))
     res = rpc("RedactText", ai_pb2.RedactTextRequest(text=PERSONAL))
     assert res.text == "Penyewa [NAMA], NIK [NIK], HP [NO-HP], tinggal di [ALAMAT]."
     assert sorted(res.redacted_kinds) == ["alamat", "nama", "nik", "no_hp"]
 
 
 def test_redact_returns_regex_result_when_llm_down(monkeypatch):
-    monkeypatch.setattr(audit, "call_provider", fake({"groq": DOWN, "gemini": DOWN}))
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": DOWN, "gemini": DOWN}))
     res = rpc("RedactText", ai_pb2.RedactTextRequest(text=PERSONAL))
     assert "3201234567890001" not in res.text and "Budi Santoso" in res.text
     assert list(res.redacted_kinds) == ["no_hp", "nik"]
 
 
 def test_regex_keeps_money_and_masks_bank_account():
-    text, kinds = audit.redact_regex("Nilai Rp 1500000000. Transfer ke No. Rek: BRI 0123-4567-8901 a.n. desa.")
+    text, kinds = pii.redact_regex("Nilai Rp 1500000000. Transfer ke No. Rek: BRI 0123-4567-8901 a.n. desa.")
     assert "1500000000" in text and "0123-4567-8901" not in text and kinds == ["rekening"]

@@ -1,5 +1,6 @@
 import type { ApiResult } from "@/interfaces/api";
 import { getAuthToken } from "@/lib/api/reports";
+import { logout } from "@/lib/auth/logout";
 
 import { AI_BUSY } from "@/data/drafting";
 
@@ -46,6 +47,8 @@ export async function apiRequest<T>(
         "Server SAKSI tidak bisa dihubungi. Periksa koneksi lalu coba lagi.",
     };
   }
+  // token yang dikirim ditolak = sesi berakhir: keluar sekarang, useRequireSession mengalihkan dashboard ke /masuk
+  if (res.status === 401 && token) logout();
   const json = await res.json().catch(() => null);
   if (res.ok) return { ok: true, data: json as T };
   // contract: {"error":"<pesan>","code":"<KODE>"}; {"error":{"code","message"}} is still read for compatibility
@@ -74,7 +77,7 @@ export async function apiRequest<T>(
       error: text || STATUS_ERRORS[429],
     };
   // section-7 endpoints send a displayable Indonesian message with a code (INVALID_STATE, ALREADY_PAID, WRONG_PASSWORD, ...)
-  if (code && text && res.status !== 401 && code !== "CONTRACT_LOCKED")
+  if (code && text && res.status !== 401)
     return { ok: false, status: res.status, code, error: text };
   return {
     ok: false,

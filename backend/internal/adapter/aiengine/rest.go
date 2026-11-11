@@ -65,6 +65,7 @@ func (c *REST) AuditClauses(ctx context.Context, in usecase.AuditInput) (domain.
 		return domain.AuditResult{}, fmt.Errorf("ai engine status %d", resp.StatusCode)
 	}
 
+	slog.Info("ai", "transport", "rest", "op", "AuditContract")
 	var out domain.AuditResult
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&out); err != nil {
 		return domain.AuditResult{}, err

@@ -1,21 +1,30 @@
-import MailPreview from '@/components/molecules/MailPreview'
-import StepIndicator from '@/components/molecules/StepIndicator'
-import { verifySteps } from '@/data/auth'
+import MailPreview from "@/components/molecules/MailPreview";
+import StepIndicator from "@/components/molecules/StepIndicator";
+import { verifySteps } from "@/data/auth";
 
-interface Props {
-  email: string
-  token: string
-  firstName: string
-  type: string
-  business: string
+interface RegisterDoneProps {
+  email: string;
+  token: string;
+  firstName: string;
+  type: string;
+  business: string;
 }
 
-export default function RegisterDone({ email, token, firstName, type, business }: Props) {
+export default function RegisterDone({
+  email,
+  token,
+  firstName,
+  type,
+  business,
+}: RegisterDoneProps) {
   return (
     <div className="[animation:pop_0.35s_ease-out] grid gap-20">
-      <h2 className="text-[3rem] font-[350] tracking-[-0.03em] leading-[1.1] md:text-[3.6rem]">Cek email Anda</h2>
+      <h2 className="text-[3rem] font-[350] tracking-[-0.03em] leading-[1.1] md:text-[3.6rem]">
+        Cek email Anda
+      </h2>
       <p className="text-[1.5rem] mt-8 mx-0 mb-28 [&_a]:border-b-[0.1rem] [&_a]:border-b-current [&_a]:[border-bottom-style:solid] [&_a]:text-blue">
-        Kami mengirim link aktivasi ke <strong>{email}</strong>. Selama belum diklik, status akun Anda <em>menunggu verifikasi</em>.
+        Kami mengirim link aktivasi ke <strong>{email}</strong>. Selama belum
+        diklik, status akun Anda <em>menunggu verifikasi</em>.
       </p>
       <StepIndicator steps={verifySteps} current={3} />
       <MailPreview
@@ -26,5 +35,5 @@ export default function RegisterDone({ email, token, firstName, type, business }
         href={`/verifikasi?token=${token}`}
       />
     </div>
-  )
+  );
 }

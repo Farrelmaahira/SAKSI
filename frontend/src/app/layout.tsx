@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import type React from "react";
 import JsonLd from "@/components/atoms/JsonLd";
+import Footer from "@/components/organisms/Footer";
 import SiteLayout from "@/components/organisms/SiteLayout";
 import {
   SITE_DESCRIPTION,
@@ -64,7 +65,7 @@ export default function RootLayout({
       <body>
         <JsonLd data={siteJsonLd()} />
         <Suspense>
-          <SiteLayout>{children}</SiteLayout>
+          <SiteLayout footer={<Footer />}>{children}</SiteLayout>
         </Suspense>
       </body>
     </html>

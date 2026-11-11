@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -128,7 +127,7 @@ func HandleGetContractOptions(d *Deps) http.HandlerFunc {
 		res.LegalReferences = opts.LegalReferences
 		res.Clauses = []domain.LibraryClause{}
 		if jenis := domain.ContractJenis(strings.ToLower(strings.TrimSpace(r.URL.Query().Get("jenis")))); jenis.Valid() {
-			res.Clauses = opts.Template(jenis).Clauses
+			res.Clauses = usecase.TemplateOrRule(opts.Template(jenis), usecase.CreateContractDraftParams{Judul: "(isi sesuai pekerjaan)", Tenggat: time.Now().AddDate(0, 3, 0)}).Clauses
 		}
 
 		WriteJSON(w, http.StatusOK, res)
@@ -213,7 +212,7 @@ func HandleWizardPreview(d *Deps) http.HandlerFunc {
 			WriteError(w, http.StatusInternalServerError, "gagal memuat template kontrak")
 			return
 		}
-		tpl := opts.Template(jenis)
+		tpl := usecase.TemplateOrRule(opts.Template(jenis), params)
 
 		var clauses []domain.Clause
 		draftModel := "manual"
@@ -323,8 +322,8 @@ func HandleCreateContractWizard(d *Deps) http.HandlerFunc {
 			WriteError(w, http.StatusInternalServerError, "gagal memuat template kontrak")
 			return
 		}
-		tpl := opts.Template(jenis)
 		params := draftParams(r, d, uid, jenis, judul, cp, req.Nilai, tenggat, req.SkemaPembayaran, req.MetodePemilihan, req.JawabanForm)
+		tpl := usecase.TemplateOrRule(opts.Template(jenis), params)
 
 		// Pasal dari editor/wizard (jalur manual boleh kosong = mulai dari template kosong).
 		var clauses []domain.Clause
@@ -388,10 +387,8 @@ func HandleCreateContractWizard(d *Deps) http.HandlerFunc {
 // HandleListContracts mengambil daftar kontrak yang difilter berdasar desa/role.
 func HandleListContracts(d *Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, role, vID := ClaimsFromContext(r.Context())
-		villageID := formatVillageID(vID)
 		search := r.URL.Query().Get("q")
-		list, err := d.Store.ListContracts(r.Context(), villageID, role, search)
+		list, err := d.Store.ListContracts(r.Context(), scopeOf(r), search)
 		if err != nil {
 			WriteError(w, http.StatusInternalServerError, "failed to query contracts: "+err.Error())
 			return
@@ -403,24 +400,11 @@ func HandleListContracts(d *Deps) http.HandlerFunc {
 // HandleGetContract mengambil data spesifik kontrak dengan validasi otorisasi IDOR.
 func HandleGetContract(d *Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, role, vID := ClaimsFromContext(r.Context())
-		villageID := formatVillageID(vID)
-		contractID := r.PathValue("id")
-		contract, err := d.Store.ContractByID(r.Context(), contractID)
+		contract, err := d.Store.ContractByID(r.Context(), r.PathValue("id"), scopeOf(r))
 		if err != nil {
-			if errors.Is(err, domain.ErrNotFound) {
-				WriteError(w, http.StatusNotFound, "contract not found")
-				return
-			}
-			WriteError(w, http.StatusNotFound, "contract not found")
+			writeDomainErr(w, err, "kontrak tidak ditemukan")
 			return
 		}
-
-		if err := usecase.AuthorizeContractAccess(role, villageID, contract); err != nil {
-			WriteError(w, http.StatusForbidden, "access denied: IDOR violation")
-			return
-		}
-
 		WriteJSON(w, http.StatusOK, contract)
 	}
 }

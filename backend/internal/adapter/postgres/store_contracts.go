@@ -177,6 +177,9 @@ func (s *Store) CreateContractWithDetails(ctx context.Context, p usecase.CreateC
 	}, p.ActorIP); err != nil {
 		return domain.ContractDetail{}, err
 	}
+	if err := notifyVendor(ctx, tx, contractID, p.CreatedBy, "kontrak_dibuat", "dibuat dengan Anda sebagai pihak kedua"); err != nil {
+		return domain.ContractDetail{}, err
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return domain.ContractDetail{}, err
@@ -221,7 +224,8 @@ func (s *Store) GetContractDetail(ctx context.Context, id int64) (domain.Contrac
 		LEFT JOIN contract_parties cp ON c.id = cp.contract_id AND cp.peran_pihak = 'kedua'
 		LEFT JOIN counterparties cp_party ON cp.counterparty_id = cp_party.id
 		LEFT JOIN contract_versions cv ON c.id = cv.contract_id AND cv.nomor_versi = 1
-		LEFT JOIN ai_audits aa ON cv.id = aa.version_id
+		LEFT JOIN LATERAL (SELECT a.skor FROM ai_audits a JOIN contract_versions v ON v.id = a.version_id
+			WHERE v.contract_id = c.id ORDER BY a.id DESC LIMIT 1) aa ON TRUE
 		WHERE c.id = $1
 	`
 

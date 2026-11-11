@@ -5,7 +5,6 @@ import type {
   StoredUser,
   UserRole,
 } from "@/interfaces/auth";
-import { addAudit } from "@/lib/audit/add-audit";
 import { setAuthToken } from "@/lib/api/reports";
 import { findUser } from "./find-user";
 import { ensureSeedUsers, users } from "./users-store";
@@ -133,8 +132,17 @@ export async function login(
         error: errData.error || "Akun belum aktif atau dikunci.",
       };
     }
+    // Any other answer (429 rate limit, 5xx, ...) means the server is reachable but refused: showing its message beats a local sign-in without a token.
+    const other = await apiRes.json().catch(() => ({}));
+    return {
+      ok: false,
+      error:
+        apiRes.status === 429
+          ? other.error || "Terlalu banyak percobaan masuk. Tunggu sebentar lalu coba lagi."
+          : other.error || "Server SAKSI sedang bermasalah. Coba lagi sebentar lagi.",
+    };
   } catch {
-    // Fallback bila backend API sedang tidak aktif
+    // Fallback bila backend API tidak dapat dihubungi
   }
 
   // 2. Fallback mock auth (bila backend tidak dapat dihubungi)
@@ -171,12 +179,6 @@ export async function login(
         status: "dikunci",
         failedAttempts: attempts,
         lockedUntil: Date.now() + LOCK_MINUTES * 60000,
-      });
-      addAudit({
-        actor: u.name,
-        role: "Sistem",
-        action: "Akun dikunci sementara",
-        detail: `${MAX_ATTEMPTS} kali salah kata sandi`,
       });
       return {
         ok: false,

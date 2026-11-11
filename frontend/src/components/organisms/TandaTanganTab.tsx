@@ -4,8 +4,8 @@ import { useState } from 'react'
 import type { TabProps } from '@/interfaces/dash'
 import { villageHeads } from '@/data/master'
 import { latestVersion } from '@/lib/db/latest-version'
-import LetterPreview from '@/components/organisms/LetterPreview'
-import SignaturePad from '@/components/molecules/SignaturePad'
+import LetterPreview from '@/components/organisms/LetterPreviewLazy'
+import SignaturePad from '@/components/molecules/SignaturePadLazy'
 import { statusOrder } from '@/data/db'
 import { villageById } from '@/lib/master/village-by-id'
 import { fmtDateTime } from '@/lib/dates/fmt-date-time'
@@ -15,7 +15,7 @@ import { counterpartyById } from '@/lib/master/counterparty-by-id'
 import Panel from '@/components/molecules/Panel'
 import Icon from '@/components/atoms/Icon'
 import Btn from '@/components/atoms/Btn'
-import { signContractAPI } from '@/lib/api/contracts'
+import { signContract } from '@/lib/api/sign-contract'
 import FormAlert from '@/components/atoms/FormAlert'
 
 export default function TandaTanganTab({ c, session }: TabProps) {
@@ -28,9 +28,9 @@ export default function TandaTanganTab({ c, session }: TabProps) {
     if (!c.apiId) return
     setSigning(true)
     setSignError('')
-    const res = await signContractAPI(c.apiId, { metode: 'simulasi', referensi: image || `sig_${who === 'desa' ? 'desa' : 'vendor'}_${session.name}` })
+    const res = await signContract(c.apiId, { metode: 'simulasi', referensi: image || `sig_${who === 'desa' ? 'desa' : 'vendor'}_${session.name}` })
     setSigning(false)
-    if (!res) return setSignError('Tanda tangan belum tersimpan di server. Periksa koneksi lalu coba lagi.')
+    if (!res.ok) return setSignError(`Tanda tangan belum tersimpan. ${res.error}`)
     sign(c.code, who, session, image ?? undefined)
     setImage(null)
   }

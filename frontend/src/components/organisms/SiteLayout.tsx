@@ -2,15 +2,16 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import Footer from '@/components/organisms/Footer'
 import MenuOverlay from '@/components/organisms/MenuOverlay'
 import Navbar from '@/components/organisms/Navbar'
 
 interface Props {
   children: ReactNode
+  /* server-rendered footer, passed in so it stays out of the client bundle */
+  footer: ReactNode
 }
 
-export default function SiteLayout({ children }: Props) {
+export default function SiteLayout({ children, footer }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const pathname = usePathname()
 
@@ -38,7 +39,7 @@ export default function SiteLayout({ children }: Props) {
       <Navbar cta={cta} onOpenMenu={() => setMenuOpen(true)} />
       <MenuOverlay open={menuOpen} onClose={() => setMenuOpen(false)} />
       {children}
-      <Footer />
+      {footer}
     </>
   )
 }

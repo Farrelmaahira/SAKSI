@@ -6,7 +6,7 @@ import { scopeContracts } from '@/lib/db/scope-contracts'
 import { useEffect, useMemo, useState } from 'react'
 import { listPublicContracts } from '@/lib/api/list-public-contracts'
 import type { KontrakFilter } from '@/interfaces/dash'
-import type { ContractStatus, DContract } from '@/interfaces/db'
+import type { DContract } from '@/interfaces/db'
 import type { TemplateKey } from '@/interfaces/drafting'
 import { nextStep } from '@/lib/db/next-step'
 import { groupOf } from '@/lib/dash/group-of'
@@ -32,7 +32,8 @@ import { statusLabels } from '@/data/db'
 import { isEditable } from '@/lib/db/is-editable'
 import { openCritical } from '@/lib/db/open-critical'
 import Empty from '@/components/molecules/Empty'
-import { fetchContractsAPI } from '@/lib/api/contracts'
+import { syncServerContracts } from '@/lib/contracts/sync-server-contracts'
+import { uniqueBy } from '@/lib/contracts/unique-by'
 
 export default function KontrakListTemplate() {
   const { session } = useDash()
@@ -45,7 +46,8 @@ export default function KontrakListTemplate() {
     if (role.role === 'warga') {
       listPublicContracts().then((r) => (r.ok ? r.data : [])).then((res) => {
         if (active && res && res.length > 0) {
-          const mapped: DContract[] = res.map((c) => ({
+          const mapped: DContract[] = uniqueBy(res, (c) => c.id).map((c) => ({
+            apiId: c.id,
             code: c.nomor,
             title: c.judul,
             template: (c.jenis as TemplateKey) || 'pengadaan',
@@ -81,63 +83,13 @@ export default function KontrakListTemplate() {
         }
       })
     } else {
-      // Ambil daftar kontrak resmi dari Backend API Go PostgreSQL
-      fetchContractsAPI().then((apiList) => {
-        if (active && apiList && apiList.length > 0) {
-          const mapped: DContract[] = apiList.map((c) => {
-            const rawStatus = c.status || 'diaudit'
-            const normalizedStatus: ContractStatus =
-              rawStatus === 'ditandatangani'
-                ? 'ditandatangani'
-                : rawStatus === 'ditinjau'
-                ? 'ditinjau'
-                : rawStatus === 'selesai'
-                ? 'selesai'
-                : rawStatus === 'berjalan'
-                ? 'berjalan'
-                : 'diaudit'
-
-            return {
-              code: c.contractNumber || `SKS-2026-${String(c.id).padStart(3, '0')}`,
-              title: c.title,
-              template: (c.category as TemplateKey) || 'pengadaan',
-              counterpartyId: '1',
-              villageId: 'sukamaju',
-              status: normalizedStatus,
-              createdAt: c.createdAt ? c.createdAt.slice(0, 10) : '2026-11-08',
-              versions: [
-                {
-                  no: 1,
-                  at: c.createdAt ? c.createdAt.slice(0, 10) : '2026-11-08',
-                  answers: {
-                    work: c.title,
-                    value: c.amount,
-                    deadline: '2026-12-31',
-                    scheme: 'Termin',
-                    terms: 2,
-                    method: 'Pengadaan Langsung',
-                  },
-                  clauses: [],
-                  audit: { at: '2026-11-08', score: c.integrityScore || 100, findings: [] },
-                },
-              ],
-              reviews: [],
-              signatures: {},
-              seals: [],
-              terms: [],
-              progress: [],
-              history: [],
-              selfReport: false,
-            }
-          })
-          setDbContracts(mapped)
-        }
-      })
+      // the server's own list: contracts this browser does not have yet are loaded into the store, known ones take the server's status
+      void syncServerContracts(role)
     }
     return () => {
       active = false
     }
-  }, [role.role])
+  }, [role])
 
   const scopedLocal = scopeContracts(d, role)
   const all = useMemo(() => {
@@ -171,6 +123,8 @@ export default function KontrakListTemplate() {
     { key: 'proses', label: 'Tinjau & tanda tangan', count: count('proses') },
     { key: 'aktif', label: 'Berjalan', count: count('aktif') },
     { key: 'selesai', label: 'Selesai', count: count('selesai') },
+    // cancelled contracts stay findable but are not counted as running; the chip only appears when there are some
+    ...(count('batal') ? [{ key: 'batal' as const, label: 'Dibatalkan', count: count('batal') }] : []),
   ]
 
   const title = { perangkat_desa: 'Kontrak desa', pihak_kedua: 'Kontrak saya', bpd: 'Kontrak diawasi', inspektorat: 'Kontrak diawasi', warga: 'Kontrak desa', admin_daerah: 'Kontrak wilayah' }[role.role]
@@ -225,7 +179,7 @@ export default function KontrakListTemplate() {
                   const step = nextStep(c)
                   const mine = needsMe(c)
                   return (
-                    <tr key={c.code}>
+                    <tr key={c.apiId ?? c.code}>
                       <td>
                         <Link className="grid gap-2 min-w-220 [&_code]:text-[1.2rem] [&_code]:text-dim [&_strong]:font-[420] [&_strong]:[transition:color_0.2s] [&:hover_strong]:text-blue [&_small]:text-[1.25rem]! [&_small]:text-dim! max-md:min-w-0 d-row-link" href={`/dashboard/kontrak/${c.code}`}>
                           <code>{c.code}</code>

@@ -848,6 +848,36 @@
           "response": []
         },
         {
+          "name": "Send Contract to Second Party (Kades)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1",
+                "send"
+              ]
+            },
+            "description": "Kades/perangkat desa mengirim kontrak draf/diaudit ke pihak kedua: status -> 'ditinjau', riwayat status, audit log 'contract.send', dan notifikasi 'kontrak_dikirim' ke akun penyedia. Respons 200 {id, status}. 403 FORBIDDEN bila bukan desa; 404 bila di luar desa; 409 INVALID_STATE (sudah dikirim / belum ada pihak kedua), 409 CONTRACT_LOCKED (dibatalkan/ditandatangani), 409 CRITICAL_FINDINGS (temuan kritis audit terakhir belum diperbaiki)."
+          },
+          "response": []
+        },
+        {
           "name": "Submit Contract Review (Penyedia)",
           "request": {
             "auth": {
@@ -882,7 +912,7 @@
                 "reviews"
               ]
             },
-            "description": "Rekanan/Penyedia mengirimkan ulasan draf kontrak: menyetujui ('setuju') atau meminta perbaikan ('minta_revisi')."
+            "description": "Penyedia pemilik usaha pihak kedua mengirim tinjauan ('setuju' atau 'minta_revisi'). Hanya saat status kontrak 'ditinjau' (setelah POST /contracts/{id}/send); selain itu 409 INVALID_STATE. Bukan pihak kedua kontrak ini: 404."
           },
           "response": []
         },
@@ -1030,6 +1060,35 @@
               ]
             },
             "description": "Hanya untuk status `ditandatangani`. Naskah disaring lewat RedactText (gRPC) lalu disimpan ke publications.isi_tersaring; status → dipublikasikan; cache publik desa itu dihapus. Redaksi gagal = publikasi ditolak (503 AI_UNAVAILABLE / 502 AI_ERROR). Respons {id, contractId, versionId, isiTersaring, redactedKinds, waktu}."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Contract (Kades / Perangkat Desa)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/contracts/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "contracts",
+                "1"
+              ]
+            },
+            "description": "Soft-cancel kontrak pra-tandatangan (draf/diaudit/ditinjau) milik desa sendiri: status menjadi dibatalkan, jejak audit tetap utuh. 204 tanpa body; sudah dibatalkan = 204 (idempoten). 403 FORBIDDEN role lain, 404 NOT_FOUND tidak ada atau desa lain, 409 CONTRACT_LOCKED bila sudah masuk tahap penandatanganan/dipublikasikan/berjalan/selesai atau sudah ada tanda tangan."
           },
           "response": []
         }

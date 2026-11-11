@@ -15,6 +15,6 @@ SAKSI (Sistem Audit Kontrak Segel Integritas) adalah platform kontrak digital ya
 ```text
 ├── frontend/    # Antarmuka web pengguna (Next.js, TypeScript, Tailwind CSS)
 ├── backend/     # API & Layanan Inti Bisnis (Golang)
-├── ai-engine/   # Layanan Pemrosesan AI / LLM (Python)
+├── ai-engine/   # Layanan AI / LLM (Python, gRPC + REST); panduan: docs/ai-engine.md
 └── docs/        # Rencana arsitektur dan dokumentasi implementasi
 ```

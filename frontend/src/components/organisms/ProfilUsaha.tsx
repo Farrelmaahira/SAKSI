@@ -4,7 +4,6 @@ import { useDash } from '@/hooks/use-dash'
 import { counterpartyStore } from '@/lib/master/counterparty-store'
 import { FormEvent, useEffect, useState } from 'react'
 import { updateCounterparty } from '@/lib/master/update-counterparty'
-import { addAudit } from '@/lib/audit/add-audit'
 import Panel from '@/components/molecules/Panel'
 import Notice from '@/components/molecules/Notice'
 import Btn from '@/components/atoms/Btn'
@@ -54,7 +53,6 @@ export default function ProfilUsaha() {
     }
     if (!cp) return
     updateCounterparty(cp.id, { name: form.name.trim(), contact: form.contact.trim(), npwp: form.npwp.trim() || undefined, address: form.address.trim() })
-    addAudit({ actor: session.name, role: 'Pihak Kedua', action: 'Memperbarui profil usaha', detail: form.name.trim() })
     setMsg({ ok: true, text: 'Profil usaha tersimpan. Kontrak baru memakai data ini.' })
   }
 

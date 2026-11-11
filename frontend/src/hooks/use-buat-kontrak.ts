@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useDash } from '@/hooks/use-dash'
 import { useContractDraft } from '@/hooks/use-contract-draft'
+import { useFinishContract } from '@/hooks/use-finish-contract'
 import { useInviteParty } from '@/hooks/use-invite-party'
 import { useLetterSigning } from '@/hooks/use-letter-signing'
 import { useSyncCounterparties } from '@/hooks/use-sync-counterparties'
@@ -9,7 +9,7 @@ import type { Answers, TemplateKey } from '@/interfaces/drafting'
 import { templates } from '@/data/drafting'
 import { emptyAnswers } from '@/lib/dash/empty-answers'
 import { clauseError } from '@/lib/drafting/clause-error'
-import { saveWizardContract } from '@/lib/drafting/save-wizard-contract'
+import { PARTY_NOT_ON_SERVER, partyApiId } from '@/lib/drafting/party-api-id'
 import { validateAnswers } from '@/lib/drafting/validate-answers'
 import { counterpartyStore } from '@/lib/master/counterparty-store'
 import { villageById } from '@/lib/master/village-by-id'
@@ -20,7 +20,6 @@ const REVIEW_STEP = 4
 /* All state and actions of the "Buat kontrak" wizard; the components only render it. */
 export function useBuatKontrak() {
   const { session } = useDash()
-  const router = useRouter()
   const parties = counterpartyStore.use()
   useSyncCounterparties()
   const [step, setStep] = useState(0)
@@ -29,7 +28,6 @@ export function useBuatKontrak() {
   const [answers, setAnswers] = useState<Answers>(emptyAnswers)
   const [valueText, setValueText] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [submitting, setSubmitting] = useState(false)
 
   const role = session.role
   const regionId = villageById(role.villageId)?.regionId ?? ''
@@ -37,7 +35,8 @@ export function useBuatKontrak() {
   const choices = useMemo(() => (t ? parties.filter((p) => t.partyTypes.includes(p.type)) : []), [parties, t])
   const draft = useContractDraft({ template, answers, partyId, regionId, villageId: role.villageId, onAnswers: setAnswers })
   const letter = useLetterSigning(session.name)
-  const inviteParty = useInviteParty({ parties, session, regionId, onInvited: setPartyId })
+  const inviteParty = useInviteParty({ parties, onInvited: setPartyId })
+  const fin = useFinishContract({ template, answers, partyId, clauses: draft.clauses, audit: draft.audit, signatures: letter.signatures, source: draft.source, session })
 
   const pickTemplate = (k: TemplateKey) => {
     setTemplate(k)
@@ -69,6 +68,7 @@ export function useBuatKontrak() {
   const next = () => {
     if (step === 0 && !template) return setErrors({ step: 'Pilih salah satu jenis kontrak.' })
     if (step === 1 && !partyId) return setErrors({ step: 'Pilih pihak kedua, atau undang yang baru.' })
+    if (step === 1 && partyApiId(partyId) === null) return setErrors({ step: PARTY_NOT_ON_SERVER })
     if (step === 2) {
       if (!answersValid()) return
       void draft.draftWithAI()
@@ -80,17 +80,9 @@ export function useBuatKontrak() {
     setStep((s) => s + 1)
   }
 
-  const finish = async (send: boolean) => {
-    if (!template || !draft.audit || submitting) return
-    setSubmitting(true)
-    const code = await saveWizardContract({ template, answers, partyId, clauses: draft.clauses, audit: draft.audit, send, signatures: letter.signatures, source: draft.source }, session)
-    setSubmitting(false)
-    router.push(`/dashboard/kontrak/${code}`)
-  }
-
   return {
     session, role, regionId, step, back: () => setStep((s) => s - 1), template, t, choices, partyId, setPartyId,
-    party: parties.find((p) => p.id === partyId), answers, setAnswer, valueText, setValue, errors, submitting,
-    draft, letter, inviteParty, pickTemplate, writeManual, next, finish, reviewing: step === REVIEW_STEP,
+    party: parties.find((p) => p.id === partyId), answers, setAnswer, valueText, setValue, errors, fin,
+    draft, letter, inviteParty, pickTemplate, writeManual, next, reviewing: step === REVIEW_STEP,
   }
 }

@@ -18,9 +18,9 @@ func HandleVerifySeal(d *Deps) http.HandlerFunc {
 			WriteErrorCode(w, http.StatusTooManyRequests, "RATE_LIMITED", "terlalu banyak verifikasi, coba lagi sebentar lagi")
 			return
 		}
-		hash, err := usecase.NormalizeSealHash(r.URL.Query().Get("hash"))
+		hash, err := usecase.NormalizeSealQuery(r.URL.Query().Get("hash"))
 		if err != nil {
-			WriteErrorCode(w, http.StatusBadRequest, "INVALID_HASH", "hash harus SHA-256 heksadesimal 64 karakter")
+			WriteErrorCode(w, http.StatusBadRequest, "INVALID_HASH", "hash harus SHA-256 heksadesimal (64 karakter) atau awalannya (minimal 12 karakter)")
 			return
 		}
 		var verifier *int64

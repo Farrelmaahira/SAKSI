@@ -45,6 +45,7 @@ export const statusTone: Record<ContractStatus, string> = {
   dipublikasikan: "blue",
   berjalan: "ink",
   selesai: "done",
+  dibatalkan: "red",
 };
 
 export const flowTone: Record<ReportFlow, string> = {

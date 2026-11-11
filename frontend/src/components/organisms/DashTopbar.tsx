@@ -4,7 +4,7 @@ import { roleLabels } from "@/data/auth";
 import type { Session } from "@/interfaces/auth";
 import Notifications from "./Notifications";
 
-interface Props {
+interface DashTopBarProps {
   session: Session;
   collapsed: boolean;
   onToggleNav: () => void;
@@ -16,7 +16,7 @@ export default function DashTopbar({
   collapsed,
   onToggleNav,
   onSignOut,
-}: Props) {
+}: DashTopBarProps) {
   return (
     <header className="items-center bg-soft border-b-[0.1rem] border-b-line [border-bottom-style:solid] flex gap-14 py-14 px-20 sticky top-0 z-20 md:py-16 md:px-40 lg:py-16 lg:px-50 app-top">
       <button

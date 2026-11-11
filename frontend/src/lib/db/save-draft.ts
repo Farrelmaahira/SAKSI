@@ -8,7 +8,6 @@ import { reaudit } from '@/lib/drafting/reaudit'
 import { update } from '@/lib/db/update'
 import { unsign } from '@/lib/db/unsign'
 import { nowIso } from '@/lib/dates/now-iso'
-import { log } from '@/lib/db/log'
 
 /* Edit clauses while the contract is still editable. A revision, or a server that created a new version
    (serverNo from PUT /contracts/{id}), adds a version; otherwise the latest one is edited in place. Returns the version number. */
@@ -31,6 +30,5 @@ export function saveDraft(code: string, clauses: Clause[], s: Session, note?: st
           : [...x.versions, { no, at: nowIso(), answers: prev.answers, clauses, audit, note, source: 'manual' as const }],
     }),
   )
-  log(s, revising ? `Mengirim versi ${no} untuk ditinjau ulang` : no === prev.no ? 'Mengubah isi draf' : `Menyimpan versi ${no}`, c)
   return no
 }

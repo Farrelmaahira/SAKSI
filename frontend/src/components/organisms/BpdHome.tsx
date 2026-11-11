@@ -2,7 +2,6 @@
 
 import { useDash } from '@/hooks/use-dash'
 import { db } from '@/lib/db/db'
-import { auditStore } from '@/lib/audit/audit-store'
 import { scopeContracts } from '@/lib/db/scope-contracts'
 import { scopeReports } from '@/lib/db/scope-reports'
 import { isLate } from '@/lib/db/is-late'
@@ -17,13 +16,11 @@ import Link from 'next/link'
 import Btn from '@/components/atoms/Btn'
 import Empty from '@/components/molecules/Empty'
 import ContractMini from '@/components/molecules/ContractMini'
-import Activity from '@/components/molecules/Activity'
-import { scopeLogs } from '@/lib/db/scope-logs'
+import ActivityFeed from '@/components/molecules/ActivityFeed'
 
 export default function BpdHome() {
   const { session } = useDash()
   const d = db.use()
-  const logs = auditStore.use()
   const r = session.role
   const contracts = scopeContracts(d, r)
   const reports = scopeReports(d, r)
@@ -65,7 +62,7 @@ export default function BpdHome() {
         <Panel title="Kontrak terlambat">{late.length ? <div className="grid gap-10">{late.map((c) => <ContractMini key={c.code} c={c} />)}</div> : <Empty title="Tidak ada kontrak yang terlambat." />}</Panel>
       </div>
       <Panel title="Aktivitas di desa" action={<Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" href="/dashboard/jejak-audit">Jejak audit</Link>}>
-        <Activity logs={scopeLogs(logs, r, d).slice(0, 6)} />
+        <ActivityFeed limit={6} />
       </Panel>
     </>
   )

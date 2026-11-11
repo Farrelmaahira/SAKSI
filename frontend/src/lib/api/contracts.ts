@@ -297,32 +297,6 @@ export async function submitContractReviewAPI(
   return null;
 }
 
-export async function signContractAPI(
-  id: number | string,
-  payload: FormData | { metode?: string; referensi?: string },
-): Promise<SignContractResponse | null> {
-  try {
-    const isFormData =
-      typeof FormData !== "undefined" && payload instanceof FormData;
-    const headers: Record<string, string> = {
-      ...authHeaders(),
-    };
-    if (!isFormData) {
-      headers["Content-Type"] = "application/json";
-    }
-
-    const res = await fetch(`${API_BASE_URL}/contracts/${id}/sign`, {
-      method: "POST",
-      headers,
-      body: isFormData ? payload : JSON.stringify(payload),
-    });
-    if (res.ok) return await res.json();
-  } catch (err) {
-    console.error(`Failed to sign contract ${id}:`, err);
-  }
-  return null;
-}
-
 export async function fetchDashboardMetricsAPI(): Promise<DashboardMetricsResponse | null> {
   try {
     const res = await fetch(`${API_BASE_URL}/dashboard/metrics`, {

@@ -2,7 +2,6 @@
 
 import { useDash } from '@/hooks/use-dash'
 import { db } from '@/lib/db/db'
-import { auditStore } from '@/lib/audit/audit-store'
 import { scopeContracts } from '@/lib/db/scope-contracts'
 import { scopeReports } from '@/lib/db/scope-reports'
 import { isActive } from '@/lib/db/is-active'
@@ -27,15 +26,13 @@ import { rpShort } from '@/lib/dash/rp-short'
 import Panel from '@/components/molecules/Panel'
 import TodoList from '@/components/molecules/TodoList'
 import Link from 'next/link'
-import Activity from '@/components/molecules/Activity'
-import { scopeLogs } from '@/lib/db/scope-logs'
+import ActivityFeed from '@/components/molecules/ActivityFeed'
 import { useEffect, useState } from 'react'
 import { fetchDashboardMetricsAPI, type DashboardMetricsResponse } from '@/lib/api/contracts'
 
 export default function DesaHome() {
   const { session } = useDash()
   const d = db.use()
-  const logs = auditStore.use()
   const r = session.role
   const [metrics, setMetrics] = useState<DashboardMetricsResponse | null>(null)
 
@@ -54,7 +51,7 @@ export default function DesaHome() {
   const reports = scopeReports(d, r)
   const year = new Date().getFullYear()
   const active = contracts.filter(isActive)
-  const yearValue = contracts.filter((c) => !isEditable(c) && new Date(c.createdAt).getFullYear() === year).reduce((s, c) => s + valueOf(c), 0)
+  const yearValue = contracts.filter((c) => !isEditable(c) && c.status !== 'dibatalkan' && new Date(c.createdAt).getFullYear() === year).reduce((s, c) => s + valueOf(c), 0)
   const due = contracts.flatMap((c) => c.terms.filter((t) => !t.paidDate && daysUntil(t.planDate) <= 7 && isActive(c)).map((t) => ({ c, t })))
   const unanswered = reports.filter((x) => !isClosed(x) && !desaAnswered(x))
   const critical = contracts.filter(isEditable).reduce((s, c) => s + openCritical(c), 0)
@@ -123,7 +120,7 @@ export default function DesaHome() {
           <TodoList items={todos} empty="Semua beres. Tidak ada yang menunggu Anda." />
         </Panel>
         <Panel title="Aktivitas terakhir" action={<Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" href="/dashboard/jejak-audit">Lihat semua</Link>}>
-          <Activity logs={scopeLogs(logs, r, d).slice(0, 7)} />
+          <ActivityFeed limit={7} />
         </Panel>
       </div>
     </>

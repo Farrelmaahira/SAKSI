@@ -1,11 +1,13 @@
 package usecase
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -256,6 +258,23 @@ func NormalizeSealHash(h string) (string, error) {
 	return h, nil
 }
 
+// MinSealPrefix: awalan hash yang lebih pendek terlalu mudah bertabrakan/ditebak.
+const MinSealPrefix = 12
+
+// NormalizeSealQuery menerima SHA-256 penuh (64) atau awalan heksadesimal minimal MinSealPrefix karakter.
+func NormalizeSealQuery(q string) (string, error) {
+	q = strings.ToLower(strings.TrimSpace(q))
+	if len(q) < MinSealPrefix || len(q) > 64 {
+		return "", domain.ErrInvalidInput
+	}
+	for _, c := range q {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return "", domain.ErrInvalidInput
+		}
+	}
+	return q, nil
+}
+
 // NewResetToken membuat token reset acak; hanya hash-nya yang disimpan.
 func NewResetToken() (plain, hash string, err error) {
 	b := make([]byte, 32)
@@ -318,4 +337,44 @@ func NextReportStatus(current domain.ReportStatus, tindakan, requested string) (
 		return "", fmt.Errorf("%w: status %q tidak bisa dipilih dari %q", domain.ErrInvalidState, requested, current)
 	}
 	return "", fmt.Errorf("%w: tindakan harus klarifikasi, eskalasi, atau selesai", domain.ErrInvalidInput)
+}
+
+type CancelContractParams struct {
+	ContractID int64
+	Scope      Scope
+	ActorIP    string
+}
+
+// SendContractParams: kirim kontrak ke pihak kedua butuh data yang sama dengan pembatalan.
+type SendContractParams = CancelContractParams
+
+// CanSend: hanya draf/diaudit yang bisa dikirim; ditinjau = sudah dikirim, status setelahnya terkunci.
+func CanSend(status domain.ContractStatus) error {
+	switch status {
+	case domain.StatusDraft, domain.StatusAudited:
+		return nil
+	case domain.StatusInReview:
+		return fmt.Errorf("%w: kontrak sudah dikirim ke pihak kedua", domain.ErrInvalidState)
+	}
+	return domain.ErrContractNotEditable
+}
+
+// CanCancel: kontrak hanya bisa dibatalkan sebelum masuk penandatanganan (draf, diaudit, ditinjau).
+// already=true bila kontrak sudah dibatalkan: pembatalan ulang idempoten (204, tanpa riwayat/notifikasi baru).
+func CanCancel(status domain.ContractStatus) (already bool, err error) {
+	switch status {
+	case domain.StatusCancelled:
+		return true, nil
+	case domain.StatusDraft, domain.StatusAudited, domain.StatusInReview:
+		return false, nil
+	}
+	return false, domain.ErrContractNotEditable
+}
+
+// InvalidateMetrics menghapus semua cache metrik dashboard. Kuncinya per user (saksi:metrics:{userID}) dan
+// user desa itu tidak bisa dienumerasi dari village_id, jadi seluruh prefix dibuang; TTL-nya hanya 60 detik.
+func InvalidateMetrics(ctx context.Context, c Cache) {
+	if err := cacheOrNop(c).DelPrefix(ctx, "saksi:metrics:"); err != nil {
+		slog.Warn("cache del prefix gagal", "err", err)
+	}
 }

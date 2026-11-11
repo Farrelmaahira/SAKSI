@@ -33,6 +33,8 @@ func Open(ctx context.Context, url string) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
+func (s *Store) Ping(ctx context.Context) error { return s.db.Ping(ctx) }
+
 func (s *Store) Close() {
 	s.db.Close()
 }
@@ -96,6 +98,10 @@ func (s *Store) CreateUserWithRole(ctx context.Context, p usecase.RegisterUserPa
 		if err != nil {
 			return user, err
 		}
+	}
+
+	if err := insertAuditLogObj(ctx, tx, userID, "user.register", "user", userID, nil, map[string]any{"role": string(p.Role)}, ""); err != nil {
+		return user, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -171,12 +177,8 @@ func (s *Store) UserByID(ctx context.Context, id int64) (domain.User, error) {
 	return u, nil
 }
 
-func (s *Store) ListContracts(ctx context.Context, villageID string, role domain.UserRole, search string) ([]domain.Contract, error) {
-	var vIDInt int64
-	if villageID != "" {
-		vIDInt, _ = strconv.ParseInt(villageID, 10, 64)
-	}
-
+// ListContracts memakai aturan cakupan bersama (scopeCond): penyedia hanya kontrak usahanya yang sudah dikirim, dst.
+func (s *Store) ListContracts(ctx context.Context, sc usecase.Scope, search string) ([]domain.Contract, error) {
 	baseQuery := `
 		SELECT 
 			c.id,
@@ -196,28 +198,17 @@ func (s *Store) ListContracts(ctx context.Context, villageID string, role domain
 		LEFT JOIN contract_parties p ON p.contract_id = c.id AND p.peran_pihak = 'kedua'
 		LEFT JOIN counterparties cp ON cp.id = p.counterparty_id
 		LEFT JOIN contract_versions cv ON cv.contract_id = c.id AND cv.nomor_versi = 1
-		LEFT JOIN ai_audits aa ON aa.version_id = cv.id
-		LEFT JOIN document_seals ds ON ds.version_id = cv.id
+		LEFT JOIN LATERAL (SELECT a.skor FROM ai_audits a JOIN contract_versions v ON v.id = a.version_id
+			WHERE v.contract_id = c.id ORDER BY a.id DESC LIMIT 1) aa ON TRUE
+		LEFT JOIN LATERAL (SELECT d.sha256 FROM document_seals d JOIN contract_versions v ON v.id = d.version_id
+			WHERE v.contract_id = c.id ORDER BY d.id DESC LIMIT 1) ds ON TRUE
 	`
 
-	var whereClauses []string
 	var args []any
-	argIdx := 1
-
-	if role != domain.RoleInspektorat && vIDInt > 0 {
-		whereClauses = append(whereClauses, fmt.Sprintf("c.village_id = $%d", argIdx))
-		args = append(args, vIDInt)
-		argIdx++
-	}
-
+	baseQuery += " WHERE " + scopeCond(sc, &args)
 	if search != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("(c.judul ILIKE $%d OR COALESCE(cp.nama, '') ILIKE $%d)", argIdx, argIdx))
 		args = append(args, "%"+search+"%")
-		argIdx++
-	}
-
-	if len(whereClauses) > 0 {
-		baseQuery += " WHERE " + strings.Join(whereClauses, " AND ")
+		baseQuery += fmt.Sprintf(" AND (c.judul ILIKE $%d OR COALESCE(cp.nama, '') ILIKE $%d)", len(args), len(args))
 	}
 	baseQuery += " ORDER BY c.dibuat_pada DESC"
 
@@ -281,7 +272,8 @@ func (s *Store) ListContracts(ctx context.Context, villageID string, role domain
 	return list, nil
 }
 
-func (s *Store) ContractByID(ctx context.Context, id string) (domain.Contract, error) {
+// ContractByID: kontrak di luar cakupan pemanggil = ErrNotFound (bukan 403) agar id tidak bisa ditebak.
+func (s *Store) ContractByID(ctx context.Context, id string, sc usecase.Scope) (domain.Contract, error) {
 	contractID, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		parts := strings.Split(id, "-")
@@ -314,8 +306,9 @@ func (s *Store) ContractByID(ctx context.Context, id string) (domain.Contract, e
 		LEFT JOIN contract_versions cv ON cv.contract_id = c.id AND cv.nomor_versi = 1
 		LEFT JOIN ai_audits aa ON aa.version_id = cv.id
 		LEFT JOIN document_seals ds ON ds.version_id = cv.id
-		WHERE c.id = $1
-	`
+		WHERE c.id = $1 AND `
+	args := []any{contractID}
+	query += scopeCond(sc, &args)
 
 	var (
 		cID            int64
@@ -332,7 +325,7 @@ func (s *Store) ContractByID(ctx context.Context, id string) (domain.Contract, e
 		dibuatPada     time.Time
 	)
 
-	err = s.db.QueryRow(ctx, query, contractID).Scan(
+	err = s.db.QueryRow(ctx, query, args...).Scan(
 		&cID, &vID, &vName, &title, &cat, &vendorName,
 		&amount, &statusStr, &sha256, &integrityScore,
 		&createdBy, &dibuatPada,
@@ -432,14 +425,14 @@ func (s *Store) GetDashboardMetrics(ctx context.Context, villageID string, role 
 			COALESCE(SUM(nilai), 0),
 			COUNT(*) FILTER (WHERE status = 'ditinjau' OR status = 'diaudit'),
 			COUNT(*) FILTER (WHERE status = 'berjalan' OR status = 'selesai')
-			FROM contracts`
+			FROM contracts WHERE status <> 'dibatalkan'`
 	} else {
 		countQuery = `SELECT 
 			COUNT(*),
 			COALESCE(SUM(nilai), 0),
 			COUNT(*) FILTER (WHERE status = 'ditinjau' OR status = 'diaudit'),
 			COUNT(*) FILTER (WHERE status = 'berjalan' OR status = 'selesai')
-			FROM contracts WHERE village_id = $1`
+			FROM contracts WHERE village_id = $1 AND status <> 'dibatalkan'`
 		args = append(args, vIDInt)
 	}
 

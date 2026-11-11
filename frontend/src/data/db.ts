@@ -10,6 +10,7 @@ export const statusLabels: Record<ContractStatus, string> = {
   dipublikasikan: 'Dipublikasikan',
   berjalan: 'Berjalan',
   selesai: 'Selesai',
+  dibatalkan: 'Dibatalkan',
 }
 
 export const pubFields = ['nilai', 'pihak', 'pasal', 'termin', 'foto'] as const

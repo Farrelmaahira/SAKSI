@@ -119,6 +119,20 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	// Health check untuk load balancer / App Service. healthz = proses hidup; readyz = Postgres terjangkau.
+	// Redis sengaja tidak ikut: cache mati tidak boleh mencabut instance dari rotasi.
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
+		pctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		if err := store.Ping(pctx); err != nil {
+			slog.Warn("readyz: postgres tidak terjangkau", "err", err)
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
 	// Public routes
 	mux.HandleFunc("POST /api/v1/auth/register", handlers.HandleRegister(deps))
 	mux.HandleFunc("POST /api/v1/auth/login", handlers.HandleLogin(deps))
@@ -145,10 +159,12 @@ func main() {
 	mux.Handle("GET /api/v1/contracts/{id}", authMiddleware(handlers.HandleGetContract(deps)))
 	mux.Handle("POST /api/v1/contracts/audit", authMiddleware(handlers.HandleAuditContract(deps)))
 	mux.Handle("PUT /api/v1/contracts/{id}", authMiddleware(handlers.HandleReviseContract(deps)))
+	mux.Handle("DELETE /api/v1/contracts/{id}", authMiddleware(handlers.HandleCancelContract(deps)))
 	mux.Handle("POST /api/v1/contracts/{id}/audit", authMiddleware(handlers.HandleAuditContractByID(deps)))
 	mux.Handle("GET /api/v1/contracts/{id}/audit/latest", authMiddleware(handlers.HandleLatestContractAudit(deps)))
 	mux.Handle("POST /api/v1/contracts/{id}/publish", authMiddleware(handlers.HandlePublishContract(deps)))
 	mux.Handle("GET /api/v1/contracts/{id}/lifecycle", authMiddleware(handlers.HandleGetContractLifecycle(deps)))
+	mux.Handle("POST /api/v1/contracts/{id}/send", authMiddleware(handlers.HandleSendContract(deps)))
 	mux.Handle("POST /api/v1/contracts/{id}/reviews", authMiddleware(handlers.HandleSubmitContractReview(deps)))
 	mux.Handle("POST /api/v1/contracts/{id}/sign", authMiddleware(handlers.HandleSignContract(deps)))
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useDash } from '@/hooks/use-dash'
+import { useServerContract } from '@/hooks/use-server-contract'
 import { db } from '@/lib/db/db'
 import { scopeContracts } from '@/lib/db/scope-contracts'
 import { listPublicContracts } from '@/lib/api/list-public-contracts'
@@ -27,6 +28,7 @@ import { formatRp } from '@/lib/contracts/format-rp'
 import { valueOf } from '@/lib/db/value-of'
 import { isPublic } from '@/lib/db/is-public'
 import Tabs from '@/components/molecules/Tabs'
+import CancelContractButton from '@/components/organisms/CancelContractButton'
 
 export default function KontrakDetailTemplate() {
   const { code = '' } = useParams<{ code: string }>()
@@ -87,6 +89,9 @@ export default function KontrakDetailTemplate() {
   }, [code, scopedC, session.role])
 
   const c = scopedC || dbContract
+  const loading = useServerContract(code, session.role, !c && session.role.role !== 'warga')
+
+  if (!c && loading) return <Empty art="document-ready_o5d5" title="Memuat kontrak…" text="Mengambil kontrak dari server." />
 
   if (!c)
     return (
@@ -153,6 +158,7 @@ export default function KontrakDetailTemplate() {
               {step.text}
             </Btn>
           )}
+          <CancelContractButton c={c} session={session} />
         </div>
       </header>
       <Tabs items={items} value={tab} onChange={go} />

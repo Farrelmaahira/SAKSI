@@ -193,6 +193,9 @@ func (s *Store) SaveContractAudit(ctx context.Context, p usecase.SaveAuditParams
 	if err := tx.QueryRow(ctx, `SELECT status::text FROM contracts WHERE id = $1 FOR UPDATE`, p.ContractID).Scan(&status); err != nil {
 		return 0, notFound(err)
 	}
+	if status == string(domain.StatusCancelled) {
+		return 0, domain.ErrContractNotEditable
+	}
 	var auditID int64
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO ai_audits (version_id, model, skor, status, dijalankan_pada)
@@ -274,6 +277,9 @@ func (s *Store) PublishContract(ctx context.Context, p usecase.PublishParams) (d
 		map[string]any{"status": status},
 		map[string]any{"status": domain.StatusPublished, "publicationId": pub.ID, "versionId": p.VersionID, "redactedKinds": kinds},
 		p.ActorIP); err != nil {
+		return domain.Publication{}, err
+	}
+	if err := notifyVendor(ctx, tx, p.ContractID, p.ActorID, "kontrak_dipublikasikan", "dipublikasikan untuk warga"); err != nil {
 		return domain.Publication{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

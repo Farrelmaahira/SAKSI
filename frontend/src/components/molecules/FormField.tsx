@@ -18,17 +18,19 @@ interface Props {
   error?: string
   /* fieldset + legend for a group of buttons instead of a label around one control */
   group?: boolean
+  /* keep the label for screen readers only */
+  hideLabel?: boolean
   className?: string
   children: ReactNode
 }
 
 /* Labelled form control (input, select, textarea) with the dashboard field look and an error line */
-export default function FormField({ label, error, group, className, children }: Props) {
+export default function FormField({ label, error, group, hideLabel, className, children }: Props) {
   const Tag = group ? 'fieldset' : 'label'
   const Title = group ? 'legend' : 'span'
   return (
     <Tag className={cn(FIELD, className)}>
-      <Title>{label}</Title>
+      <Title className={hideLabel ? 'sr-only' : undefined}>{label}</Title>
       {children}
       {error && <ErrorText>{error}</ErrorText>}
     </Tag>

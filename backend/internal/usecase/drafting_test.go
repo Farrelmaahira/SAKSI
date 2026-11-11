@@ -136,3 +136,19 @@ func TestAuditCacheHitMissAndContentKey(t *testing.T) {
 		t.Fatal("tanpa AI harus ErrAIUnavailable, bukan skor rule engine")
 	}
 }
+
+func TestTemplateOrRule(t *testing.T) {
+	empty := usecase.TemplateOrRule(domain.ContractTemplate{Jenis: domain.JenisPengadaan}, usecase.CreateContractDraftParams{Judul: "Irigasi"})
+	if len(empty.Clauses) == 0 {
+		t.Fatal("template kosong harus diganti pasal baku")
+	}
+	for _, c := range empty.Clauses {
+		if !c.Wajib || c.KodePasal == "" {
+			t.Fatalf("pasal pengganti harus wajib dan berkode: %+v", c)
+		}
+	}
+	own := domain.ContractTemplate{Clauses: []domain.LibraryClause{{Clause: domain.Clause{KodePasal: "X-1"}}}}
+	if got := usecase.TemplateOrRule(own, usecase.CreateContractDraftParams{}); len(got.Clauses) != 1 || got.Clauses[0].KodePasal != "X-1" {
+		t.Fatal("template dari clause_library tidak boleh diganti")
+	}
+}

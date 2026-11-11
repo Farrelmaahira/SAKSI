@@ -7,7 +7,6 @@ import { titleFor } from '@/lib/db/title-for'
 import { mkTerms } from '@/lib/db/mk-terms'
 import { daysFromNow } from '@/lib/dates/days-from-now'
 import { withStatus } from '@/lib/db/with-status'
-import { log } from '@/lib/db/log'
 
 export function createContract(
   input: { template: TemplateKey; answers: Answers; counterpartyId: string; clauses: Clause[]; audit: Audit; send: boolean; signatures?: ContractSignatures; source: ClauseSource },
@@ -36,6 +35,5 @@ export function createContract(
   c = withStatus(c, 'diaudit', s.name)
   if (input.send) c = withStatus(c, 'ditinjau', s.name)
   db.set((d) => ({ ...d, contracts: [c, ...d.contracts] }))
-  log(s, input.send ? 'Membuat kontrak dan mengirim untuk ditinjau' : 'Menyimpan draf kontrak', c)
   return code
 }
