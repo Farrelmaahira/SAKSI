@@ -33,6 +33,8 @@ export interface Finding {
   text: string
   clauseKey?: string
   fixable: boolean
+  /* server findings: 'add' = the clause is missing and can be added from the template, 'edit' = the clause exists and has to be rewritten by hand */
+  fix?: 'add' | 'edit'
   applied?: boolean
 }
 

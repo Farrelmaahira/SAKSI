@@ -18,20 +18,34 @@ export default function ProgresTab({ c: local, session }: TabProps) {
   const form = useProgressForm(c, session, t.reload);
   const role = session.role.role;
   const running = c.status === "berjalan";
-  const canReport = running && (role === "perangkat_desa" || (role === "pihak_kedua" && (t.server || c.selfReport)));
+  const canReport =
+    running &&
+    (role === "perangkat_desa" ||
+      (role === "pihak_kedua" && (t.server || c.selfReport)));
 
   if (t.server && !t.result?.ok) return <TerminState result={t.result} />;
   return (
     <div className="items-stretch grid gap-20 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] [&>*]:min-w-0">
-      <Panel title="Riwayat progres" desc="Riwayat ini juga menjadi tonggak pekerjaan di portal warga.">
+      <Panel
+        title="Riwayat progres"
+        desc="Riwayat ini juga menjadi tonggak pekerjaan di portal warga."
+      >
         <ProgressHistory last={progressOf(c)} entries={c.progress} />
       </Panel>
       <div className="grid gap-20 [&>*]:min-w-0">
-        {canReport ? <ProgressFormPanel c={c} form={form} /> : <Locked text={progressLockText(c.status, role)} />}
+        {canReport ? (
+          <ProgressFormPanel c={c} form={form} />
+        ) : (
+          <Locked text={progressLockText(c.status, role)} />
+        )}
         {role === "perangkat_desa" && running && !t.server && (
           <Panel title="Laporan dari pihak kedua">
             <label className="items-start cursor-pointer flex text-[1.45rem] gap-10 leading-[1.45] [&_input]:[accent-color:var(--color-blue)] [&_input]:flex-none [&_input]:h-18 [&_input]:mt-2 [&_input]:w-18 bg-soft rounded-[1.2rem] py-12 px-14">
-              <input type="checkbox" checked={c.selfReport} onChange={(e) => setSelfReport(c.code, e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={c.selfReport}
+                onChange={(e) => setSelfReport(c.code, e.target.checked)}
+              />
               <span>Izinkan pihak kedua mencatat progres sendiri</span>
             </label>
           </Panel>

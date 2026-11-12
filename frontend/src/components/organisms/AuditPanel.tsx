@@ -33,7 +33,7 @@ export default function AuditPanel({ audit, onApply, readOnly, fromServer }: Pro
             <p>{f.text}</p>
             {!readOnly && f.fixable && onApply && (
               <Btn small variant={f.severity === 'kritis' ? 'primary' : 'ghost'} onClick={() => onApply(f.id)}>
-                Terapkan saran
+                {f.fix === 'edit' ? 'Sunting pasal' : 'Terapkan saran'}
               </Btn>
             )}
           </li>

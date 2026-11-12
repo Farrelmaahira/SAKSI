@@ -18,8 +18,13 @@ export default function PublikasiTab({ c, session }: TabProps) {
 
   return (
     <div className="items-stretch grid gap-20 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] [&>*]:min-w-0">
-      <Panel title="Publikasi ke portal warga" desc="Warga bisa mencari kontrak dengan kode atau hash, memeriksa keaslian, dan mengirim laporan.">
-        {c.publication && <PublicationNotice code={c.code} at={c.publication.at} />}
+      <Panel
+        title="Publikasi ke portal warga"
+        desc="Warga bisa mencari kontrak dengan kode atau hash, memeriksa keaslian, dan mengirim laporan."
+      >
+        {c.publication && (
+          <PublicationNotice code={c.code} at={c.publication.at} />
+        )}
         {pub.published && <RedactionReport published={pub.published} />}
         {!sealed ? (
           <Locked text="Segel dokumen terlebih dahulu. Hanya dokumen tersegel yang bisa dipublikasikan." />
@@ -28,7 +33,9 @@ export default function PublikasiTab({ c, session }: TabProps) {
         ) : pub.editing ? (
           <PublishEditor c={c} pub={pub} />
         ) : (
-          <Btn variant="ghost" onClick={() => pub.setEditing(true)}>Ubah bagian yang tampil</Btn>
+          <Btn variant="ghost" onClick={() => pub.setEditing(true)}>
+            Ubah bagian yang tampil
+          </Btn>
         )}
       </Panel>
       <CitizenView shown={c.publication ? c.publication.fields : pub.fields} />

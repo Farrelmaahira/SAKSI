@@ -35,6 +35,8 @@ export function useContractDraft({ template, answers, partyId, regionId, village
   const [loadingTemplate, setLoadingTemplate] = useState(false)
   const [error, setError] = useState('')
   const [model, setModel] = useState<string | null>(null)
+  // clause the audit panel asks the editor to open (AI mode)
+  const [focus, setFocus] = useState<{ key: string } | null>(null)
 
   const apply = (list: Clause[], source: ClauseSource) => {
     setClauses(list)
@@ -80,7 +82,24 @@ export function useContractDraft({ template, answers, partyId, regionId, village
     if (template && !ai) setAudit(reaudit(template, answers, list, regionId, localAudit ?? undefined))
   }
 
+  // A server finding: a missing clause is added from the server template; an existing one is opened for editing.
+  const applyServerSuggestion = async (id: string) => {
+    const f = audit?.findings.find((x) => x.id === id)
+    if (!template || !f?.clauseKey) return
+    const key = f.clauseKey
+    if (clauses.some((c) => c.key === key)) {
+      setFocus({ key })
+      return void setTimeout(() => document.getElementById(`judul-${key}`)?.focus(), 0)
+    }
+    const r = await fetchDraftOptions(backendJenis[template])
+    const add = r.ok ? r.data.clauseTemplate?.find((c) => c.key === key) : undefined
+    if (!add) return setError('Pasal ini belum ada di template server, tambahkan manual.')
+    setError('')
+    edit([...clauses, add])
+  }
+
   const applySuggestion = (id: string) => {
+    if (ai) return void applyServerSuggestion(id)
     if (!template || !localAudit) return
     const out = applyFinding(template, answers, clauses, id)
     onAnswers(out.answers)
@@ -100,6 +119,7 @@ export function useContractDraft({ template, answers, partyId, regionId, village
     error,
     model,
     fromServer: ai !== null,
+    focus,
     critical: audit?.findings.filter((f) => f.severity === 'kritis' && !f.applied).length ?? 0,
     // an AI draft a person changed is recorded as a manual version
     source: (mode === 'ai' && !edited ? 'ai' : 'manual') as ClauseSource,

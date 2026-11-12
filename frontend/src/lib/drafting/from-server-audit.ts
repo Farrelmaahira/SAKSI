@@ -21,7 +21,8 @@ export function fromServerAudit(
         : "Temuan umum",
       text: f.pesan,
       clauseKey: f.kodePasal || undefined,
-      fixable: false,
+      fixable: Boolean(f.kodePasal),
+      fix: !f.kodePasal ? undefined : textOf(original, f.kodePasal) === undefined ? 'add' : 'edit',
       applied:
         Boolean(f.kodePasal) &&
         textOf(clauses, f.kodePasal) !== textOf(original, f.kodePasal),

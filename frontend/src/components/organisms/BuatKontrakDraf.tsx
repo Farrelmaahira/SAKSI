@@ -77,6 +77,7 @@ export default function BuatKontrakDraf({
             <ClauseList
               clauses={clauses}
               audit={audit}
+              focus={draft.focus}
               onEdit={(key, text) =>
                 edit(clauses.map((c) => (c.key === key ? { ...c, text } : c)))
               }
