@@ -7,12 +7,13 @@ import SendReviewPanel from "@/components/organisms/SendReviewPanel";
 import ServerAuditPanel from "@/components/organisms/ServerAuditPanel";
 import { useDraftEditor } from "@/hooks/use-draft-editor";
 import { useServerAudit } from "@/hooks/use-server-audit";
+import { canReadAudit } from "@/lib/auth/can-read-audit";
 import type { TabProps } from "@/interfaces/dash";
 import { isEditable } from "@/lib/db/is-editable";
 import { openCritical } from "@/lib/db/open-critical";
 
 export default function DrafVersiTab({ c, session, go }: TabProps) {
-  const server = useServerAudit(c.apiId);
+  const server = useServerAudit(c.apiId, canReadAudit(session.role.role));
   const editor = useDraftEditor(c, session, () => c.apiId && server.clear());
   const isDesa = session.role.role === "perangkat_desa";
   const canEdit = isDesa && isEditable(c);
