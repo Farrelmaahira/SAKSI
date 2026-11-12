@@ -12,6 +12,7 @@ export function scopeContracts(d: Db, r: UserRole) {
     if (r.role === 'warga') return c.villageId === r.villageId && (c.status === 'dipublikasikan' || c.status === 'berjalan' || c.status === 'selesai')
     if (r.role === 'bpd') return c.villageId === r.villageId && sent(c)
     if (r.role === 'inspektorat') return regionOfContract(c) === r.regionId && sent(c)
-    return c.counterpartyId === r.counterpartyId && sent(c)
+    // the server refuses GET /counterparties to a second party, so r.counterpartyId can be unknown; contracts loaded for it carry '' (see toDContract) and the server already scoped them
+    return c.counterpartyId === (r.counterpartyId ?? '') && sent(c)
   })
 }
