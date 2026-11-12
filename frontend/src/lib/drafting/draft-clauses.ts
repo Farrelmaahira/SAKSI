@@ -12,7 +12,7 @@ export function draftClauses(t: TemplateKey, a: Answers, ctx: Ctx): Clause[] {
     {
       key: 'para_pihak',
       title: 'Para Pihak',
-      text: `Pemerintah ${ctx.village?.name ?? 'Desa Sukamaju'}, diwakili Kepala Desa ${ctx.head ?? 'Kepala Desa'}, sebagai Pihak Pertama, dan ${ctx.party?.name ?? 'Pihak Kedua'}, diwakili ${ctx.party?.contact ?? '-'}, sebagai Pihak Kedua.`,
+      text: `Pemerintah ${ctx.village?.name ?? 'Desa Sukamaju'}, diwakili Kepala Desa ${ctx.head ?? 'Kepala Desa'}, sebagai Pihak Pertama, dan ${ctx.party?.name ?? 'Pihak Kedua'}, diwakili ${ctx.party?.contact || ctx.party?.name || '-'}, sebagai Pihak Kedua.`,
       plain: 'Siapa saja yang terikat oleh kontrak ini.',
       legal: legal.sahPerjanjian,
     },

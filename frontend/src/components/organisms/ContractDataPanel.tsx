@@ -27,7 +27,7 @@ export default function ContractDataPanel({ c }: { c: DContract }) {
         rows={[
           ['Jenis', templates[c.template].label],
           ['Pihak pertama', `Pemerintah ${villageById(c.villageId)?.name}, Kepala Desa ${villageHeads[c.villageId]}`],
-          ['Pihak kedua', `${cp?.name} · ${cp?.contact}`],
+          ['Pihak kedua', [cp?.name, cp?.contact].filter(Boolean).join(' · ')],
           ['Nilai', `${formatRp(valueOf(c))}${c.template === 'sewa' ? ' per tahun' : ''}`],
           ['Metode', ver.answers.method],
           ['Tenggat', isLate(c) ? <span key="d" className="text-red">{deadlineText(c)}</span> : deadlineText(c)],

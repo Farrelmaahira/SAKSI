@@ -32,8 +32,13 @@ export function useFinishContract(i: Input) {
     if (party === null) return setFailed({ code: '', message: PARTY_NOT_ON_SERVER })
     setBusy(true)
     const saved = await saveWizardContract({ template: i.template, answers: i.answers, partyId: i.partyId, party, clauses: i.clauses, audit: i.audit, signatures: i.signatures, source: i.source }, i.session)
+    // a draft the server refused stays on this device only: say why instead of opening it as if it were saved
+    if (!saved.apiId) {
+      setBusy(false)
+      return setFailed({ code: saved.code, message: `Draf ${saved.code} baru tersimpan di perangkat ini, belum masuk ke server. ${saved.error ?? ''}`.trim() })
+    }
     // sent only on the server's word: a draft the server never got has nothing to send
-    const error = !send ? '' : saved.apiId ? await sendForReview(saved, i.session, i.confirmCritical) : 'Draf tersimpan di perangkat ini tetapi belum sampai ke server, jadi belum bisa dikirim.'
+    const error = !send ? '' : await sendForReview(saved, i.session, i.confirmCritical)
     setBusy(false)
     if (error) return setFailed({ code: saved.code, message: `Draf ${saved.code} tersimpan, tetapi belum terkirim. ${error}` })
     router.push(`/dashboard/kontrak/${saved.code}`)

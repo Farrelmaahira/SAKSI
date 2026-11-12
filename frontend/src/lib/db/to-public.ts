@@ -21,7 +21,7 @@ export function toPublic(c: DContract, reports: DReport[]): Contract {
     title: c.title,
     village: `${v.name}, ${v.district}`,
     first: `Pemerintah ${v.name}, diwakili Kepala Desa ${villageHeads[c.villageId] ?? '-'}`,
-    second: cp ? `${cp.name}, diwakili ${cp.contact}` : 'Pihak kedua',
+    second: cp ? cp.contact ? `${cp.name}, diwakili ${cp.contact}` : cp.name : 'Pihak kedua',
     value: ver.answers.value,
     valueNote: c.template === 'sewa' ? 'per tahun' : undefined,
     duration: `Sampai ${fmtDate(ver.answers.deadline)}`,

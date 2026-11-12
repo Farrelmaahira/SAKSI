@@ -33,6 +33,10 @@ export interface CounterpartyResponse {
   jenis: string;
   npwp?: string;
   alamat?: string;
+  /* email of the business owner's account (users.email); the server only lists businesses that have an account */
+  email?: string;
+  /* the contact person, when the server has one */
+  kontak?: string;
 }
 
 export interface WizardPreviewPayload {
@@ -209,25 +213,6 @@ export async function fetchCounterparties(
     console.warn("Failed to fetch counterparties:", err);
   }
   return [];
-}
-
-export async function createContractAPI(
-  payload: CreateContractPayload,
-): Promise<ContractDetailResponse | null> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/contracts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(),
-      },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) return await res.json();
-  } catch (err) {
-    console.error("Failed to create contract on API:", err);
-  }
-  return null;
 }
 
 export async function fetchContractsAPI(

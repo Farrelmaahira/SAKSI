@@ -33,7 +33,7 @@ export default function PartyOption({
       <span>
         <strong>{party.name}</strong>
         <small>
-          {party.type} · {party.contact} · {party.email}
+          {[party.type, party.contact, party.email].filter(Boolean).join(" · ")}
         </small>
       </span>
       {party.invited && <Badge tone="tint">Diundang</Badge>}

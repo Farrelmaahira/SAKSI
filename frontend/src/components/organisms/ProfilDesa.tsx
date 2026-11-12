@@ -78,7 +78,7 @@ export default function ProfilDesa() {
                   <div>
                     <strong>{p.name}</strong>
                     <small>
-                      {p.type} · {p.contact} · {p.email}
+                      {[p.type, p.contact, p.email].filter(Boolean).join(' · ')}
                     </small>
                   </div>
                   {p.invited && !used.has(p.id) && <Badge tone="tint">Diundang</Badge>}
