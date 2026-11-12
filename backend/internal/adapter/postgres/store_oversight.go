@@ -27,6 +27,7 @@ func (s *Store) ListNotifications(ctx context.Context, userID int64, unreadOnly 
 			return nil, 0, err
 		}
 		n.Dibaca = n.DibacaPada != nil
+		n.Judul = domain.NotificationTitle(n.Jenis)
 		out = append(out, n)
 	}
 	rows.Close()

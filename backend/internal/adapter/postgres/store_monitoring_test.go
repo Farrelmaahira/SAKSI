@@ -339,3 +339,62 @@ func TestStore_ListContracts_NoDuplicateAfterReaudit(t *testing.T) {
 		t.Fatalf("ContractByID harus memakai audit terbaru (85): skor=%v err=%v", one.IntegrityScore, err)
 	}
 }
+
+// Skor audit tidak boleh berubah (apalagi jadi 0) karena kontrak dibatalkan: semua jalur baca memakai audit terakhir.
+func TestStore_CancelKeepsAuditScore(t *testing.T) {
+	store := getTestStore(t)
+	if store == nil {
+		return
+	}
+	defer store.Close()
+	ctx := context.Background()
+
+	c, err := store.CreateContractWithDetails(ctx, usecase.CreateContractParams{
+		VillageID: 1, CounterpartyID: 1, Jenis: domain.JenisPengadaan, Judul: "Uji skor setelah batal", Nilai: 12345000,
+		Tenggat: time.Now().Add(30 * 24 * time.Hour), SkemaPembayaran: "termin",
+		IsiTeks: "Pasal 1: Lingkup\nPekerjaan.", CreatedBy: 1, IntegrityScore: 85, AuditModel: "uji", SHA256Hash: "uji-skor",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	v1 := int64(1)
+	sc := usecase.Scope{UserID: 4, Role: domain.RoleKades, VillageID: &v1}
+	scoreEverywhere := func(tahap string) {
+		t.Helper()
+		got := map[string]float64{}
+		one, err := store.ContractByID(ctx, itoa(c.ID), sc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got["ContractByID"] = one.IntegrityScore
+		det, err := store.GetContractDetail(ctx, c.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got["GetContractDetail"] = det.IntegrityScore
+		list, err := store.ListContracts(ctx, sc, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, x := range list {
+			if x.ID == itoa(c.ID) {
+				got["ListContracts"] = x.IntegrityScore
+			}
+		}
+		_, la, err := store.LatestContractAudit(ctx, c.ID)
+		if err != nil || la == nil {
+			t.Fatalf("%s: LatestContractAudit: %v %v", tahap, la, err)
+		}
+		got["LatestContractAudit"] = la.Skor
+		for jalur, skor := range got {
+			if skor != 85 {
+				t.Errorf("%s: %s skor %v, harus 85", tahap, jalur, skor)
+			}
+		}
+	}
+	scoreEverywhere("sebelum batal")
+	if _, err := store.CancelContract(ctx, usecase.CancelContractParams{ContractID: c.ID, Scope: sc}); err != nil {
+		t.Fatal(err)
+	}
+	scoreEverywhere("sesudah batal")
+}

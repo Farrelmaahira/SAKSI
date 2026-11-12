@@ -133,6 +133,17 @@ func TestStore_AuditTrail_EveryWriteAction(t *testing.T) {
 		t.Errorf("statusHistory tidak lengkap: %+v", lc.StatusHistory)
 	}
 
+	// Notifikasi membawa judul (diturunkan dari jenis), termasuk untuk baris yang sudah ada.
+	notifs, _, err := store.ListNotifications(ctx, *vendor, false, 50, 0)
+	if err != nil || len(notifs) == 0 {
+		t.Fatalf("ListNotifications penyedia: n=%d err=%v", len(notifs), err)
+	}
+	for _, n := range notifs {
+		if n.Judul == "" {
+			t.Errorf("notifikasi %q tanpa judul", n.Jenis)
+		}
+	}
+
 	// Pembatalan: penyedia hanya diberi tahu bila kontrak sudah dikirim kepadanya (status ditinjau).
 	draft := newDraftContract(t, store, "Uji batal draf tanpa notifikasi penyedia")
 	if _, err := store.CancelContract(ctx, usecase.CancelContractParams{ContractID: draft.ID, Scope: kades}); err != nil {

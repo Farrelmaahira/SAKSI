@@ -30,7 +30,6 @@ def kritis_of(issues):
     ("Jangka Waktu", "Kerja sama berlaku dua tahun sejak 2 Januari 2027.", True),
     ("Jangka Waktu", "Selesai dalam 30 (tiga puluh) hari kalender sejak SPK.", True),
     ("Jangka Waktu", "Pekerjaan diselesaikan dalam waktu yang wajar.", False),
-    ("JAMINAN PEMELIHARAAN DAN GARANSI", "selama masa garansi terhitung sejak tanggal BAST", False),
     ("Retensi dan Pemeliharaan", "ditahan retensi 5% selama 6 bulan", True),
     ("Pembayaran", "Pembayaran dilakukan sesuai kesepakatan para pihak.", False),
     ("PEMBAYARAN", "1. Skema pembayaran dilaksanakan secara: termin.\n2. Ditransfer ke rekening resmi PIHAK KEDUA.", False),
@@ -59,9 +58,11 @@ def test_unfilled_placeholder_is_critical_in_any_clause(isi):
 
 
 def test_standard_clauses_only_fail_where_the_template_really_lacks_data():
-    # Pasal baku backend: hanya P-06 (garansi tanpa durasi) yang belum lengkap. Ubah ini hanya bila kebijakannya diubah.
+    # Garansi tanpa durasi (P-06 di pasal baku) hanya saran, bukan kritis. Ubah ini hanya bila kebijakannya diubah.
     flagged = {c.kode_pasal for c in BAKU if kritis_of(audit_rules.check_clause(c.judul, c.isi))}
-    assert flagged == {"P-06"}
+    assert flagged == set()
+    p06 = next(c for c in BAKU if c.kode_pasal == "P-06")
+    assert [i.tingkat for i in audit_rules.check_clause(p06.judul, p06.isi)] == ["saran"]
 
 
 def test_manually_fixed_clauses_pass():
@@ -95,16 +96,16 @@ def kritis_codes(res):
 def test_llm_severity_never_creates_critical_findings(monkeypatch):
     rows = [(c.kode_pasal, c.judul, c.isi) for c in BAKU]
     res = audit(rows, monkeypatch)
-    assert kritis_codes(res) == {"P-06"}  # LLM menandai 10 pasal KRITIS, hanya cek pasti yang dihitung
-    assert res.skor == 90.0
-    assert {f.kode_pasal for f in res.findings if f.tingkat == ai_pb2.SARAN} == {c.kode_pasal for c in BAKU} - {"P-06"}
+    assert kritis_codes(res) == set()  # LLM menandai 10 pasal KRITIS, hanya cek pasti yang dihitung (garansi tanpa durasi = saran)
+    assert res.skor == 100.0
+    assert {f.kode_pasal for f in res.findings if f.tingkat == ai_pb2.SARAN} == {c.kode_pasal for c in BAKU}
 
 
 def test_fixing_one_clause_does_not_escalate_untouched_clauses(monkeypatch):
     # Kasus nyata kontrak 124 -> 125: setelah P-04/P-06 diperbaiki, P-07 dan P-09 (tidak berubah) naik jadi KRITIS oleh LLM.
     before = [(c.kode_pasal, c.judul, c.isi) for c in BAKU]
     after = [(k, j, P06_DIPERBAIKI if k == "P-06" else P04_DIPERBAIKI if k == "P-04" else i) for k, j, i in before]
-    assert kritis_codes(audit(before, monkeypatch)) == {"P-06"}
+    assert kritis_codes(audit(before, monkeypatch)) == set()
     res = audit(after, monkeypatch)
     assert kritis_codes(res) == set() and res.skor == 100.0
 

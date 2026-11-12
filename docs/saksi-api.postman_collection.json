@@ -391,7 +391,7 @@
                 "preview"
               ]
             },
-            "description": "Memanggil DraftContract (gRPC) lalu AuditContract. Respons: `clauses[]` ({kodePasal, judul, isi, urutan, legalReferenceId}), `model` (model draf), `teksDraf` (kepala SPK + pasal + penutup), skor & `findings` audit. Tidak disimpan. legalReferenceId di luar daftar dibuang. Bila semua model AI gagal: 503 {\"error\":\"<pesan>\",\"code\":\"AI_UNAVAILABLE\"}.",
+            "description": "Memanggil DraftContract (gRPC) lalu AuditContract. Respons: `clauses[]` ({kodePasal, judul, isi, urutan, legalReferenceId}), `model` (model draf), `teksDraf` (kepala SPK + pasal + penutup), skor & `findings` audit. Tidak disimpan. legalReferenceId di luar daftar dibuang. Bila semua model AI gagal: 503 {\"error\":\"<pesan>\",\"code\":\"AI_UNAVAILABLE\"}. Validasi (400 INVALID_INPUT): judul 3-255 karakter, nilai > 0, jawabanForm maks 16 KB, tenggat YYYY-MM-DD dan tidak sebelum hari ini (WIB); tenggat kosong = default +1 bulan.",
             "method": "POST"
           },
           "response": []
@@ -429,7 +429,7 @@
                 "contracts"
               ]
             },
-            "description": "Menyimpan kontrak (contracts, contract_parties, contract_versions, contract_clauses, ai_audits+findings, contract_status_history, audit_logs). `sumber`: ai|manual (default ai). `clauses[]` dari pratinjau/editor; urutan dinormalisasi 1..n. Bila audit AI tidak tersedia kontrak tetap tersimpan berstatus `draf` tanpa audit. Respons ContractDetail ({id, nomorVersi, sumber, clauses, ...}). Khusus kades."
+            "description": "Menyimpan kontrak (contracts, contract_parties, contract_versions, contract_clauses, ai_audits+findings, contract_status_history, audit_logs). `sumber`: ai|manual (default ai). `clauses[]` dari pratinjau/editor; urutan dinormalisasi 1..n. Bila audit AI tidak tersedia kontrak tetap tersimpan berstatus `draf` tanpa audit. Respons ContractDetail ({id, nomorVersi, sumber, clauses, ...}). Khusus kades. Validasi (400 INVALID_INPUT): judul 3-255 karakter, nilai > 0, jawabanForm maks 16 KB, tenggat YYYY-MM-DD dan tidak sebelum hari ini (WIB); tenggat kosong = default +1 bulan."
           },
           "response": []
         },
@@ -462,7 +462,7 @@
                 "contracts"
               ]
             },
-            "description": "Jalur tulis manual: tidak butuh AI. `clauses` boleh kosong (mulai dari template kosong). Audit dijalankan terpisah lewat POST /contracts/:id/audit.",
+            "description": "Jalur tulis manual: tidak butuh AI. `clauses` boleh kosong (mulai dari template kosong). Audit dijalankan terpisah lewat POST /contracts/:id/audit. Validasi (400 INVALID_INPUT): judul 3-255 karakter, nilai > 0, jawabanForm maks 16 KB, tenggat YYYY-MM-DD dan tidak sebelum hari ini (WIB); tenggat kosong = default +1 bulan.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"counterpartyId\": 1,\n  \"jenis\": \"pengadaan\",\n  \"judul\": \"Pembangunan Jalan Usaha Tani RT 03\",\n  \"nilai\": 65000000,\n  \"tenggat\": \"2026-12-31\",\n  \"skemaPembayaran\": \"termin\",\n  \"metodePemilihan\": \"pengadaan_langsung\",\n  \"sumber\": \"manual\",\n  \"clauses\": [\n    {\n      \"kodePasal\": \"P-01\",\n      \"judul\": \"Ruang Lingkup Pekerjaan\",\n      \"isi\": \"PIHAK KEDUA melaksanakan pengaspalan jalan 400 meter.\",\n      \"urutan\": 1,\n      \"legalReferenceId\": 0\n    }\n  ]\n}"
@@ -1434,7 +1434,7 @@
                 }
               ]
             },
-            "description": "Notifikasi milik sendiri, terbaru dulu. Paginasi dengan before=<nextBefore>."
+            "description": "Notifikasi milik sendiri, terbaru dulu. Paginasi dengan before=<nextBefore>. Tiap item membawa judul (diturunkan dari jenis)."
           },
           "response": []
         },

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,9 +17,9 @@ import (
 
 type contractMockStore struct {
 	usecase.Store
-	counterparties   []domain.Counterparty
-	contractCreated  *domain.ContractDetail
-	lastParams       usecase.CreateContractParams
+	counterparties  []domain.Counterparty
+	contractCreated *domain.ContractDetail
+	lastParams      usecase.CreateContractParams
 }
 
 func (m *contractMockStore) ListCounterparties(ctx context.Context, jenis *string, search string) ([]domain.Counterparty, error) {
@@ -153,7 +154,7 @@ func TestHandleWizardPreview(t *testing.T) {
 		Jenis:           "pengadaan",
 		Judul:           "Pembangunan Jembatan",
 		Nilai:           50000000,
-		Tenggat:         "2026-12-31",
+		Tenggat:         time.Now().AddDate(0, 3, 0).Format("2006-01-02"),
 		SkemaPembayaran: "termin",
 		MetodePemilihan: "pengadaan_langsung",
 		JawabanForm: map[string]any{
@@ -191,7 +192,7 @@ func TestHandleCreateContract_Authorization_And_Creation(t *testing.T) {
 		Jenis:           "pengadaan",
 		Judul:           "Pembangunan Posyandu",
 		Nilai:           80000000,
-		Tenggat:         "2026-12-31",
+		Tenggat:         time.Now().AddDate(0, 3, 0).Format("2006-01-02"),
 		SkemaPembayaran: "termin",
 		MetodePemilihan: "pengadaan_langsung",
 		JawabanForm: map[string]any{
@@ -230,3 +231,59 @@ func TestHandleCreateContract_Authorization_And_Creation(t *testing.T) {
 	})
 }
 
+// Preview dan buat kontrak memakai aturan input yang sama: nilai, judul, tenggat, dan ukuran jawaban.
+func TestWizardInputValidation(t *testing.T) {
+	_, deps := newContractTestDeps()
+	vID := int64(1)
+	token, _ := usecase.IssueToken(1, domain.RoleKades, &vID, deps.Secret, time.Hour)
+	future := time.Now().AddDate(0, 3, 0).Format("2006-01-02")
+	past := time.Now().AddDate(0, 0, -2).Format("2006-01-02")
+	big := map[string]any{"lingkup_pekerjaan": strings.Repeat("x", 20<<10)}
+
+	cases := []struct {
+		name    string
+		judul   string
+		nilai   float64
+		tenggat string
+		jawaban map[string]any
+		wantOK  bool
+	}{
+		{"valid", "Pembangunan Jembatan", 5e7, future, nil, true},
+		{"tenggat kosong memakai default", "Pembangunan Jembatan", 5e7, "", nil, true},
+		{"tenggat hari ini diterima", "Pembangunan Jembatan", 5e7, time.Now().In(time.FixedZone("WIB", 7*3600)).Format("2006-01-02"), nil, true},
+		{"nilai nol", "Pembangunan Jembatan", 0, future, nil, false},
+		{"nilai negatif", "Pembangunan Jembatan", -5, future, nil, false},
+		{"judul kosong", "", 5e7, future, nil, false},
+		{"judul terlalu pendek", "ab", 5e7, future, nil, false},
+		{"judul lebih dari 255", strings.Repeat("j", 256), 5e7, future, nil, false},
+		{"tenggat lampau", "Pembangunan Jembatan", 5e7, past, nil, false},
+		{"tenggat salah format", "Pembangunan Jembatan", 5e7, "31/12/2026", nil, false},
+		{"jawaban 20 KB", "Pembangunan Jembatan", 5e7, future, big, false},
+	}
+	for _, c := range cases {
+		if c.jawaban == nil {
+			c.jawaban = map[string]any{"lingkup_pekerjaan": "Jembatan beton 10 meter"}
+		}
+		prev, _ := json.Marshal(handlers.WizardPreviewRequest{CounterpartyID: 10, Jenis: "pengadaan", Judul: c.judul, Nilai: c.nilai, Tenggat: c.tenggat, JawabanForm: c.jawaban})
+		create, _ := json.Marshal(handlers.CreateContractPayload{CounterpartyID: 10, Jenis: "pengadaan", Judul: c.judul, Nilai: c.nilai, Tenggat: c.tenggat, JawabanForm: c.jawaban, Sumber: "manual"})
+		for name, h := range map[string]http.Handler{
+			"preview": handlers.RequireAuth(deps.Secret)(handlers.HandleWizardPreview(deps)),
+			"create":  handlers.RequireAuth(deps.Secret)(handlers.HandleCreateContractWizard(deps)),
+		} {
+			body := prev
+			if name == "create" {
+				body = create
+			}
+			req := httptest.NewRequest(http.MethodPost, "/x", bytes.NewReader(body))
+			req.Header.Set("Authorization", "Bearer "+token)
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, req)
+			if c.wantOK && w.Code >= 400 {
+				t.Errorf("%s/%s: harus diterima, dapat %d %s", name, c.name, w.Code, w.Body)
+			}
+			if !c.wantOK && w.Code != http.StatusBadRequest {
+				t.Errorf("%s/%s: harus 400, dapat %d", name, c.name, w.Code)
+			}
+		}
+	}
+}

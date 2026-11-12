@@ -205,7 +205,7 @@ Diperiksa dengan pasal baku persis seperti yang dikirim backend:
 
 **Perbaikan.** Severitas dipindah ke kode (lihat AuditContract di bagian 3): `KRITIS` hanya dari cek pasti, LLM hanya `SARAN`. Hasil eksperimen yang sama setelah perbaikan, di semua run yang berhasil: A `KRITIS=[P-06]`, B `KRITIS=[]` (`gpt-oss-120b` 4/4, `qwen` 3/3; satu run qwen kena 429); `SARAN` masih bervariasi antar run, tetapi hanya saran dan tidak menggerakkan gerbang. Dijaga tes offline: LLM palsu yang menandai semua pasal `KRITIS` tidak mengubah hasil (`tests/test_audit_rules.py`, `tests/test_golden.py`).
 
-**Kebijakan bawaan dan akibatnya.** Slot wajib kosong memblokir pengiriman (`tingkat="kritis"` di `RULES`). Akibatnya draf AI dari wizard saat ini selalu terblokir di P-06 (garansi tanpa durasi), karena templat baku backend tidak punya slot durasi dan frontend belum mengirim jawaban `masa_garansi` (pertanyaannya ada di backend, tetapi tidak ditanyakan frontend dan `RuleDraftClauses` mengabaikannya). Pengguna harus mengisinya di tab "Draf & Versi". Untuk melonggarkan satu aturan menjadi peringatan, ubah `tingkat` aturan itu menjadi `"saran"`; tidak perlu mengubah prompt.
+**Kebijakan saat ini (diputuskan user, 2026-11-13).** Garansi/pemeliharaan tanpa durasi hanya `SARAN` (`tingkat="saran"` pada aturan garansi di `RULES`), jadi draf baku dari wizard tidak lagi terblokir di P-06. Slot wajib lain (sanksi, jangka waktu, pembayaran, nilai, bagi hasil) dan kolom kosong tetap `KRITIS` dan memblokir pengiriman. Untuk memblokir garansi lagi, kembalikan `tingkat` aturan itu ke `"kritis"` dan sesuaikan `tests/test_audit_rules.py`.
 
 ## 8. Cara mengubah
 

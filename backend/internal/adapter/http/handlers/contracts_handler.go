@@ -200,9 +200,10 @@ func HandleWizardPreview(d *Deps) http.HandlerFunc {
 			return
 		}
 
-		tenggat, _ := time.Parse("2006-01-02", req.Tenggat)
-		if tenggat.IsZero() {
-			tenggat = time.Now().AddDate(0, 1, 0)
+		tenggat, msg := validateContractInput(req.Judul, req.Nilai, req.Tenggat, req.JawabanForm, time.Now())
+		if msg != "" {
+			WriteError(w, http.StatusBadRequest, msg)
+			return
 		}
 		params := draftParams(r, d, uid, jenis, req.Judul, cp, req.Nilai, tenggat, req.SkemaPembayaran, req.MetodePemilihan, req.JawabanForm)
 
@@ -274,8 +275,9 @@ func HandleCreateContractWizard(d *Deps) http.HandlerFunc {
 		}
 
 		judul := strings.TrimSpace(req.Judul)
-		if len(judul) < 3 {
-			WriteError(w, http.StatusBadRequest, "judul kontrak minimal 3 karakter")
+		tenggat, msg := validateContractInput(judul, req.Nilai, req.Tenggat, req.JawabanForm, time.Now())
+		if msg != "" {
+			WriteError(w, http.StatusBadRequest, msg)
 			return
 		}
 
@@ -295,16 +297,6 @@ func HandleCreateContractWizard(d *Deps) http.HandlerFunc {
 		if err != nil {
 			WriteError(w, http.StatusBadRequest, "rekanan/pihak kedua tidak ditemukan")
 			return
-		}
-
-		if req.Nilai <= 0 {
-			WriteError(w, http.StatusBadRequest, "nilai kontrak harus lebih besar dari 0")
-			return
-		}
-
-		tenggat, err := time.Parse("2006-01-02", req.Tenggat)
-		if err != nil {
-			tenggat = time.Now().AddDate(0, 1, 0)
 		}
 
 		sumber := strings.ToLower(strings.TrimSpace(req.Sumber))

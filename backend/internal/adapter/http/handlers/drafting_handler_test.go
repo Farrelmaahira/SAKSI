@@ -136,7 +136,7 @@ func errCode(t *testing.T, w *httptest.ResponseRecorder) handlers.ErrorResponse 
 	return e
 }
 
-var previewBody = handlers.WizardPreviewRequest{CounterpartyID: 10, Jenis: "pengadaan", Judul: "Jalan", Nilai: 1e7, Tenggat: "2026-12-31",
+var previewBody = handlers.WizardPreviewRequest{CounterpartyID: 10, Jenis: "pengadaan", Judul: "Jalan", Nilai: 1e7, Tenggat: time.Now().AddDate(0, 3, 0).Format("2006-01-02"),
 	JawabanForm: map[string]any{"lingkup_pekerjaan": "Jalan 300 m"}}
 
 func TestPreviewDraftsWithAIAndRejectsInventedLegalRefs(t *testing.T) {
@@ -173,7 +173,7 @@ func TestPreviewReturns503WhenAIUnavailable(t *testing.T) {
 func TestCreateManualWorksWithoutAI(t *testing.T) {
 	c := newTC(t, domain.StatusDraft)
 	c.ai.down = true
-	body := handlers.CreateContractPayload{CounterpartyID: 10, Jenis: "pengadaan", Judul: "Jalan Desa", Nilai: 1e7, Tenggat: "2026-12-31",
+	body := handlers.CreateContractPayload{CounterpartyID: 10, Jenis: "pengadaan", Judul: "Jalan Desa", Nilai: 1e7, Tenggat: time.Now().AddDate(0, 3, 0).Format("2006-01-02"),
 		Sumber: "manual", Clauses: []domain.Clause{
 			{KodePasal: "P-02", Judul: "Nilai", Isi: "Rp 10.000.000", Urutan: 5, LegalReferenceID: 12},
 			{KodePasal: "P-01", Judul: "Lingkup", Isi: "Jalan", Urutan: 1},

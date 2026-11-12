@@ -3,6 +3,7 @@ package domain
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -144,6 +145,7 @@ type SealSummary struct {
 type Notification struct {
 	ID         int64      `json:"id"`
 	Jenis      string     `json:"jenis"`
+	Judul      string     `json:"judul"` // diturunkan dari Jenis saat dibaca (NotificationTitle), tidak disimpan
 	Pesan      string     `json:"pesan"`
 	Tautan     string     `json:"tautan"`
 	Dibaca     bool       `json:"dibaca"`
@@ -221,4 +223,35 @@ type Pengawas struct {
 	VillageID   *int64 `json:"villageId"`
 	VillageName string `json:"villageName"`
 	RegionID    *int64 `json:"regionId"`
+}
+
+var notificationTitles = map[string]string{
+	"kontrak_dikirim":        "Kontrak dikirim untuk Anda tinjau",
+	"kontrak_ditinjau":       "Kontrak ditinjau pihak kedua",
+	"kontrak_ditandatangani": "Kontrak ditandatangani",
+	"kontrak_disegel":        "Kontrak disegel",
+	"kontrak_dipublikasikan": "Kontrak dipublikasikan",
+	"kontrak_dibatalkan":     "Kontrak dibatalkan",
+	"spk_diterbitkan":        "SPK diterbitkan",
+	"termin_diatur":          "Jadwal termin diatur",
+	"termin_dibayar":         "Termin dibayar",
+	"progres_dilaporkan":     "Progres pekerjaan dilaporkan",
+	"laporan_baru":           "Laporan warga baru",
+	"laporan_ditanggapi":     "Laporan ditanggapi",
+	"laporan_diteruskan":     "Laporan diteruskan",
+	"laporan_ditutup":        "Laporan ditutup",
+	"lhp_terbit":             "LHP terbit",
+	"pengawas_ditugaskan":    "Penugasan pengawas",
+}
+
+// NotificationTitle: judul singkat untuk daftar notifikasi. Jenis yang belum dikenal dibaca dari namanya ("a_b" -> "A b").
+func NotificationTitle(jenis string) string {
+	if t, ok := notificationTitles[jenis]; ok {
+		return t
+	}
+	t := strings.TrimSpace(strings.ReplaceAll(jenis, "_", " "))
+	if t == "" {
+		return "Notifikasi"
+	}
+	return strings.ToUpper(t[:1]) + t[1:]
 }

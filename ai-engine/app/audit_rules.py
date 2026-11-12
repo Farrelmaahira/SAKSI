@@ -50,7 +50,8 @@ RULES = [
     _rule("jangka waktu", r"jangka\s+waktu|waktu\s+pelaksanaan|masa\s+pelaksanaan", f"{_TANGGAL}|{_DURASI}",
           "Jangka waktu belum memuat tanggal atau durasi yang pasti."),
     _rule("garansi", r"garansi|pemeliharaan", _DURASI,
-          "Masa garansi atau pemeliharaan belum memuat durasi (mis. 180 hari kalender)."),
+          "Masa garansi atau pemeliharaan belum memuat durasi (mis. 180 hari kalender).",
+          "saran"),  # peringatan saja: templat baku tidak punya slot durasi, jadi tidak memblokir pengiriman
     _rule("pembayaran", r"pembayaran|termin", rf"{_BESARAN}|{_TERMIN}|\bsekaligus\b|\blunas\b|\btunai\b|\bdi\s+muka\b",
           "Pembayaran belum memuat rincian: persentase atau jumlah tiap termin, atau skema yang pasti (sekaligus, tunai)."),
     _rule("nilai", r"nilai|harga|biaya", _RUPIAH, "Nilai atau harga belum memuat jumlah dalam rupiah."),
