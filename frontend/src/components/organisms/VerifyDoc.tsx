@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, type DragEvent } from 'react'
 import Check from '@/components/atoms/Check'
 import Cross from '@/components/atoms/Cross'
+import { useVerifyDoc } from '@/hooks/use-verify-doc'
 import type { VerifyResult } from '@/interfaces/verify'
-import { sha256 } from '@/lib/contracts/sha256'
 import { shortHash } from '@/lib/contracts/short-hash'
 import { cn } from '@/lib/utils'
-import { verifySeal } from '@/lib/api/verify-seal'
 import FormAlert from '@/components/atoms/FormAlert'
 
 interface Props {
@@ -17,34 +15,7 @@ interface Props {
 }
 
 export default function VerifyDoc({ onOpen, onResult }: Props) {
-  const [over, setOver] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<VerifyResult | null>(null)
-  const [error, setError] = useState('')
-
-  const check = async (file?: File) => {
-    if (!file) return
-    setBusy(true)
-    setError('')
-    const hash = await sha256(await file.arrayBuffer())
-    // the hash is computed in the browser; only the hash goes to the server, never the file
-    const r = await verifySeal(hash)
-    setBusy(false)
-    if (!r.ok) {
-      setResult(null)
-      return setError(r.error)
-    }
-    const k = r.data.cocok ? r.data.kontrak : undefined
-    const next: VerifyResult = { name: file.name, hash, match: k ? { code: k.nomor, id: k.id, title: k.judul, version: r.data.segel?.nomorVersi ?? 0 } : undefined }
-    setResult(next)
-    onResult?.(next)
-  }
-
-  const onDrop = (e: DragEvent) => {
-    e.preventDefault()
-    setOver(false)
-    check(e.dataTransfer.files[0])
-  }
+  const { over, setOver, busy, result, error, check, onDrop } = useVerifyDoc(onResult)
 
   return (
     <div className="grid gap-50 lg:items-center lg:gap-100 lg:grid-cols-[1fr_1fr] [.d-panel-ink_&]:grid [.d-panel-ink_&]:gap-30 lg:[.d-panel-ink_&]:gap-50 lg:[.d-panel-ink_&]:grid-cols-[1fr_1fr]">

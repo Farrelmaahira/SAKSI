@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,6 +25,73 @@ type sendMockStore struct {
 func (m *sendMockStore) SendContract(_ context.Context, p usecase.SendContractParams) (int64, error) {
 	m.calls = append(m.calls, p)
 	return 1, m.err
+}
+
+func (m *sendMockStore) ContractDraftState(_ context.Context, _ int64) (domain.ContractDraftState, error) {
+	return domain.ContractDraftState{Jenis: domain.JenisPengadaan, VillageID: 1}, nil
+}
+
+func sendReq(t *testing.T, ms *sendMockStore, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	const secret = "secret-send-contract-tests-min-32-bytes"
+	deps := &handlers.Deps{Store: ms, Cache: newMemCache(), Secret: secret}
+	mux := http.NewServeMux()
+	mux.Handle("POST /api/v1/contracts/{id}/send", handlers.RequireAuth(secret)(handlers.HandleSendContract(deps)))
+	village := int64(1)
+	tok, _ := usecase.IssueToken(7, domain.RoleKades, &village, secret, time.Hour)
+	var rdr io.Reader
+	if body != "" {
+		rdr = strings.NewReader(body)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/contracts/42/send", rdr)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	return w
+}
+
+// Gerbang kirim opsi (b): konfirmasi diteruskan, pasal wajib dihitung dari template, 409 membawa daftar temuan + sumber.
+func TestHandleSendContract_Gate(t *testing.T) {
+	kode := "P-07"
+	llm := &domain.CriticalFindingsError{DapatDikonfirmasi: true,
+		Findings: []domain.AuditFinding{{KodePasal: &kode, Tingkat: "kritis", Pesan: "kurang rinci", Sumber: domain.SumberLLM}}}
+	aturan := &domain.CriticalFindingsError{Findings: []domain.AuditFinding{{KodePasal: &kode, Tingkat: "kritis", Pesan: "Pasal wajib P-07 belum ada di draf.", Sumber: domain.SumberAturan}}}
+
+	ms := &sendMockStore{}
+	if w := sendReq(t, ms, ""); w.Code != http.StatusOK {
+		t.Fatalf("tanpa body harus lolos: %d %s", w.Code, w.Body)
+	}
+	p := ms.calls[0]
+	// Template fixture (clause_library jenis pengadaan) hanya mewajibkan P-07.
+	if p.KonfirmasiTemuanKritis || len(p.MandatoryKodePasal) != 1 || p.MandatoryKodePasal[0] != "P-07" {
+		t.Fatalf("tanpa body: konfirmasi harus false dan pasal wajib diambil dari template: %+v", p)
+	}
+	ms = &sendMockStore{}
+	sendReq(t, ms, `{"konfirmasiTemuanKritis": true}`)
+	if len(ms.calls) != 1 || !ms.calls[0].KonfirmasiTemuanKritis {
+		t.Fatalf("konfirmasi tidak diteruskan ke store: %+v", ms.calls)
+	}
+	if w := sendReq(t, &sendMockStore{}, `{bukan json`); w.Code != http.StatusBadRequest {
+		t.Fatalf("body rusak harus 400, dapat %d", w.Code)
+	}
+
+	for _, tc := range []struct {
+		name      string
+		err       error
+		confirmed bool
+		sumber    string
+	}{{"kritis llm", llm, true, "llm"}, {"pasal wajib hilang", aturan, false, "aturan"}} {
+		w := sendReq(t, &sendMockStore{err: tc.err}, "")
+		var body struct {
+			Code              string                `json:"code"`
+			DapatDikonfirmasi bool                  `json:"dapatDikonfirmasi"`
+			Findings          []domain.AuditFinding `json:"findings"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || w.Code != http.StatusConflict || body.Code != "CRITICAL_FINDINGS" ||
+			body.DapatDikonfirmasi != tc.confirmed || len(body.Findings) != 1 || body.Findings[0].Sumber != tc.sumber {
+			t.Fatalf("%s: respons 409 salah: %d %s", tc.name, w.Code, w.Body)
+		}
+	}
 }
 
 func TestHandleSendContract(t *testing.T) {

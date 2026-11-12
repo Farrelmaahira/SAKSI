@@ -21,6 +21,16 @@ func testDBURL() string {
 	return "postgres://postgres:postgres@localhost:5432/saksi?sslmode=disable"
 }
 
+// throwawayDB: true bila DATABASE_URL menunjuk database *_tmp / *_test (aman untuk menyisipkan baris uji dan membuat akun).
+func throwawayDB() bool {
+	url := testDBURL()
+	name := url[strings.LastIndex(url, "/")+1:]
+	if i := strings.Index(name, "?"); i >= 0 {
+		name = name[:i]
+	}
+	return strings.HasSuffix(name, "_tmp") || strings.HasSuffix(name, "_test")
+}
+
 // TestStore_AuditTrail_EveryWriteAction: tiap aksi tulis meninggalkan baris audit_logs, dan aksi yang
 // menyangkut pihak kedua mengirim notifikasi ke akun penyedia. Tidak membuat akun; memakai user 1-4 dan
 // counterparty 1 yang sudah ada (counterparty 1 harus terikat akun penyedia, bila tidak tes dilewati).
@@ -61,27 +71,34 @@ func TestStore_AuditTrail_EveryWriteAction(t *testing.T) {
 			t.Errorf("notifikasi %q ke penyedia untuk kontrak %d: %d baris, harus 1", jenis, id, n)
 		}
 	}
+	// Draf/diaudit/dibatalkan tidak terlihat penyedia: tidak boleh ada notifikasi apa pun (judul bisa bocor).
+	vendorSilent := func(id int64, tahap string) {
+		t.Helper()
+		if n := count(`SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND tautan = $2`, *vendor, contractLinkFor(id)); n != 0 {
+			t.Errorf("%s: penyedia menerima %d notifikasi untuk kontrak yang belum terlihat olehnya", tahap, n)
+		}
+	}
 
 	v1 := int64(1)
 	kades := usecase.Scope{UserID: 1, Role: domain.RoleKades, VillageID: &v1}
 
 	c := newDraftContract(t, store, "Uji jejak audit semua aksi")
 	audited("contract.create", c.ID)
-	notified("kontrak_dibuat", c.ID)
+	vendorSilent(c.ID, "buat kontrak")
 
 	if _, err := store.ReviseContract(ctx, usecase.ReviseContractParams{ContractID: c.ID, KadesUserID: 1, VillageID: 1,
 		Clauses: []domain.Clause{{KodePasal: "P-01", Judul: "Lingkup", Isi: "Pekerjaan drainase.", Urutan: 1}}}); err != nil {
 		t.Fatalf("ReviseContract: %v", err)
 	}
 	audited("contract.revise", c.ID)
-	notified("kontrak_direvisi", c.ID)
+	vendorSilent(c.ID, "revisi")
 
 	if _, err := store.SetPaymentTerms(ctx, usecase.SetTermsParams{ContractID: c.ID, Scope: kades,
 		Terms: []usecase.TermInput{{Persen: 50, JatuhTempo: time.Now().Add(30 * 24 * time.Hour)}, {Persen: 50, JatuhTempo: time.Now().Add(60 * 24 * time.Hour)}}}); err != nil {
 		t.Fatalf("SetPaymentTerms: %v", err)
 	}
 	audited("contract.termin_set", c.ID)
-	notified("termin_diatur", c.ID)
+	vendorSilent(c.ID, "atur termin saat draf")
 
 	// Membentuk keadaan: kontrak yang sudah ditandatangani (alur tanda tangan diuji di tempat lain).
 	if _, err := conn.Exec(ctx, `UPDATE contracts SET status = 'ditandatangani' WHERE id = $1`, c.ID); err != nil {
@@ -103,6 +120,33 @@ func TestStore_AuditTrail_EveryWriteAction(t *testing.T) {
 	}
 	audited("contract.publish", c.ID)
 	notified("kontrak_dipublikasikan", c.ID)
+	if items, err := store.ListAuditLogs(ctx, usecase.AuditLogFilter{Scope: kades, ContractID: &c.ID, Aksi: "contract.publish", Limit: 50}); err != nil || len(items) != 1 || items[0].Aksi != "contract.publish" {
+		t.Errorf("filter aksi harus mengembalikan tepat 1 log contract.publish: n=%d err=%v", len(items), err)
+	}
+
+	// Riwayat kontrak dibaca dari server lewat /lifecycle: urut waktu, dari status awal sampai publikasi, dengan nama aktor.
+	lc, err := store.GetContractLifecycleDetail(ctx, c.ID, 1, domain.RoleKades, &v1)
+	if err != nil {
+		t.Fatalf("GetContractLifecycleDetail: %v", err)
+	}
+	if n := len(lc.StatusHistory); n < 2 || lc.StatusHistory[0].StatusDari != nil || lc.StatusHistory[n-1].StatusKe != "dipublikasikan" || lc.StatusHistory[n-1].AktorNama == "" {
+		t.Errorf("statusHistory tidak lengkap: %+v", lc.StatusHistory)
+	}
+
+	// Pembatalan: penyedia hanya diberi tahu bila kontrak sudah dikirim kepadanya (status ditinjau).
+	draft := newDraftContract(t, store, "Uji batal draf tanpa notifikasi penyedia")
+	if _, err := store.CancelContract(ctx, usecase.CancelContractParams{ContractID: draft.ID, Scope: kades}); err != nil {
+		t.Fatalf("CancelContract draf: %v", err)
+	}
+	vendorSilent(draft.ID, "batal saat draf")
+	sent := newDraftContract(t, store, "Uji batal setelah dikirim")
+	if _, err := conn.Exec(ctx, `UPDATE contracts SET status = 'ditinjau' WHERE id = $1`, sent.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.CancelContract(ctx, usecase.CancelContractParams{ContractID: sent.ID, Scope: kades}); err != nil {
+		t.Fatalf("CancelContract ditinjau: %v", err)
+	}
+	notified("kontrak_dibatalkan", sent.ID)
 
 	// Laporan warga: audit ada, tetapi aktor kosong agar identitas pelapor tidak tampil di Jejak Audit desa.
 	rep, err := store.CreateCitizenReport(ctx, domain.CitizenReport{ContractID: c.ID, PelaporUserID: 2, Kategori: "progres", Deskripsi: "Uji jejak audit laporan warga."}, nil)
@@ -125,14 +169,10 @@ func TestStore_AuditTrail_Register(t *testing.T) {
 		return
 	}
 	defer store.Close()
+	if !throwawayDB() {
+		t.Skip("tes ini membuat akun; hanya jalan di database *_tmp / *_test")
+	}
 	url := testDBURL()
-	name := url[strings.LastIndex(url, "/")+1:]
-	if i := strings.Index(name, "?"); i >= 0 {
-		name = name[:i]
-	}
-	if !strings.HasSuffix(name, "_tmp") && !strings.HasSuffix(name, "_test") {
-		t.Skipf("tes ini membuat akun; hanya jalan di database *_tmp / *_test (sekarang %q)", name)
-	}
 	ctx := context.Background()
 	vid := int64(1)
 	u, err := store.CreateUserWithRole(ctx, usecase.RegisterUserParams{

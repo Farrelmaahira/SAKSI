@@ -12,6 +12,16 @@ var ErrInvalidState = errors.New("domain: invalid state")
 // ErrCriticalFindings: audit AI terakhir masih punya temuan kritis yang belum diperbaiki (HTTP 409 CRITICAL_FINDINGS).
 var ErrCriticalFindings = errors.New("domain: critical audit findings still open")
 
+// CriticalFindingsError: gerbang kirim menolak. errors.Is(err, ErrCriticalFindings) tetap true.
+type CriticalFindingsError struct {
+	Findings []AuditFinding
+	// DapatDikonfirmasi: semua temuan berasal dari LLM, jadi desa boleh mengirim dengan konfirmasi eksplisit.
+	DapatDikonfirmasi bool
+}
+
+func (e *CriticalFindingsError) Error() string        { return ErrCriticalFindings.Error() }
+func (e *CriticalFindingsError) Is(target error) bool { return target == ErrCriticalFindings }
+
 // ErrAlreadyPaid: termin sudah berstatus dibayar.
 var ErrAlreadyPaid = errors.New("domain: payment term already paid")
 

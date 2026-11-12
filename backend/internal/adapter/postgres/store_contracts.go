@@ -11,14 +11,16 @@ import (
 	"saksi-backend/internal/usecase"
 )
 
-// ListCounterparties mengambil daftar rekanan/vendor dengan filter jenis dan search nama.
+// ListCounterparties mengambil daftar pihak kedua yang punya akun terdaftar (JOIN users), dengan email akunnya.
+// Usaha tanpa akun tidak bisa menerima/meninjau kontrak di SAKSI, jadi tidak ditawarkan. nama.
 func (s *Store) ListCounterparties(ctx context.Context, jenis *string, search string) ([]domain.Counterparty, error) {
 	query := `
-		SELECT id, user_id, nama, jenis, COALESCE(npwp, ''), COALESCE(alamat, '')
-		FROM counterparties
-		WHERE ($1::text IS NULL OR jenis::text = $1)
-		  AND ($2::text = '' OR nama ILIKE $2)
-		ORDER BY nama ASC
+		SELECT c.id, c.user_id, c.nama, c.jenis, COALESCE(c.npwp, ''), COALESCE(c.alamat, ''), u.email
+		FROM counterparties c
+		JOIN users u ON u.id = c.user_id
+		WHERE ($1::text IS NULL OR c.jenis::text = $1)
+		  AND ($2::text = '' OR c.nama ILIKE $2)
+		ORDER BY c.nama ASC
 	`
 	searchTerm := ""
 	if search != "" {
@@ -34,7 +36,7 @@ func (s *Store) ListCounterparties(ctx context.Context, jenis *string, search st
 	var list []domain.Counterparty
 	for rows.Next() {
 		var c domain.Counterparty
-		if err := rows.Scan(&c.ID, &c.UserID, &c.Nama, &c.Jenis, &c.NPWP, &c.Alamat); err != nil {
+		if err := rows.Scan(&c.ID, &c.UserID, &c.Nama, &c.Jenis, &c.NPWP, &c.Alamat, &c.Email); err != nil {
 			return nil, err
 		}
 		list = append(list, c)
@@ -175,9 +177,6 @@ func (s *Store) CreateContractWithDetails(ctx context.Context, p usecase.CreateC
 	if err := insertAuditLog(ctx, tx, p.CreatedBy, "contract.create", contractID, nil, map[string]any{
 		"status": status, "versionId": versionID, "sumber": sumber, "jumlahPasal": len(p.Clauses), "auditModel": model,
 	}, p.ActorIP); err != nil {
-		return domain.ContractDetail{}, err
-	}
-	if err := notifyVendor(ctx, tx, contractID, p.CreatedBy, "kontrak_dibuat", "dibuat dengan Anda sebagai pihak kedua"); err != nil {
 		return domain.ContractDetail{}, err
 	}
 

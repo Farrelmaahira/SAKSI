@@ -39,11 +39,13 @@ def test_golden_missing_mandatory(monkeypatch, case):
 # ---------- AuditContract ----------
 
 
-def test_audit_llm_finding_lowers_score(monkeypatch):
-    answer = json.dumps({"findings": [{"kode_pasal": "P-02", "tingkat": "KRITIS", "pesan": "Sanksi tanpa besaran."}]})
+def test_audit_score_counts_critical_clauses(monkeypatch):
+    # P-02 "Sanksi diatur kemudian" tidak memuat besaran: KRITIS dari cek pasti. Tingkat KRITIS dari LLM diabaikan.
+    answer = json.dumps({"findings": [{"kode_pasal": "P-01", "tingkat": "KRITIS", "pesan": "Pihak kurang jelas."}]})
     monkeypatch.setattr(llm, "call_provider", fake({"groq": answer}))
     res = rpc("AuditContract", AUDIT)
-    assert res.skor == 50.0 and [(f.kode_pasal, f.tingkat) for f in res.findings] == [("P-02", ai_pb2.KRITIS)]
+    assert res.skor == 50.0
+    assert sorted((f.kode_pasal, f.tingkat) for f in res.findings) == [("P-01", ai_pb2.SARAN), ("P-02", ai_pb2.KRITIS)]
 
 
 def test_audit_unknown_kode_from_llm_counts_as_failure(monkeypatch):

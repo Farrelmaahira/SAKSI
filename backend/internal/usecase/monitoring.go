@@ -95,6 +95,7 @@ type AuditLogFilter struct {
 	Scope      Scope
 	ContractID *int64
 	ActorID    *int64
+	Aksi       string // kode aksi persis, mis. "contract.send"; kosong = semua
 	From       string // YYYY-MM-DD, kosong = tanpa batas
 	To         string // YYYY-MM-DD inklusif
 	Limit      int
@@ -345,8 +346,40 @@ type CancelContractParams struct {
 	ActorIP    string
 }
 
-// SendContractParams: kirim kontrak ke pihak kedua butuh data yang sama dengan pembatalan.
-type SendContractParams = CancelContractParams
+type SendContractParams struct {
+	ContractID int64
+	Scope      Scope
+	ActorIP    string
+	// MandatoryKodePasal: kode pasal wajib jenis kontrak ini (template atau rule engine); kosong = cek pasal wajib dilewati.
+	MandatoryKodePasal []string
+	// KonfirmasiTemuanKritis: desa mengakui temuan kritis dari LLM dan tetap mengirim; dicatat di audit_logs.
+	KonfirmasiTemuanKritis bool
+}
+
+// SendGate memutuskan apakah kontrak boleh dikirim (keputusan PM 2026-11-12, opsi b).
+// Pasal wajib yang tidak ada di versi terakhir selalu memblokir (deterministik). Temuan kritis dari LLM hanya
+// memblokir tanpa konfirmasi eksplisit; temuan yang dikonfirmasi dikembalikan agar dicatat di audit_logs.
+func SendGate(mandatory, present []string, llmKritis []domain.AuditFinding, konfirmasi bool) ([]domain.AuditFinding, error) {
+	have := make(map[string]bool, len(present))
+	for _, k := range present {
+		have[k] = true
+	}
+	var blocking []domain.AuditFinding
+	for _, k := range mandatory {
+		if !have[k] {
+			k := k
+			blocking = append(blocking, domain.AuditFinding{KodePasal: &k, Tingkat: "kritis", Sumber: domain.SumberAturan,
+				Pesan: "Pasal wajib " + k + " belum ada di draf."})
+		}
+	}
+	if len(blocking) > 0 {
+		return nil, &domain.CriticalFindingsError{Findings: append(blocking, llmKritis...)}
+	}
+	if len(llmKritis) > 0 && !konfirmasi {
+		return nil, &domain.CriticalFindingsError{Findings: llmKritis, DapatDikonfirmasi: true}
+	}
+	return llmKritis, nil
+}
 
 // CanSend: hanya draf/diaudit yang bisa dikirim; ditinjau = sudah dikirim, status setelahnya terkunci.
 func CanSend(status domain.ContractStatus) error {

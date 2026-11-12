@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ContractAudit } from '@/interfaces/api'
 import type { Answers, Audit, Clause, ClauseSource, TemplateKey } from '@/interfaces/drafting'
 import { backendJenis } from '@/data/drafting'
 import { fetchDraftOptions } from '@/lib/api/fetch-draft-options'
@@ -6,6 +7,8 @@ import { previewDraft } from '@/lib/api/preview-draft'
 import { draftContext } from '@/lib/db/draft-context'
 import { applyFinding } from '@/lib/drafting/apply-finding'
 import { auditDraft } from '@/lib/drafting/audit-draft'
+import { nowIso } from '@/lib/dates/now-iso'
+import { fromServerAudit } from '@/lib/drafting/from-server-audit'
 import { draftClauses } from '@/lib/drafting/draft-clauses'
 import { reaudit } from '@/lib/drafting/reaudit'
 import { PARTY_NOT_ON_SERVER, partyApiId } from '@/lib/drafting/party-api-id'
@@ -23,7 +26,9 @@ interface Options {
 /* The clauses of the wizard: drafting (AI or manual), editing and the live audit. */
 export function useContractDraft({ template, answers, partyId, regionId, villageId, onAnswers }: Options) {
   const [clauses, setClauses] = useState<Clause[]>([])
-  const [audit, setAudit] = useState<Audit | null>(null)
+  const [localAudit, setAudit] = useState<Audit | null>(null)
+  // the AI's own audit of its draft, with the clauses as the AI wrote them; edits change what counts as fixed
+  const [ai, setAi] = useState<{ audit: ContractAudit; original: Clause[]; at: string } | null>(null)
   const [mode, setMode] = useState<ClauseSource>('ai')
   const [edited, setEdited] = useState(false)
   const [thinking, setThinking] = useState(false)
@@ -46,11 +51,13 @@ export function useContractDraft({ template, answers, partyId, regionId, village
     setThinking(true)
     setError('')
     setAudit(null)
+    setAi(null)
     const r = await previewDraft(wizardPayload(template, answers, party))
     setThinking(false)
     if (!r.ok) return setError(r.code === 'AI_UNAVAILABLE' ? r.error : `Draf AI belum bisa dibuat. ${r.error}`)
     setModel(r.data.model)
     apply(r.data.clauses, 'ai')
+    if (r.data.audit) setAi({ audit: r.data.audit, original: r.data.clauses, at: nowIso() })
   }
 
   // Manual mode: start from the mandatory clause template (clause_library) of this contract type
@@ -63,23 +70,26 @@ export function useContractDraft({ template, answers, partyId, regionId, village
     const list = r.ok && r.data.clauseTemplate?.length ? r.data.clauseTemplate : draftClauses(template, answers, draftContext(villageId!, partyId))
     setError('')
     setModel(null)
+    setAi(null)
     apply(list, 'manual')
   }
 
   const edit = (list: Clause[]) => {
     setClauses(list)
     setEdited(true)
-    if (template) setAudit(reaudit(template, answers, list, regionId, audit ?? undefined))
+    if (template && !ai) setAudit(reaudit(template, answers, list, regionId, localAudit ?? undefined))
   }
 
   const applySuggestion = (id: string) => {
-    if (!template || !audit) return
+    if (!template || !localAudit) return
     const out = applyFinding(template, answers, clauses, id)
     onAnswers(out.answers)
     setClauses(out.clauses)
     setEdited(true)
-    setAudit(reaudit(template, out.answers, out.clauses, regionId, audit))
+    setAudit(reaudit(template, out.answers, out.clauses, regionId, localAudit))
   }
+
+  const audit = ai ? fromServerAudit(ai.audit, clauses, ai.original, ai.at) : localAudit
 
   return {
     clauses,
@@ -89,6 +99,7 @@ export function useContractDraft({ template, answers, partyId, regionId, village
     loadingTemplate,
     error,
     model,
+    fromServer: ai !== null,
     critical: audit?.findings.filter((f) => f.severity === 'kritis' && !f.applied).length ?? 0,
     // an AI draft a person changed is recorded as a manual version
     source: (mode === 'ai' && !edited ? 'ai' : 'manual') as ClauseSource,

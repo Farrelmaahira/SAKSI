@@ -1,5 +1,4 @@
 import type {
-  Counterparty,
   CounterpartyType,
   Region,
   RegionRule,
@@ -60,63 +59,3 @@ export const counterpartyTypes: CounterpartyType[] = [
   "Penyewa",
 ];
 
-export const seedCounterparties: Counterparty[] = [
-  {
-    id: "cp-maju",
-    name: "CV Maju Bersama",
-    type: "Penyedia",
-    npwp: "01.234.567.8-405.000",
-    address: "Jl. Raya Cibeber No. 12, Cianjur",
-    email: "penyedia@saksi.id",
-    contact: "Rina Kartika",
-  },
-  {
-    id: "cp-karya",
-    name: "CV Karya Mandiri",
-    type: "Penyedia",
-    npwp: "02.345.678.9-405.000",
-    address: "Jl. Siliwangi No. 4, Cianjur",
-    email: "karya@contoh.id",
-    contact: "Dadang Hermawan",
-  },
-  {
-    id: "cp-subur",
-    name: "CV Subur Jaya",
-    type: "Penyedia",
-    address: "Jl. Otista No. 21, Subang",
-    email: "subur@contoh.id",
-    contact: "Yayan Sopyan",
-  },
-  {
-    id: "cp-sri",
-    name: "Kelompok Tani Sri Rejeki",
-    type: "Penerima hibah",
-    address: "Dusun Kaler, Desa Mekarsari",
-    email: "srirejeki@contoh.id",
-    contact: "Darto",
-  },
-  {
-    id: "cp-sari",
-    name: "Warung Bu Sari",
-    type: "Penyewa",
-    address: "Pasar Desa Sukamaju, Kios 4",
-    email: "busari@contoh.id",
-    contact: "Sari Lestari",
-  },
-  {
-    id: "cp-bumdes",
-    name: "BUMDes Sukamaju Sejahtera",
-    type: "BUMDes",
-    address: "Balai Desa Sukamaju",
-    email: "bumdes@contoh.id",
-    contact: "Iwan Setiawan",
-  },
-  {
-    id: "cp-tani",
-    name: "UD Tani Makmur",
-    type: "UMKM",
-    address: "Jl. Pasar Cibeber No. 8",
-    email: "tanimakmur@contoh.id",
-    contact: "Euis Rohmah",
-  },
-];

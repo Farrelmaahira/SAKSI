@@ -43,8 +43,13 @@ func HandleListAuditLogs(d *Deps) http.HandlerFunc {
 				return
 			}
 		}
+		aksi := strings.TrimSpace(q.Get("aksi"))
+		if !validAksi(aksi) {
+			badInput(w, "aksi hanya boleh huruf kecil, angka, titik, atau garis bawah (maks. 64 karakter)")
+			return
+		}
 		items, err := d.Store.ListAuditLogs(r.Context(), usecase.AuditLogFilter{Scope: sc, ContractID: contractID, ActorID: actorID,
-			From: from, To: to, Limit: limit, Before: before})
+			Aksi: aksi, From: from, To: to, Limit: limit, Before: before})
 		if err != nil {
 			writeDomainErr(w, err, "log tidak ditemukan")
 			return
@@ -55,6 +60,19 @@ func HandleListAuditLogs(d *Deps) http.HandlerFunc {
 		}
 		WriteJSON(w, http.StatusOK, AuditLogListResponse{Items: items, NextBefore: nextBefore(len(items), limit, last)})
 	}
+}
+
+// validAksi: kode aksi audit_logs (contract.send, user.register, ...); kosong berarti tanpa filter.
+func validAksi(s string) bool {
+	if len(s) > 64 {
+		return false
+	}
+	for _, c := range s {
+		if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '.' && c != '_' {
+			return false
+		}
+	}
+	return true
 }
 
 type CreateAuditReportRequest struct {

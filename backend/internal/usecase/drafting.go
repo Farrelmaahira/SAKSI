@@ -379,6 +379,15 @@ func completeAIAudit(r domain.AuditResult, in AuditInput) domain.AuditResult {
 	for _, k := range in.MandatoryKodePasal {
 		mandatory[k] = true
 	}
+	sumber := domain.SumberLLM
+	if r.Model == RuleAuditorModel {
+		sumber = domain.SumberAturan
+	}
+	for i := range r.Findings {
+		if r.Findings[i].Sumber == "" {
+			r.Findings[i].Sumber = sumber
+		}
+	}
 	missing := map[string]bool{}
 	kritis, saran := 0, 0
 	for _, f := range r.Findings {

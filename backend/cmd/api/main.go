@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -148,7 +149,7 @@ func main() {
 	mux.Handle("GET /api/v1/dashboard/metrics", authMiddleware(handlers.HandleDashboardMetrics(deps)))
 
 	// Master data & Wizard routes
-	mux.Handle("GET /api/v1/counterparties", optionalAuthMiddleware(handlers.HandleListCounterparties(deps)))
+	mux.Handle("GET /api/v1/counterparties", authMiddleware(handlers.HandleListCounterparties(deps)))
 	mux.Handle("GET /api/v1/contracts/options", optionalAuthMiddleware(handlers.HandleGetContractOptions(deps)))
 	mux.Handle("POST /api/v1/contracts/wizard/questions", authMiddleware(handlers.HandleWizardQuestions(deps)))
 	mux.Handle("POST /api/v1/contracts/wizard/preview", authMiddleware(handlers.HandleWizardPreview(deps)))
@@ -208,12 +209,24 @@ func main() {
 	mux.Handle("GET /api/v1/admin/oversight-assignments", authMiddleware(handlers.HandleListOversightAssignments(deps)))
 	mux.Handle("POST /api/v1/admin/oversight-assignments", authMiddleware(handlers.HandleCreateOversightAssignment(deps)))
 
-
-	webOrigin := env("WEB_ORIGIN", "http://localhost:3000")
+	// WEB_ORIGIN: daftar dipisah koma; entri "*.domain" cocok dengan semua subdomain https-nya.
+	webOrigins := strings.Split(env("WEB_ORIGIN", "http://localhost:3000"), ",")
+	originAllowed := func(o string) bool {
+		for _, a := range webOrigins {
+			a = strings.TrimSpace(a)
+			if a == o || (strings.HasPrefix(a, "*.") && strings.HasPrefix(o, "https://") && strings.HasSuffix(o, a[1:])) {
+				return true
+			}
+		}
+		return false
+	}
 
 	corsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", webOrigin)
+			w.Header().Add("Vary", "Origin")
+			if o := r.Header.Get("Origin"); o != "" && originAllowed(o) {
+				w.Header().Set("Access-Control-Allow-Origin", o)
+			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			if r.Method == http.MethodOptions {
@@ -253,4 +266,3 @@ func main() {
 	}
 	<-shutdownDone // tunggu request yang sedang berjalan selesai sebelum pool DB/Redis ditutup oleh defer
 }
-

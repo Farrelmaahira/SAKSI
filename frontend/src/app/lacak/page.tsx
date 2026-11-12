@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import TrackShell from "@/components/organisms/TrackShell";
 import LacakTemplate from "@/components/organisms/LacakTemplate";
 import { pageMetadata } from "@/lib/seo/page-metadata";
 
@@ -11,7 +12,7 @@ export const metadata = pageMetadata({
 
 export default function LacakPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<TrackShell />}>
       <LacakTemplate />
     </Suspense>
   );

@@ -16,6 +16,8 @@ interface Input {
   signatures?: ContractSignatures
   source: ClauseSource
   session: Session
+  /* the person confirmed the open critical findings */
+  confirmCritical?: boolean
 }
 
 /* Saves the wizard contract and, when asked, sends it to the second party. If the send fails the draft stays saved and `failed` says why. */
@@ -31,7 +33,7 @@ export function useFinishContract(i: Input) {
     setBusy(true)
     const saved = await saveWizardContract({ template: i.template, answers: i.answers, partyId: i.partyId, party, clauses: i.clauses, audit: i.audit, signatures: i.signatures, source: i.source }, i.session)
     // sent only on the server's word: a draft the server never got has nothing to send
-    const error = !send ? '' : saved.apiId ? await sendForReview(saved, i.session) : 'Draf tersimpan di perangkat ini tetapi belum sampai ke server, jadi belum bisa dikirim.'
+    const error = !send ? '' : saved.apiId ? await sendForReview(saved, i.session, i.confirmCritical) : 'Draf tersimpan di perangkat ini tetapi belum sampai ke server, jadi belum bisa dikirim.'
     setBusy(false)
     if (error) return setFailed({ code: saved.code, message: `Draf ${saved.code} tersimpan, tetapi belum terkirim. ${error}` })
     router.push(`/dashboard/kontrak/${saved.code}`)

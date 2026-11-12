@@ -2,16 +2,16 @@ import { ReactNode } from 'react'
 import Icon from '@/components/atoms/Icon'
 import Link from 'next/link'
 
-interface Props { label: string; value: ReactNode; hint?: string; tone?: 'blue' | 'red' | 'ink'; to?: string; icon?: string }
+interface Props { label: string; value: ReactNode; hint?: string; tone?: 'blue' | 'red' | 'ink'; to?: string; icon?: string; /* false keeps a long text at full size instead of shrinking it */ shrink?: boolean }
 
-export default function Stat({ label, value, hint, tone = 'blue', to, icon }: Props) {
+export default function Stat({ label, value, hint, tone = 'blue', to, icon, shrink = true }: Props) {
   const body = (
     <>
       <div className="items-start flex text-[1.3rem] gap-10 justify-between leading-[1.3] text-dim">
         <span>{label}</span>
         {icon && <Icon name={icon} />}
       </div>
-      <strong data-long={typeof value === 'string' && value.length > 7 ? '' : undefined}>{value}</strong>
+      <strong data-long={shrink && typeof value === 'string' && value.length > 7 ? '' : undefined}>{value}</strong>
       {hint && <small>{hint}</small>}
     </>
   )

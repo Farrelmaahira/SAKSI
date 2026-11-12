@@ -1,14 +1,10 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { loginSteps } from '@/data/auth'
+import { useLoginForm } from '@/hooks/use-login-form'
 import { useQueryParam } from '@/hooks/use-query-param'
 import { useRedirectIfSignedIn } from '@/hooks/use-redirect-if-signed-in'
-import type { AuthError, UserRole } from '@/interfaces/auth'
-import { chooseRole } from '@/lib/auth/choose-role'
-import { login } from '@/lib/auth/login'
-import { resendVerification } from '@/lib/auth/resend-verification'
 import { safeRedirect } from '@/lib/auth/safe-redirect'
 import { withFrom } from '@/lib/auth/with-from'
 import StepIndicator from '@/components/molecules/StepIndicator'
@@ -16,49 +12,14 @@ import AuthShell from './AuthShell'
 import LoginCredentialsStep from './LoginCredentialsStep'
 import LoginRoleStep from './LoginRoleStep'
 
-interface Pending {
-  userId: string
-  name: string
-  roles: UserRole[]
-}
-
 export default function MasukTemplate() {
   const fromParam = useQueryParam('from')
   const signedIn = useRedirectIfSignedIn(safeRedirect(fromParam))
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<AuthError | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [pending, setPending] = useState<Pending | null>(null)
-  const [roleId, setRoleId] = useState<string | null>(null)
-  const [resent, setResent] = useState<string | null>(null)
+  const f = useLoginForm()
+  const { pending } = f
 
   // A successful login sets the session, which sends the user on from here.
   if (signedIn) return null
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (pending) {
-      if (!roleId) return setError({ ok: false, error: 'Pilih salah satu peran dulu.' })
-      return chooseRole(pending.userId, roleId)
-    }
-    setBusy(true)
-    setResent(null)
-    const res = await login(email, password)
-    setBusy(false)
-    if (!res.ok) return setError(res)
-    setError(null)
-    if (res.roles.length > 1) {
-      setPending({ userId: res.userId, name: res.name, roles: res.roles })
-      setRoleId(res.roles[0].id)
-    }
-  }
-
-  const pickDemo = (e: string, p: string) => {
-    setEmail(e)
-    setPassword(p)
-    setError(null)
-  }
 
   return (
     <AuthShell
@@ -80,30 +41,27 @@ export default function MasukTemplate() {
       </p>
       <StepIndicator steps={loginSteps} current={pending ? 1 : 0} />
 
-      <form className="grid gap-20 auth-form" onSubmit={submit} noValidate>
+      <form className="grid gap-20 auth-form" onSubmit={f.submit} noValidate>
         {!pending && (
           <LoginCredentialsStep
-            email={email}
-            password={password}
-            error={error}
-            busy={busy}
-            resent={resent}
-            onEmail={setEmail}
-            onPassword={setPassword}
-            onResend={() => setResent(resendVerification(email))}
-            onPickDemo={pickDemo}
+            email={f.email}
+            password={f.password}
+            error={f.error}
+            busy={f.busy}
+            resent={f.resent}
+            onEmail={f.setEmail}
+            onPassword={f.setPassword}
+            onResend={f.resend}
+            onPickDemo={f.pickDemo}
           />
         )}
         {pending && (
           <LoginRoleStep
             roles={pending.roles}
-            roleId={roleId}
-            error={error}
-            onRole={setRoleId}
-            onBack={() => {
-              setPending(null)
-              setError(null)
-            }}
+            roleId={f.roleId}
+            error={f.error}
+            onRole={f.setRoleId}
+            onBack={f.backToCredentials}
           />
         )}
       </form>

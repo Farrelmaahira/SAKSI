@@ -13,8 +13,9 @@ GOLDEN_DIR = Path(__file__).resolve().parents[1] / "tests" / "golden"
 class AuditCase:
     id: str
     request: ai_pb2.AuditContractRequest
-    kritis: list[str]  # pasal yang harus mendapat temuan KRITIS
-    clean: list[str]  # pasal yang tidak boleh mendapat temuan KRITIS
+    kritis: list[str]  # pasal yang harus mendapat KRITIS (cek pasti di kode, tidak bergantung pada model)
+    saran: list[str]  # pasal yang harus mendapat saran dari LLM (penilaian bahasa; satu-satunya bagian yang membedakan model)
+    clean: list[str]  # pasal yang tidak boleh mendapat KRITIS
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,7 @@ def load_audit_cases() -> list[AuditCase]:
                 jenis=ai_pb2.ContractType.Value(c["jenis"]), clauses=_clauses(c["clauses"]), mandatory_kode_pasal=c["mandatory"],
             ),
             c["kritis"],
+            c["saran"],
             c["clean"],
         )
         for c in _load("audit_quality")

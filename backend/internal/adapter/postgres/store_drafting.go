@@ -318,7 +318,10 @@ func (s *Store) LatestContractAudit(ctx context.Context, contractID int64) (int6
 	defer rows.Close()
 	a.Findings = []domain.AuditFinding{}
 	for rows.Next() {
-		var f domain.AuditFinding
+		f := domain.AuditFinding{Sumber: domain.SumberLLM}
+		if a.Model == usecase.RuleAuditorModel {
+			f.Sumber = domain.SumberAturan
+		}
 		if err := rows.Scan(&f.KodePasal, &f.Tingkat, &f.Pesan); err != nil {
 			return 0, nil, err
 		}

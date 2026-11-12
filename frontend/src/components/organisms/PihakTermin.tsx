@@ -1,6 +1,7 @@
 import type { TerminLine } from '@/interfaces/dash'
 import PageHead from '@/components/molecules/PageHead'
 import Stat from '@/components/molecules/Stat'
+import StatGrid from '@/components/molecules/StatGrid'
 import { formatRp } from '@/lib/contracts/format-rp'
 import { daysUntil } from '@/lib/dates/days-until'
 import Panel from '@/components/molecules/Panel'
@@ -16,11 +17,11 @@ export default function PihakTermin({ rows: list }: TerminLine) {
   return (
     <>
       <PageHead label="Termin" title="Termin pembayaran" desc="Jadwal pembayaran dari desa untuk kontrak yang sedang berjalan. Pembayaran ditandai oleh desa." />
-      <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(3,minmax(0,1fr))] lg:grid-cols-[repeat(3,minmax(0,1fr))] d-stats">
+      <StatGrid cols={3}>
         <Stat label="Sudah diterima" value={formatRp(paid.reduce((s, x) => s + (x.t.realisasiNominal ?? x.t.nominal), 0))} icon="check" />
         <Stat label="Belum dibayar" value={formatRp(pending.reduce((s, x) => s + x.t.nominal, 0))} icon="clock" tone="ink" />
         <Stat label="Lewat jatuh tempo" value={pending.filter((x) => daysUntil(x.t.jatuhTempo) < 0).length} icon="alert" tone={pending.some((x) => daysUntil(x.t.jatuhTempo) < 0) ? 'red' : 'blue'} />
-      </div>
+      </StatGrid>
       <Panel>
         {rows.length ? (
           <div className="my-0 -mx-20 overflow-x-auto py-0 px-20 md:my-0 md:-mx-24 md:py-0 md:px-24">

@@ -183,7 +183,7 @@ func (s *Store) ListContracts(ctx context.Context, sc usecase.Scope, search stri
 		SELECT 
 			c.id,
 			COALESCE(c.village_id, 0),
-			COALESCE(v.nama, 'Desa Sukamaju') as village_name,
+			COALESCE(v.nama, '') as village_name,
 			c.judul as title,
 			c.jenis::text as category,
 			COALESCE(cp.nama, 'Penyedia') as vendor_name,
@@ -289,7 +289,7 @@ func (s *Store) ContractByID(ctx context.Context, id string, sc usecase.Scope) (
 		SELECT 
 			c.id,
 			COALESCE(c.village_id, 0),
-			COALESCE(v.nama, 'Desa Sukamaju') as village_name,
+			COALESCE(v.nama, '') as village_name,
 			c.judul as title,
 			c.jenis::text as category,
 			COALESCE(cp.nama, 'Penyedia') as vendor_name,
@@ -303,9 +303,10 @@ func (s *Store) ContractByID(ctx context.Context, id string, sc usecase.Scope) (
 		LEFT JOIN villages v ON c.village_id = v.id
 		LEFT JOIN contract_parties p ON p.contract_id = c.id AND p.peran_pihak = 'kedua'
 		LEFT JOIN counterparties cp ON cp.id = p.counterparty_id
-		LEFT JOIN contract_versions cv ON cv.contract_id = c.id AND cv.nomor_versi = 1
-		LEFT JOIN ai_audits aa ON aa.version_id = cv.id
-		LEFT JOIN document_seals ds ON ds.version_id = cv.id
+		LEFT JOIN LATERAL (SELECT a.skor FROM ai_audits a JOIN contract_versions v ON v.id = a.version_id
+			WHERE v.contract_id = c.id ORDER BY a.id DESC LIMIT 1) aa ON TRUE
+		LEFT JOIN LATERAL (SELECT d.sha256 FROM document_seals d JOIN contract_versions v ON v.id = d.version_id
+			WHERE v.contract_id = c.id ORDER BY d.id DESC LIMIT 1) ds ON TRUE
 		WHERE c.id = $1 AND `
 	args := []any{contractID}
 	query += scopeCond(sc, &args)

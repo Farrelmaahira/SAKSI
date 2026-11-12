@@ -6,6 +6,7 @@ import { useNavCounts } from '@/hooks/use-nav-counts'
 import { navFor } from '@/lib/dash/nav-for'
 import { wargaAllowed } from '@/lib/dash/warga-allowed'
 import { db } from '@/lib/db/db'
+import { syncServerContracts } from '@/lib/contracts/sync-server-contracts'
 import { fillSealHashes } from '@/lib/db/fill-seal-hashes'
 
 /* Everything the dashboard frame needs besides markup: menu items, sidebar state and actions. */
@@ -18,6 +19,11 @@ export function useDashShell(session: Session, onLeaving: () => void) {
   useEffect(() => {
     void fillSealHashes()
   }, [])
+
+  // the contracts the server lists for this user, so every page (home, lists, badges) starts from the server's data
+  useEffect(() => {
+    if (session.role.role !== 'warga') void syncServerContracts(session.role)
+  }, [session.role])
 
   return {
     nav,

@@ -333,4 +333,9 @@ func TestStore_ListContracts_NoDuplicateAfterReaudit(t *testing.T) {
 	if n != 1 {
 		t.Fatalf("kontrak harus muncul sekali setelah 2 audit, muncul %d kali", n)
 	}
+	// Detail kontrak harus konsisten dengan daftar: audit terbaru, bukan baris join sembarang.
+	one, err := store.ContractByID(ctx, itoa(c.ID), usecase.Scope{UserID: 4, Role: domain.RoleKades, VillageID: &v1})
+	if err != nil || one.IntegrityScore != 85 {
+		t.Fatalf("ContractByID harus memakai audit terbaru (85): skor=%v err=%v", one.IntegrityScore, err)
+	}
 }

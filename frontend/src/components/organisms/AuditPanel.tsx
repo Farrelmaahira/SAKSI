@@ -5,14 +5,14 @@ import { fmtDate } from '@/lib/dates/fmt-date'
 import Badge from '@/components/atoms/Badge'
 import Btn from '@/components/atoms/Btn'
 
-interface Props { audit: Audit; onApply?: (id: string) => void; readOnly?: boolean }
+interface Props { audit: Audit; onApply?: (id: string) => void; readOnly?: boolean; /* the findings come from the AI server, not the local rules */ fromServer?: boolean }
 
 const SEV: Record<'kritis' | 'saran', string> = {
   kritis: "[.d-findings_&]:bg-red [.d-findings_&]:text-white",
   saran: "[.d-findings_&]:bg-blue [.d-findings_&]:text-white",
 }
 
-export default function AuditPanel({ audit, onApply, readOnly }: Props) {
+export default function AuditPanel({ audit, onApply, readOnly, fromServer }: Props) {
   const open = audit.findings.filter((f) => !f.applied)
   const done = audit.findings.filter((f) => f.applied)
   return (
@@ -45,7 +45,7 @@ export default function AuditPanel({ audit, onApply, readOnly }: Props) {
           </li>
         ))}
       </ul>
-      <p className="text-[1.25rem] leading-[1.5] text-dim [&_a]:border-b-[0.1rem] [&_a]:border-b-current [&_a]:[border-bottom-style:solid]">Audit ini simulasi. Dasar hukum adalah contoh dan perlu diperiksa ahli hukum.</p>
+      <p className="text-[1.25rem] leading-[1.5] text-dim [&_a]:border-b-[0.1rem] [&_a]:border-b-current [&_a]:[border-bottom-style:solid]">{fromServer ? 'Diperiksa oleh AI server. Server memeriksa ulang saat kontrak dikirim, jadi hasilnya bisa berbeda.' : 'Audit ini simulasi. Dasar hukum adalah contoh dan perlu diperiksa ahli hukum.'}</p>
     </aside>
   )
 }

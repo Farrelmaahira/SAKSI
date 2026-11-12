@@ -23,6 +23,7 @@ Aturan yang tidak boleh dilanggar:
 | `app/main.py` | FastAPI: `/healthz`, REST `/v1/audit`; menjalankan server gRPC di lifespan yang sama |
 | `app/grpc_server.py` | Servicer gRPC, interceptor `x-api-key`, health check, pemetaan error ke status gRPC |
 | `app/contract_ai.py` | Use case `audit_contract`, `draft_contract`, `redact_text`: validasi input, pemeriksaan pasti, prompt, validasi output |
+| `app/audit_rules.py` | Cek pasti kelengkapan pasal (`RULES`, `check_clause`): satu-satunya sumber `KRITIS` selain pasal wajib hilang dan dasar hukum tidak sah |
 | `app/llm.py` | Rantai model: `chain()`, `complete()`, `call_provider()`, `fence()`, `json_object()`, `PROVIDERS`, `BUSY_MESSAGE` |
 | `app/pii.py` | Regex data pribadi: `redact_regex()`, `mask_pii()` |
 | `app/rest_audit.py` | Audit REST lama (`/v1/audit`, checklist nama klausul). Dipertahankan sampai gRPC terbukti jalan di Azure |
@@ -45,7 +46,7 @@ Alur satu permintaan: `grpc_server` (auth, deadline) → `contract_ai` (validasi
 
 Pesan `UNAVAILABLE`: "Layanan AI sedang penuh. Coba lagi beberapa menit lagi, atau lanjutkan menyunting pasal secara manual."
 
-**AuditContract.** Temuan `KRITIS` otomatis untuk: kode di `mandatory_kode_pasal` yang tidak ada di `clauses`, dan `legal_reference_id` yang tidak ada di `legal_references`. LLM menambah temuan bahasa (`KRITIS` bila pasal wajib tidak bisa ditegakkan, `SARAN` untuk perbaikan lain). `kode_pasal` temuan LLM yang tidak ada di kontrak membuat jawaban ditolak (dihitung gagal). `skor` = persentase pasal wajib (atau semua pasal bila daftar wajib kosong) yang ada dan tanpa temuan `KRITIS`, 0 sampai 100.
+**AuditContract.** **Temuan `KRITIS` hanya berasal dari kode, tidak pernah dari LLM** (tingkat keparahan LLM terbukti bergeser antar audit, jadi tidak boleh menggerakkan gerbang kirim di backend). Sumbernya: (1) kode di `mandatory_kode_pasal` yang tidak ada di `clauses`, (2) `legal_reference_id` yang tidak ada di `legal_references`, (3) kolom kosong di isi pasal apa pun (`[diisi manual]`, `[nilai kontrak]`, `(isi sesuai pekerjaan)`, `____`), (4) slot wajib kosong menurut judul pasal (`app/audit_rules.py`): sanksi/denda tanpa besaran, jangka waktu tanpa tanggal atau durasi, garansi/pemeliharaan tanpa durasi, pembayaran tanpa persen/jumlah termin atau skema pasti, nilai/harga tanpa jumlah rupiah, bagi hasil tanpa persentase. LLM hanya menambah `SARAN` (ambigu, berat sebelah, bertentangan); saran untuk pasal yang sudah `KRITIS` dibuang, dan `tingkat` dari LLM diabaikan. `kode_pasal` saran LLM yang tidak ada di kontrak membuat jawaban ditolak (dihitung gagal). `skor` = persentase pasal wajib (atau semua pasal bila daftar wajib kosong) yang ada dan tanpa temuan `KRITIS`, 0 sampai 100. Karena `KRITIS` deterministik, hasil gerbang kirim tidak bergantung pada model mana di rantai yang menjawab, dan tidak perlu field `sumber` di proto/skema (semua `KRITIS` sudah pasti dari aturan).
 
 **DraftContract.** Menulis ulang `isi` tiap pasal template sesuai `jawaban`. Jawaban LLM ditolak bila kode pasal hilang atau bertambah, atau `legal_reference_id` di luar daftar yang dikirim. `kode_pasal`, `judul`, `urutan` selalu dari template; `legal_reference_id` dari template tidak pernah dibuang. Data yang tidak ada di jawaban ditulis `[diisi manual]`, bukan dikarang. Pengaman `_faithful` (`contract_ai.py`): bila LLM hanya mengubah format atau mengosongkan isi pasal yang sudah konkret (template tanpa kolom kosong seperti `[..]`, `...`), teks template dipakai; judul pasal yang tersalin ke isi dibuang.
 
@@ -109,7 +110,7 @@ Tes pytest memakai provider palsu, jadi hanya membuktikan logika (validasi, rant
 | File | Isi | Dipakai oleh |
 |---|---|---|
 | `audit_missing_mandatory.json` | 5 jenis kontrak, pasal wajib yang hilang harus selalu `KRITIS` (deterministik) | `tests/test_grpc.py` |
-| `audit_quality.json` | 8 kasus penilaian LLM. `kritis` = pasal yang wajib mendapat `KRITIS`, `clean` = pasal konkret yang tidak boleh mendapat `KRITIS`. Termasuk satu kasus injeksi perintah dan satu kasus lengkap tanpa temuan | benchmark |
+| `audit_quality.json` | 9 kasus. `kritis` = pasal yang harus `KRITIS` (cek pasti di kode; diuji offline di `tests/test_golden.py` dengan LLM palsu yang menandai semua pasal KRITIS), `clean` = pasal konkret yang tidak boleh `KRITIS`, `saran` = pasal yang harus mendapat saran dari LLM (satu-satunya bagian yang membedakan model). Termasuk satu kasus injeksi perintah dan satu kasus lengkap tanpa temuan | tes offline + benchmark |
 | `draft.json` | 6 kasus (5 jenis kontrak; `pengadaan-pasal-baku` memakai pasal baku P-01..P-10 persis dari backend; `sewa-harga-tidak-diisi` menguji `[diisi manual]`). `expect`: tiap pasal berisi grup, grup lolos bila salah satu alternatifnya muncul di isi | benchmark |
 | `redact.json` | 13 kasus. `mask_regex` harus hilang oleh regex saja, `mask_llm` setelah LLM, `keep` harus tetap ada (jabatan, instansi, nominal, nomor dokumen, wilayah) | benchmark; `tests/test_golden.py` menguji lapisan regex |
 
@@ -118,8 +119,9 @@ Menambah kasus: tambahkan objek ke file JSON yang sesuai (format di atas; `claus
 ### Metrik (`evals/score.py`)
 | Tugas | Metrik | Artinya |
 |---|---|---|
-| audit | `kritis_terdeteksi` | pasal lemah ditandai `KRITIS` |
-| audit | `tanpa_kritis_palsu` | pasal konkret tidak ditandai `KRITIS` |
+| audit | `kritis_terdeteksi` | pasal lemah ditandai `KRITIS` (ditentukan kode; harus 100% untuk model apa pun, penjaga regresi) |
+| audit | `tanpa_kritis_palsu` | pasal konkret tidak ditandai `KRITIS` (juga ditentukan kode) |
+| audit | `saran_terdeteksi` | LLM memberi saran pada pasal yang ambigu (membedakan model) |
 | draft | `isi_sesuai_jawaban` | nilai dari jawaban muncul di pasal yang tepat |
 | draft | `tanpa_angka_karangan` | tidak ada angka di draf yang tidak ada di template, jawaban, atau rujukan (angka rujukan "Pasal 5", nomor urut diabaikan) |
 | redact | `data_tersamar` | data pribadi hilang dari keluaran |
@@ -151,6 +153,15 @@ Diukur dengan golden set di atas pada API sungguhan. Skor = lulus/total dari pan
 | gemini:gemini-3.5-flash-lite (6 kasus) | 2/6 | timeout×2, 503×2 | 2/2 | 5/5 | 1,8 | 2,1 |
 | gemini:gemini-3.6-flash | 1/8 | 429×6, 503×1 | 1/1 | 4/4 | 2,2 | 2,2 |
 | gemini:gemini-3.7-flash, gemini:gemini-3.8-flash (`low`) | 0/4 | 429, 503, timeout | - | - | - | - |
+
+**audit setelah severitas dipindah ke kode (2026-11-12, 9 kasus: 6 pasal `KRITIS`, 22 pasal konkret, 2 pasal yang harus mendapat saran)**
+
+| Model | Menjawab | Gagal | kritis_terdeteksi | tanpa_kritis_palsu | saran_terdeteksi | p50 (dtk) | Terlama (dtk) |
+|---|---|---|---|---|---|---|---|
+| groq:openai/gpt-oss-120b | 9/9 | - | 6/6 | 22/22 | 2/2 | 2,0 | 5,5 |
+| groq:qwen/qwen3.8-27b | 6/9 | timeout×3 | 3/3 | 16/16 | 2/2 | 3,1 | 4,5 |
+
+`kritis_*` ditentukan kode, jadi 100% pada semua jawaban memang diharapkan (penjaga regresi); yang membedakan model kini hanya `saran_terdeteksi`, kecepatan, dan ketersediaan. Hari ini qwen lebih lambat dari pengukuran 2026-11-11 (p50 0,8 dtk) dan 3 dari 9 percobaan melewati batas 6 dtk; di produksi rantai lanjut ke model berikutnya. Angka tidak dibandingkan langsung dengan tabel audit di atas karena kasus, prompt, dan metrik berbeda.
 
 **draft** (6 kasus; prompt setelah perbaikan di bagian "Pasal baku")
 
@@ -186,6 +197,16 @@ Diperiksa dengan pasal baku persis seperti yang dikirim backend:
 - **Draft:** sebelum perbaikan, model (a) mengganti "dibebankan pada APBDes tahun anggaran berjalan" di P-02 menjadi "[diisi manual]" (isi benar dihapus), (b) merapikan "1. … ↵ 2. …" menjadi satu baris, dan (c) kadang menyalin judul pasal ke dalam isi. Perbaikan: prompt lebih tegas (pertahankan teks konkret, isi hanya kolom kosong, jangan salin judul, tulis bulan dalam bahasa Indonesia) ditambah pengaman `_faithful` di `contract_ai.py` (kembali ke teks template bila hanya format yang berubah atau isi konkret dikosongkan; judul yang tersalin dibuang). Setelah itu kedua model mengembalikan 10 pasal utuh, hanya "31 December" menjadi "31 Desember". Golden `pengadaan-pasal-baku` kini menjaga P-02 tetap memuat APBDes dan P-03 memuat "desember".
 
 
+### Stabilitas severitas audit (2026-11-12)
+
+**Masalah (bukti dari database lokal).** Kontrak 124 (audit 47) dan 125 (audit 48) sama-sama diaudit `gemini-3-flash-preview`. Temuan P-07 pesannya identik ("dasar pengenaan denda 1/1000 tidak disebutkan…") dan teks P-07 tidak berubah, tetapi tingkatnya berubah dari `SARAN` menjadi `KRITIS` setelah P-04 dan P-06 diperbaiki. Pada pasal baku, Gemini memberi P-07 `KRITIS` di 6 dari 7 audit dan `SARAN` di 1. Kontrak 70 yang diaudit Gemini dan qwen dalam menit yang sama juga berbeda (P-07 `KRITIS` vs `SARAN`), jadi saat kuota Gemini habis dan rantai pindah model, perilaku gerbang ikut berubah.
+
+**Penyebab.** Bukan suhu (`temperature` sudah 0) dan bukan satu model saja: LLM menilai keparahan secara relatif, sehingga setelah pasal terburuk diperbaiki ia menaikkan pasal lain. Eksperimen pada draf baku, varian A (P-04 dan P-06 belum rinci) vs B (keduanya diperbaiki): `gpt-oss-120b` KRITIS `[P-06]` → `[P-07]`, `qwen` `[P-06]` → `[P-07, P-09]`; P-07 dan P-09 tidak berubah. Input identik menghasilkan hasil yang sama (dan backend men-cache audit 24 jam bila Redis aktif), jadi yang goyah adalah draf yang *diubah*, bukan draf yang sama.
+
+**Perbaikan.** Severitas dipindah ke kode (lihat AuditContract di bagian 3): `KRITIS` hanya dari cek pasti, LLM hanya `SARAN`. Hasil eksperimen yang sama setelah perbaikan, di semua run yang berhasil: A `KRITIS=[P-06]`, B `KRITIS=[]` (`gpt-oss-120b` 4/4, `qwen` 3/3; satu run qwen kena 429); `SARAN` masih bervariasi antar run, tetapi hanya saran dan tidak menggerakkan gerbang. Dijaga tes offline: LLM palsu yang menandai semua pasal `KRITIS` tidak mengubah hasil (`tests/test_audit_rules.py`, `tests/test_golden.py`).
+
+**Kebijakan bawaan dan akibatnya.** Slot wajib kosong memblokir pengiriman (`tingkat="kritis"` di `RULES`). Akibatnya draf AI dari wizard saat ini selalu terblokir di P-06 (garansi tanpa durasi), karena templat baku backend tidak punya slot durasi dan frontend belum mengirim jawaban `masa_garansi` (pertanyaannya ada di backend, tetapi tidak ditanyakan frontend dan `RuleDraftClauses` mengabaikannya). Pengguna harus mengisinya di tab "Draf & Versi". Untuk melonggarkan satu aturan menjadi peringatan, ubah `tingkat` aturan itu menjadi `"saran"`; tidak perlu mengubah prompt.
+
 ## 8. Cara mengubah
 
 - **Menambah model**: tambahkan `provider:model` ke `AI_PROVIDERS` (lokal `.env`, Azure app setting). Tidak ada perubahan kode. Ukur dulu dengan benchmark.
@@ -200,4 +221,7 @@ Diperiksa dengan pasal baku persis seperti yang dikirim backend:
 - **Nama pejabat yang menandatangani** (mis. nama Kepala Desa) belum diputuskan: disamarkan atau tidak di kontrak publik. Golden set sengaja tidak memuat kasus ini sampai ada keputusan; prompt saat ini hanya menjamin nama jabatan tidak tersamar.
 - **Dasar hukum**: `legal_references` di database masih kosong, jadi Draft/Audit belum merujuk peraturan apa pun. Isi tidak boleh dikarang; sumbernya menunggu keputusan tim.
 - **Backend (catatan untuk BE, bukan bagian ai-engine)**: pasal baku P-01..P-10 dipakai untuk semua jenis kontrak saat `clause_library` kosong, dan tanggalnya diformat Go dengan nama bulan Inggris ("31 December 2026"). Draf AI dapat menerjemahkan bulan, tetapi tidak dijamin.
+- **Cek pasti memakai heuristik regex** atas judul dan isi pasal (`app/audit_rules.py`), jadi bisa false positive (mis. durasi ditulis dengan kata yang tidak dikenal) dan akan memblokir pengiriman. Perbaiki dengan menambah pola dan satu kasus di `tests/test_audit_rules.py`. Pasal dikenali dari **judul**; pasal dengan judul kosong hanya dikenai cek kolom kosong.
+- **Audit tetap `UNAVAILABLE` bila semua model gagal**, padahal bagian `KRITIS` kini tidak butuh LLM. Apakah backend boleh memakai hasil deterministik saja saat LLM mati adalah keputusan PM/user (sekarang: tidak, sesuai aturan "tanpa hasil pengganti diam-diam").
+- **Batas waktu 6 dtk** (`AI_PROVIDER_TIMEOUT`) tampak ketat untuk audit 10 pasal di Groq: 2 dari 8 percobaan eksperimen kena timeout. Pertimbangkan 8 dtk (deadline gRPC 13 dtk membatasi percobaan kedua).
 - Landline dan nama/alamat tanpa penanda jelas hanya bergantung pada LLM; regex hanya menangkap email, HP seluler, NPWP, NIK, dan rekening berkonteks.

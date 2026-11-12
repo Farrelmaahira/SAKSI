@@ -16,16 +16,20 @@ class Check:
     detail: str = ""  # diisi saat gagal, untuk ditampilkan di laporan
 
 
-AUDIT_METRICS = ("kritis_terdeteksi", "tanpa_kritis_palsu")
+AUDIT_METRICS = ("kritis_terdeteksi", "tanpa_kritis_palsu", "saran_terdeteksi")
 DRAFT_METRICS = ("isi_sesuai_jawaban", "tanpa_angka_karangan")
 REDACT_METRICS = ("data_tersamar", "tidak_berlebihan")
 
 
 def score_audit(case: AuditCase, response: ai_pb2.AuditContractResponse) -> list[Check]:
     kritis = {f.kode_pasal for f in response.findings if f.tingkat == ai_pb2.KRITIS}
-    return [Check("kritis_terdeteksi", k in kritis, f"{k} tidak ditandai") for k in case.kritis] + [
-        Check("tanpa_kritis_palsu", k not in kritis, f"{k} ditandai padahal sudah konkret") for k in case.clean
-    ]
+    ada_saran = {f.kode_pasal for f in response.findings if f.tingkat == ai_pb2.SARAN}
+    # kritis_* ditentukan kode (app/audit_rules.py), jadi harus 100% untuk model apa pun; hanya saran_terdeteksi yang bergantung pada LLM.
+    return (
+        [Check("kritis_terdeteksi", k in kritis, f"{k} tidak ditandai") for k in case.kritis]
+        + [Check("tanpa_kritis_palsu", k not in kritis, f"{k} ditandai padahal sudah konkret") for k in case.clean]
+        + [Check("saran_terdeteksi", k in ada_saran, f"{k} tidak diberi saran") for k in case.saran]
+    )
 
 
 # Angka rujukan ("Pasal 5", "ayat (2)", "Lampiran 1") dan nomor urut di awal baris bukan data kontrak.

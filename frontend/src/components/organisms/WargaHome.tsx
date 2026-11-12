@@ -1,19 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useDash } from '@/hooks/use-dash'
-import { isClosed } from '@/lib/db/is-closed'
+import { useWargaHome } from '@/hooks/use-warga-home'
 import { greeting } from '@/lib/dash/greeting'
-import { useNotifications } from '@/hooks/use-notifications'
-import { toNotif } from '@/lib/notifications/to-notif'
 import { villageById } from '@/lib/master/village-by-id'
-import type { PublicContractSummary } from '@/lib/api/reports'
-import { listReports } from '@/lib/api/list-reports'
-import { listPublicContracts } from '@/lib/api/list-public-contracts'
-import { toDReport } from '@/lib/api/to-dreport'
-import type { DReport } from '@/interfaces/db'
 import PageHead from '@/components/molecules/PageHead'
 import Stat from '@/components/molecules/Stat'
+import StatGrid from '@/components/molecules/StatGrid'
 import Panel from '@/components/molecules/Panel'
 import NotifList from '@/components/molecules/NotifList'
 import ReportMini from '@/components/molecules/ReportMini'
@@ -25,36 +17,7 @@ import DataTable from '@/components/molecules/DataTable'
 import { formatRp } from '@/lib/contracts/format-rp'
 
 export default function WargaHome() {
-  const { session } = useDash()
-  const server = useNotifications(session.userId)
-  const notifs = server.items.map(toNotif)
-  const read = server.items.filter((x) => x.dibaca).map((x) => `n:${x.id}`)
-  const [reports, setReports] = useState<DReport[]>([])
-  const [contracts, setContracts] = useState<PublicContractSummary[]>([])
-
-  useEffect(() => {
-    let active = true
-    async function loadData() {
-      const [reps, cnts] = await Promise.all([
-        listReports().then((r) => (r.ok ? r.data : [])),
-        listPublicContracts().then((r) => (r.ok ? r.data : [])),
-      ])
-      if (active) {
-        if (reps && reps.length > 0) {
-          setReports(reps.map((r) => toDReport(r)))
-        }
-        if (cnts) {
-          setContracts(cnts)
-        }
-      }
-    }
-    loadData()
-    return () => {
-      active = false
-    }
-  }, [session])
-
-  const answered = reports.filter((r) => r.actions.length > 0).length
+  const { session, server, notifs, read, reports, contracts, answered, inProgress, closed } = useWargaHome()
 
   return (
     <>
@@ -64,12 +27,12 @@ export default function WargaHome() {
         desc="Laporkan kejanggalan pada kontrak desa dan pantau tanggapannya secara transparan dari database desa."
         actions={<Btn to="/dashboard/laporan/baru" icon="plus">Buat laporan</Btn>}
       />
-      <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(4,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))] d-stats">
+      <StatGrid cols={4}>
         <Stat label="Laporan terkirim" value={reports.length} icon="flag" to="/dashboard/laporan" />
         <Stat label="Sudah ditanggapi" value={answered} icon="check" />
-        <Stat label="Sedang diproses" value={reports.filter((r) => !isClosed(r)).length} icon="clock" tone="ink" />
-        <Stat label="Selesai" value={reports.filter(isClosed).length} icon="shield" />
-      </div>
+        <Stat label="Sedang diproses" value={inProgress} icon="clock" tone="ink" />
+        <Stat label="Selesai" value={closed} icon="shield" />
+      </StatGrid>
       <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
         <Panel title="Notifikasi terbaru" action={<TextLink href="/dashboard/notifikasi">Semua notifikasi</TextLink>}>
           {notifs.length ? <NotifList items={notifs.slice(0, 4)} read={read} userId={session.userId} /> : <p className="text-[1.4rem] leading-[1.5] text-dim [.d-sign_li_&]:[background:none] [.d-sign_li_&]:text-[1.3rem] [.d-sign_li_&]:p-0">{server.status === 'error' ? server.error : server.status === 'ok' ? 'Belum ada kabar. Notifikasi muncul saat laporan Anda ditanggapi.' : 'Memuat notifikasi…'}</p>}

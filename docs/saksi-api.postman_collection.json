@@ -235,10 +235,16 @@
                   "key": "q",
                   "value": "",
                   "description": "Pencarian nama badan usaha"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Alias q (nama yang dikirim frontend)",
+                  "disabled": true
                 }
               ]
             },
-            "description": "Mengambil daftar rekanan yang terdaftar untuk dipilih sebagai Pihak Kedua pada pembuatan kontrak."
+            "description": "Daftar pihak kedua untuk wizard buat kontrak. Hanya kades/perangkat desa (401 anonim, 403 peran lain). Hanya usaha yang punya akun terdaftar, dengan email akun pemiliknya. Pada seed demo: CV Maju Bersama (penyedia@saksi.id). Parameter pencarian: q atau search."
           },
           "response": []
         }
@@ -843,7 +849,7 @@
                 "lifecycle"
               ]
             },
-            "description": "Mengambil seluruh jejak audit siklus hidup kontrak: riwayat versi N, review rekanan, tanda tangan para pihak, dan segel integritas dokumen (SHA-256)."
+            "description": "Mengambil seluruh jejak audit siklus hidup kontrak: riwayat versi N, review rekanan, tanda tangan para pihak, dan segel integritas dokumen (SHA-256). Respons juga memuat statusHistory: [{id, statusDari, statusKe, aktorUserId, aktorNama, waktu}] urut waktu naik."
           },
           "response": []
         },
@@ -861,7 +867,12 @@
               ]
             },
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/contracts/1/send",
               "host": [
@@ -873,7 +884,16 @@
                 "send"
               ]
             },
-            "description": "Kades/perangkat desa mengirim kontrak draf/diaudit ke pihak kedua: status -> 'ditinjau', riwayat status, audit log 'contract.send', dan notifikasi 'kontrak_dikirim' ke akun penyedia. Respons 200 {id, status}. 403 FORBIDDEN bila bukan desa; 404 bila di luar desa; 409 INVALID_STATE (sudah dikirim / belum ada pihak kedua), 409 CONTRACT_LOCKED (dibatalkan/ditandatangani), 409 CRITICAL_FINDINGS (temuan kritis audit terakhir belum diperbaiki)."
+            "description": "Kades/perangkat desa mengirim kontrak draf/diaudit ke pihak kedua: status -> 'ditinjau', riwayat status, audit log 'contract.send', dan notifikasi 'kontrak_dikirim' ke akun penyedia. Respons 200 {id, status}. Body opsional {konfirmasiTemuanKritis}. Gerbang kirim: pasal wajib yang hilang di versi terakhir SELALU memblokir; temuan kritis dari LLM memblokir kecuali konfirmasiTemuanKritis=true (dicatat di audit_logs.sesudah.temuanKritisDikonfirmasi). 409 CRITICAL_FINDINGS berisi {error, code, findings:[{kodePasal,tingkat,pesan,sumber:'aturan'|'llm'}], dapatDikonfirmasi}. Error lain: 403 FORBIDDEN bila bukan desa; 404 di luar desa; 409 INVALID_STATE (sudah dikirim / belum ada pihak kedua), 409 CONTRACT_LOCKED (dibatalkan/ditandatangani).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"konfirmasiTemuanKritis\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           },
           "response": []
         },
@@ -1511,6 +1531,12 @@
                   "value": "1"
                 },
                 {
+                  "key": "aksi",
+                  "value": "contract.send",
+                  "description": "Kode aksi persis (a-z 0-9 . _, maks 64)",
+                  "disabled": true
+                },
+                {
                   "key": "from",
                   "value": "2026-11-01"
                 },
@@ -1524,7 +1550,7 @@
                 }
               ]
             },
-            "description": "Jejak audit dalam cakupan kontrak pemanggil, ditambah log miliknya sendiri. Filter opsional: contractId, actorId, from, to, before."
+            "description": "Jejak audit dalam cakupan kontrak pemanggil, ditambah log miliknya sendiri. Filter opsional: contractId, actorId, aksi (mis. contract.send), from, to, before. Tiap item membawa aktorNama dan aktorRole."
           },
           "response": []
         },
@@ -2097,6 +2123,47 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Healthz",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{rootUrl}}/healthz",
+              "host": [
+                "{{rootUrl}}"
+              ],
+              "path": [
+                "healthz"
+              ]
+            },
+            "description": "Proses hidup. Tanpa autentikasi, selalu 200 selama server berjalan."
+          },
+          "response": []
+        },
+        {
+          "name": "Readyz",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{rootUrl}}/readyz",
+              "host": [
+                "{{rootUrl}}"
+              ],
+              "path": [
+                "readyz"
+              ]
+            },
+            "description": "Siap melayani: 200 bila Postgres terjangkau (batas 2 detik), 503 bila tidak. Redis tidak ikut dicek. Tanpa autentikasi."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -2109,6 +2176,12 @@
       "key": "authToken",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "rootUrl",
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "Alamat server tanpa /api/v1, untuk /healthz dan /readyz"
     }
   ]
 }

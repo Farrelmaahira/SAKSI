@@ -317,7 +317,7 @@ Objek: `{ "id", "jenis", "pesan", "tautan", "dibaca": false, "dibacaPada": null,
 
 | Method | Path | Role | Request | Response | Error |
 |---|---|---|---|---|---|
-| GET | `/audit-logs?contractId=&actorId=&from=YYYY-MM-DD&to=YYYY-MM-DD&limit=50&before=<id>` | kades, perangkat_desa, bpd, inspektorat, penyedia (scope kontrak, ditambah log milik sendiri) | — | 200 `{ "items": [{ "id", "aktorUserId", "aktorNama", "aktorRole", "aksi", "jenisObjek", "idObjek", "contractId", "contractJudul", "villageId", "villageName", "sebelum", "sesudah", "waktu" }], "nextBefore" }` | 400 `INVALID_INPUT`, 403 |
+| GET | `/audit-logs?contractId=&actorId=&aksi=&from=YYYY-MM-DD&to=YYYY-MM-DD&limit=50&before=<id>` | kades, perangkat_desa, bpd, inspektorat, penyedia (scope kontrak, ditambah log milik sendiri) | — | 200 `{ "items": [{ "id", "aktorUserId", "aktorNama", "aktorRole", "aksi", "jenisObjek", "idObjek", "contractId", "contractJudul", "villageId", "villageName", "sebelum", "sesudah", "waktu" }], "nextBefore" }` | 400 `INVALID_INPUT`, 403 |
 
 `aksi` yang ditulis BE: `contract.create`, `contract.revise`, `contract.audit`, `contract.publish`, `contract.review`, `contract.sign`, `contract.seal`, `contract.termin_set`, `contract.spk_set`, `contract.progress`, `contract.termin_paid`, `contract.lhp_create`, `contract.lhp_publish`, `contract.oversight_assign`, `contract.report_action`, `region_rule.create`, `user.profile_update`, `user.password_change`, `user.password_reset`. `jenisObjek` = `contract` (idObjek = id kontrak), `user`, atau `region_rule`. `to` inklusif (sampai akhir hari). IP tidak dikirim ke klien. Laporan warga tidak ditulis ke audit log supaya identitas pelapor tidak bocor ke desa.
 
@@ -429,11 +429,16 @@ Aturan:
 
 | Method | Path | Role | Request | Response | Error |
 |---|---|---|---|---|---|
-| POST | `/contracts/{id}/send` | kades, perangkat_desa dari desa kontrak itu | — | **200** `{"id": 42, "status": "ditinjau"}` | 400 `INVALID_INPUT` (id), 401, 403 `FORBIDDEN` (role lain), 404 `NOT_FOUND` (tidak ada **atau desa lain**), 409 `INVALID_STATE` (sudah dikirim / belum ada pihak kedua), 409 `CONTRACT_LOCKED` (dibatalkan atau sudah ditandatangani dst.), 409 `CRITICAL_FINDINGS` |
+| POST | `/contracts/{id}/send` | kades, perangkat_desa dari desa kontrak itu | opsional `{ "konfirmasiTemuanKritis": true }` (tanpa body = false) | **200** `{"id": 42, "status": "ditinjau"}` | 400 `INVALID_INPUT` (id / body bukan JSON), 401, 403 `FORBIDDEN` (role lain), 404 `NOT_FOUND` (tidak ada **atau desa lain**), 409 `INVALID_STATE` (sudah dikirim / belum ada pihak kedua), 409 `CONTRACT_LOCKED` (dibatalkan atau sudah ditandatangani dst.), 409 `CRITICAL_FINDINGS` (body: `{ "error", "code", "findings": [{ "kodePasal", "tingkat", "pesan", "sumber": "aturan" atau "llm" }], "dapatDikonfirmasi": bool }`) |
 
 Aturan kirim:
 - Hanya dari `draf` atau `diaudit` (`usecase.CanSend`). Status hasil: `ditinjau`.
-- 409 `CRITICAL_FINDINGS` bila audit AI **terakhir** kontrak masih punya temuan `kritis` dengan `sudah_diperbaiki = false`.
+- **Gerbang kirim, opsi (b) (rekomendasi PM 2026-11-12, `usecase.SendGate`).** Dua jenis penghalang, dibedakan lewat `sumber`:
+  - `aturan` (deterministik, dihitung SAKSI): pasal wajib jenis kontrak itu (dari `clause_library`, atau pasal baku rule engine bila belum di-seed) yang tidak ada di **versi terakhir**. Selalu 409 `CRITICAL_FINDINGS` dengan `dapatDikonfirmasi: false`; konfirmasi tidak mengubahnya.
+  - `llm`: temuan `kritis` dengan `sudah_diperbaiki = false` pada audit AI **terakhir**. Tanpa konfirmasi: 409 `CRITICAL_FINDINGS` dengan `dapatDikonfirmasi: true` dan daftar temuannya. Dengan `konfirmasiTemuanKritis: true`: kontrak terkirim dan temuan yang dikonfirmasi dicatat di `audit_logs.sesudah.temuanKritisDikonfirmasi` (aksi `contract.send`).
+  - Bila ada keduanya, `findings` memuat keduanya dan `dapatDikonfirmasi` = false.
+  - Alasan: tingkat keparahan dari LLM bergeser antar audit pada draf yang sama (diuji 2026-11-12), jadi tidak boleh menjadi penghalang mutlak; hal yang bisa dibuktikan dari data tetap memblokir.
+  - Belum dicakup: "dasar hukum tidak sah" (tabel `legal_references` masih kosong, menunggu keputusan sumber data).
 - Efek (satu transaksi, baris kontrak dikunci): `contracts.status`, `contract_status_history` (status_dari → `ditinjau`, aktor), `audit_logs` aksi `contract.send` (aktor, IP, status sebelum/sesudah), notifikasi `kontrak_dikirim` ke akun pihak kedua dengan tautan `/dashboard/kontrak/{id}`.
 - Cache: `saksi:public:contract:{id}`, daftar publik desa itu, dan semua `saksi:metrics:*` dihapus.
 - Setelah penyedia `minta_revisi`, kades merevisi (`PUT /contracts/{id}` → status `draf`), audit ulang, lalu kirim lagi.
@@ -450,6 +455,18 @@ Cakupan baca (satu aturan, `scopeCond` di `adapter/postgres`), dipakai `GET /con
 - Status bukan `ditinjau` → 409 `INVALID_STATE` (termasuk draf, dibatalkan, dan sesudah tanda tangan; sebelumnya draf diterima lalu otomatis diubah ke `ditinjau`, dan dibatalkan/ditandatangani dijawab `CONTRACT_LOCKED`).
 - Tinjauan tidak lagi mengubah status kontrak.
 
-Hidrasi halaman detail di FE: `GET /contracts/{id}/lifecycle` (kontrak, semua versi + pasal, tinjauan, tanda tangan, segel) + `GET /contracts/{id}/audit/latest`.
+Hidrasi halaman detail di FE: `GET /contracts/{id}/lifecycle` (kontrak, semua versi + pasal, tinjauan, tanda tangan, segel, `statusHistory`) + `GET /contracts/{id}/audit/latest`.
 
-Tes: `usecase.TestCanSend`, `handlers.TestHandleSendContract` (peran dan kode error), `postgres.TestStore_SendContract_SecondPartyFlow` (akun demo: draf tak terlihat penyedia/BPD → kirim → penyedia pemilik dan BPD melihat di daftar + detail + lifecycle, penyedia lain 404 → tinjauan → riwayat, audit log, notifikasi) dan `TestStore_SendContract_BlockedByCriticalFindings`.
+Tes: `usecase.TestCanSend`, `handlers.TestHandleSendContract` (peran dan kode error), `postgres.TestStore_SendContract_SecondPartyFlow` (akun demo: draf tak terlihat penyedia/BPD → kirim → penyedia pemilik dan BPD melihat di daftar + detail + lifecycle, penyedia lain 404 → tinjauan → riwayat, audit log, notifikasi) dan `TestStore_SendContract_BlockedByCriticalFindings`, `TestStore_SendContract_Gate` (kritis llm tanpa/dengan konfirmasi dicatat di `audit_logs`, pasal wajib hilang tetap diblokir), `usecase.TestSendGate`, dan `handlers.TestHandleSendContract_Gate`.
+
+### 7.15 Pembaruan Back-end 2026-11-12
+
+- `GET /counterparties`: **hanya kades/perangkat_desa** (401 anonim, 403 peran lain; sebelumnya terbuka untuk anonim). Hanya usaha yang punya akun (`counterparties.user_id` tidak null) dan setiap item membawa `email` akun pemiliknya dari `users`. Parameter pencarian `q` atau `search` (frontend memakai `search`). Pada seed demo isinya hanya CV Maju Bersama (`penyedia@saksi.id`). Tidak ada kolom telepon di `users`, jadi tidak ada `kontak`.
+- `GET /audit-logs`: filter `aksi` (kode persis, mis. `contract.send`; hanya `a-z 0-9 . _`, maks. 64, selain itu 400 `INVALID_INPUT`).
+- `GET /contracts/{id}/lifecycle`: `statusHistory` = `[{ "id", "statusDari" (null untuk baris pertama), "statusKe", "aktorUserId", "aktorNama", "waktu" }]`, urut waktu naik.
+- Temuan audit membawa `sumber` (`llm` untuk hasil AI, `aturan` bila diaudit rule auditor) pada `POST /contracts/{id}/audit` dan `GET /contracts/{id}/audit/latest`.
+- `GET /contracts/{id}`: skor dan hash segel memakai audit/segel **terbaru** (sebelumnya baris join sembarang dari versi 1, skor bisa lama setelah audit ulang); nama desa tidak lagi memakai nilai bawaan "Desa Sukamaju".
+- Notifikasi ke penyedia hanya untuk kontrak yang sudah terlihat olehnya (bukan `draf`/`diaudit`/`dibatalkan`): `kontrak_dikirim`, `spk_diterbitkan`, `kontrak_dipublikasikan`, `termin_dibayar`, dst. Pembatalan hanya memberi tahu penyedia bila kontrak berstatus `ditinjau`. Notifikasi `kontrak_dibuat`/`kontrak_direvisi` tidak ada (selalu terjadi saat draf).
+- Setiap endpoint tulis menulis `audit_logs` (`user.register`, `contract.report_create` dengan aktor kosong agar identitas pelapor tidak tampil di Jejak Audit desa, dst.). Pengecualian: `POST /auth/password/forgot` (anonim) dan `POST /notifications/*/read`.
+- `GET /healthz` (proses hidup) dan `GET /readyz` (Postgres terjangkau, 503 bila tidak); tanpa autentikasi. Redis tidak ikut dicek.
+- Migrasi idempoten terpisah (karena `cmd/migrate` melewati `SAKSI.sql` di DB berisi): `scripts/migrate_indexes.sql`, `scripts/migrate_seal_verifications.sql` (`seal_id` nullable + `hash_dicari`; verifikasi segel tidak cocok kini tercatat, mendukung awalan hash minimal 12 karakter).

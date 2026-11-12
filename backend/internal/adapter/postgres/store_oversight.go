@@ -67,6 +67,9 @@ func (s *Store) ListAuditLogs(ctx context.Context, f usecase.AuditLogFilter) ([]
 	if f.ActorID != nil {
 		where += " AND al.aktor_user_id = " + add(*f.ActorID)
 	}
+	if f.Aksi != "" {
+		where += " AND al.aksi = " + add(f.Aksi)
+	}
 	if f.From != "" {
 		where += " AND al.waktu >= " + add(f.From) + "::date"
 	}

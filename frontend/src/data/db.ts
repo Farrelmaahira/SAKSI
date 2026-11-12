@@ -69,4 +69,3 @@ export const keyByTitle: Record<string, string> = {
   Pemeliharaan: 'pemeliharaan',
 }
 
-export const allPub = { fields: [...pubFields] }

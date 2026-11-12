@@ -6,6 +6,7 @@ import type {
   UserRole,
 } from "@/interfaces/auth";
 import { setAuthToken } from "@/lib/api/reports";
+import { ownCounterpartyId } from "@/lib/auth/own-counterparty-id";
 import { findUser } from "./find-user";
 import { ensureSeedUsers, users } from "./users-store";
 import { isEmail } from "./is-email";
@@ -72,11 +73,14 @@ export async function login(
       const rawVillageId = data.villageId ? String(data.villageId) : "sukamaju";
       const normalizedVillageId = villageIdMap[rawVillageId] || rawVillageId;
 
+      // a second party works as its own business; the server's contract list is scoped to it, so the local scope needs the same id
+      const counterpartyId = roleKey === "pihak_kedua" ? await ownCounterpartyId(Number(data.userId)) : undefined;
       const userRole: UserRole = {
         id: `r-${data.userId}`,
         role: roleKey,
         title: titleMap[roleKey] || "Pengguna",
         villageId: normalizedVillageId,
+        ...(counterpartyId ? { counterpartyId } : {}),
       };
 
       const storedUser: StoredUser = {

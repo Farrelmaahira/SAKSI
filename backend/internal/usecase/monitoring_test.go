@@ -192,3 +192,47 @@ func TestCanSend(t *testing.T) {
 		}
 	}
 }
+
+func TestSendGate(t *testing.T) {
+	k := func(c string) []domain.AuditFinding {
+		return []domain.AuditFinding{{KodePasal: &c, Tingkat: "kritis", Pesan: "x", Sumber: domain.SumberLLM}}
+	}
+	mand, all := []string{"P-01", "P-02"}, []string{"P-01", "P-02"}
+	cases := []struct {
+		name         string
+		present      []string
+		llm          []domain.AuditFinding
+		konfirmasi   bool
+		wantErr      bool
+		wantConfirm  bool // DapatDikonfirmasi pada galat
+		wantConfirmN int  // jumlah temuan yang dikembalikan untuk dicatat
+	}{
+		{"bersih", all, nil, false, false, false, 0},
+		{"kritis llm tanpa konfirmasi", all, k("P-07"), false, true, true, 0},
+		{"kritis llm dengan konfirmasi", all, k("P-07"), true, false, false, 1},
+		{"pasal wajib hilang tetap diblokir walau dikonfirmasi", []string{"P-01"}, nil, true, true, false, 0},
+		{"pasal hilang + kritis llm: tidak bisa dikonfirmasi", []string{"P-01"}, k("P-07"), true, true, false, 0},
+	}
+	for _, c := range cases {
+		got, err := SendGate(mand, c.present, c.llm, c.konfirmasi)
+		if (err != nil) != c.wantErr {
+			t.Errorf("%s: err=%v", c.name, err)
+			continue
+		}
+		if err != nil {
+			var ce *domain.CriticalFindingsError
+			if !errors.As(err, &ce) || !errors.Is(err, domain.ErrCriticalFindings) || ce.DapatDikonfirmasi != c.wantConfirm {
+				t.Errorf("%s: galat salah: %#v", c.name, err)
+			}
+			if !c.wantConfirm && ce.Findings[0].Sumber != domain.SumberAturan {
+				t.Errorf("%s: temuan pertama harus sumber aturan: %+v", c.name, ce.Findings)
+			}
+		}
+		if len(got) != c.wantConfirmN {
+			t.Errorf("%s: temuan terkonfirmasi %d, mau %d", c.name, len(got), c.wantConfirmN)
+		}
+	}
+	if _, err := SendGate(nil, nil, nil, false); err != nil {
+		t.Errorf("tanpa daftar pasal wajib dan tanpa temuan harus lolos: %v", err)
+	}
+}

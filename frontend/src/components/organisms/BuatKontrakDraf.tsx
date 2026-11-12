@@ -1,9 +1,9 @@
 import Badge from "@/components/atoms/Badge";
-import Btn from "@/components/atoms/Btn";
-import FormAlert from "@/components/atoms/FormAlert";
 import Hint from "@/components/atoms/Hint";
 import StepTitle from "@/components/atoms/StepTitle";
 import AuditPanel from "@/components/organisms/AuditPanel";
+import DraftError from "@/components/organisms/DraftError";
+import DraftLoading from "@/components/organisms/DraftLoading";
 import ClauseEditor from "@/components/organisms/ClauseEditorLazy";
 import ClauseList from "@/components/organisms/ClauseList";
 import type { TemplateInfo, TemplateKey } from "@/interfaces/drafting";
@@ -36,45 +36,16 @@ export default function BuatKontrakDraf({
     edit,
     applySuggestion,
   } = draft;
-  if (error && !thinking) {
+  if (error && !thinking)
     return (
-      <div className="grid gap-14 justify-items-start">
-        <FormAlert>{error}</FormAlert>
-        <div className="items-center flex flex-wrap gap-10">
-          <Btn icon="refresh" onClick={onRetry}>
-            Coba lagi
-          </Btn>
-          <Btn
-            variant="ghost"
-            icon="sign"
-            onClick={onManual}
-            disabled={loadingTemplate}
-          >
-            {loadingTemplate ? "Memuat template..." : "Tulis manual"}
-          </Btn>
-        </div>
-      </div>
+      <DraftError
+        error={error}
+        loadingTemplate={loadingTemplate}
+        onRetry={onRetry}
+        onManual={onManual}
+      />
     );
-  }
-  if (thinking || !audit) {
-    return (
-      <div
-        className="items-center flex gap-20 justify-center min-h-300 [&_p]:grid [&_p]:gap-4 [&_strong]:text-[1.8rem] [&_strong]:font-[400] [&_small]:text-[1.35rem] [&_small]:text-dim"
-        role="status"
-      >
-        <span
-          className="[animation:d-spin_0.9s_linear_infinite] border-[0.3rem] border-line border-solid rounded-[50%] border-t-blue h-44 w-44"
-          aria-hidden="true"
-        />
-        <p>
-          <strong>AI sedang menyusun draf dan memeriksa pasal…</strong>
-          <small>
-            Mencocokkan dengan aturan pengadaan desa dan contoh pasal.
-          </small>
-        </p>
-      </div>
-    );
-  }
+  if (thinking || !audit) return <DraftLoading />;
   return (
     <div className="[align-items:start] grid gap-24 lg:grid-cols-[minmax(0,1.5fr)_minmax(32rem,1fr)] d-draft">
       <div>
@@ -113,7 +84,7 @@ export default function BuatKontrakDraf({
           </>
         )}
       </div>
-      <AuditPanel audit={audit} onApply={applySuggestion} />
+      <AuditPanel audit={audit} onApply={applySuggestion} fromServer={draft.fromServer} />
     </div>
   );
 }

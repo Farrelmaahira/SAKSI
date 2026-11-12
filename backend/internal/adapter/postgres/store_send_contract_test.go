@@ -188,3 +188,65 @@ func TestStore_SendContract_BlockedByCriticalFindings(t *testing.T) {
 		t.Fatalf("harus ErrCriticalFindings, dapat %v", err)
 	}
 }
+
+// Gerbang kirim opsi (b), Postgres asli: kritis LLM butuh konfirmasi yang dicatat di audit_logs; pasal wajib hilang tetap diblokir.
+func TestStore_SendContract_Gate(t *testing.T) {
+	store := getTestStore(t)
+	if store == nil {
+		return
+	}
+	defer store.Close()
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, testDBURL())
+	if err != nil {
+		t.Fatalf("koneksi uji gagal: %v", err)
+	}
+	defer conn.Close(ctx)
+
+	c := newDraftContract(t, store, "Uji gerbang kirim opsi b")
+	st, err := store.ContractDraftState(ctx, c.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	k := "P-07"
+	if _, err := store.SaveContractAudit(ctx, usecase.SaveAuditParams{ContractID: c.ID, VersionID: st.VersionID, ActorID: 4,
+		Result: domain.AuditResult{Model: "uji", Score: 40, Findings: []domain.AuditFinding{{KodePasal: &k, Tingkat: "kritis", Pesan: "denda belum ada"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	v1 := int64(1)
+	sc := usecase.Scope{UserID: 4, Role: domain.RoleKades, VillageID: &v1}
+	statusOf := func() string {
+		var s string
+		if err := conn.QueryRow(ctx, `SELECT status::text FROM contracts WHERE id = $1`, c.ID).Scan(&s); err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+
+	// 1. Kritis dari LLM tanpa konfirmasi: 409 yang bisa dikonfirmasi, membawa daftar temuan.
+	_, err = store.SendContract(ctx, usecase.SendContractParams{ContractID: c.ID, Scope: sc})
+	var ce *domain.CriticalFindingsError
+	if !errors.As(err, &ce) || !ce.DapatDikonfirmasi || len(ce.Findings) != 1 || ce.Findings[0].Sumber != domain.SumberLLM || *ce.Findings[0].KodePasal != "P-07" {
+		t.Fatalf("kritis llm tanpa konfirmasi harus bisa dikonfirmasi: %#v", err)
+	}
+	// 2. Pasal wajib hilang: tetap diblokir walau dikonfirmasi, tidak bisa dikonfirmasi, status tidak berubah.
+	_, err = store.SendContract(ctx, usecase.SendContractParams{ContractID: c.ID, Scope: sc, KonfirmasiTemuanKritis: true, MandatoryKodePasal: []string{"ZZ-TIDAK-ADA"}})
+	if !errors.As(err, &ce) || ce.DapatDikonfirmasi || ce.Findings[0].Sumber != domain.SumberAturan {
+		t.Fatalf("pasal wajib hilang harus diblokir tanpa opsi konfirmasi: %#v", err)
+	}
+	if s := statusOf(); s == "ditinjau" {
+		t.Fatal("kontrak tidak boleh terkirim saat diblokir")
+	}
+	// 3. Dengan konfirmasi: terkirim, dan temuan yang dikonfirmasi tercatat di audit_logs.
+	if _, err := store.SendContract(ctx, usecase.SendContractParams{ContractID: c.ID, Scope: sc, KonfirmasiTemuanKritis: true}); err != nil {
+		t.Fatalf("dengan konfirmasi harus terkirim: %v", err)
+	}
+	if s := statusOf(); s != "ditinjau" {
+		t.Fatalf("status harus ditinjau, dapat %s", s)
+	}
+	var n int
+	if err := conn.QueryRow(ctx, `SELECT COUNT(*) FROM audit_logs WHERE aksi = 'contract.send' AND id_objek = $1
+		AND sesudah::text LIKE '%temuanKritisDikonfirmasi%' AND sesudah::text LIKE '%denda belum ada%'`, c.ID).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("konfirmasi temuan harus tercatat di audit_logs: n=%d err=%v", n, err)
+	}
+}

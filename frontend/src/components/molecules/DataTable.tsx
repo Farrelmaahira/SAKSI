@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
 interface Props {
-  columns: string[];
+  /* a plain label, or { label, numeric } for a right-aligned money or count column */
+  columns: (string | { label: string; numeric: true })[];
   /* <tr> rows; give each <td> a data-label so phones can show it as "label: value" */
   children: ReactNode;
 }
@@ -17,9 +18,14 @@ export default function DataTable({ columns, children }: Props) {
       <table className={TABLE}>
         <thead>
           <tr>
-            {columns.map((c) => (
-              <th key={c}>{c}</th>
-            ))}
+            {columns.map((c) => {
+              const { label, numeric } = typeof c === "string" ? { label: c, numeric: false } : c;
+              return (
+                <th key={label} className={numeric ? "tabular-nums text-right! whitespace-nowrap max-md:text-left! max-md:whitespace-normal" : undefined}>
+                  {label}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>{children}</tbody>

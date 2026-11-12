@@ -1,45 +1,32 @@
 'use client'
 
-import { useDash } from '@/hooks/use-dash'
-import { db } from '@/lib/db/db'
-import { scopeContracts } from '@/lib/db/scope-contracts'
-import { scopeReports } from '@/lib/db/scope-reports'
-import { villages } from '@/data/master'
-import { riskOf } from '@/lib/db/risk-of'
-import { scopeAllReports } from '@/lib/dash/scope-all-reports'
+import { useInspHome } from '@/hooks/use-insp-home'
 import PageHead from '@/components/molecules/PageHead'
 import { wilayahLabel } from '@/lib/auth/wilayah-label'
 import { greeting } from '@/lib/dash/greeting'
 import Stat from '@/components/molecules/Stat'
+import StatGrid from '@/components/molecules/StatGrid'
 import Panel from '@/components/molecules/Panel'
 import Link from 'next/link'
 import { villageById } from '@/lib/master/village-by-id'
 import Badge from '@/components/atoms/Badge'
 import Empty from '@/components/molecules/Empty'
-import { isClosed } from '@/lib/db/is-closed'
 import { rpShort } from '@/lib/dash/rp-short'
 import { valueOf } from '@/lib/db/value-of'
 import { isLate } from '@/lib/db/is-late'
 
 export default function InspHome() {
-  const { session } = useDash()
-  const d = db.use()
-  const r = session.role
-  const contracts = scopeContracts(d, r)
-  const reports = scopeReports(d, r)
-  const regionVillages = villages.filter((v) => v.regionId === r.regionId)
-  const openEsc = reports.filter((x) => x.flow === 'diteruskan')
-  const risky = contracts.map((c) => ({ c, ...riskOf(c, scopeAllReports(d, c.villageId)) })).sort((a, b) => b.score - a.score)
+  const { session, role: r, contracts, villageRows, openEsc, risky } = useInspHome()
 
   return (
     <>
       <PageHead label={`Beranda · Inspektorat ${wilayahLabel(r)}`} title={`${greeting()}, ${session.name.split(' ')[0]}.`} desc="Pantau risiko kontrak lintas desa dan tindak lanjuti laporan yang diteruskan BPD." />
-      <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(4,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))] d-stats">
-        <Stat label="Desa dipantau" value={regionVillages.length} icon="map" />
+      <StatGrid cols={4}>
+        <Stat label="Desa dipantau" value={villageRows.length} icon="map" />
         <Stat label="Kontrak diawasi" value={contracts.length} icon="eye" to="/dashboard/kontrak" />
         <Stat label="Laporan eskalasi terbuka" value={openEsc.length} icon="flag" tone={openEsc.length ? 'red' : 'blue'} to="/dashboard/laporan" />
         <Stat label="Kontrak risiko tinggi" value={risky.filter((x) => x.score >= 3).length} icon="alert" tone="ink" />
-      </div>
+      </StatGrid>
       <div className="items-stretch grid gap-20 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] [&>*]:min-w-0">
         <Panel title="Kontrak dengan risiko tertinggi" desc="Skor dari keterlambatan, laporan terbuka, selisih termin dan progres, serta jumlah versi.">
           {risky.length ? (
@@ -67,9 +54,7 @@ export default function InspHome() {
         </Panel>
         <Panel title={`Desa di ${wilayahLabel(r)}`}>
           <ul className="grid gap-10 list-none list-outside [&_li]:bg-soft [&_li]:rounded-[1.4rem] [&_li]:grid [&_li]:gap-12 [&_li]:p-14 [&_li>div]:grid [&_li>div]:gap-2 [&_strong]:text-[1.7rem] [&_strong]:font-[420] [&_small]:text-[1.25rem]! [&_small]:text-dim [&_dl]:grid! [&_dl]:gap-8! [&_dl]:grid-cols-[repeat(4,minmax(0,1fr))] [&_dt]:text-[1.15rem]! [&_dt]:text-dim! [&_dd]:text-[1.7rem]!">
-            {regionVillages.map((v) => {
-              const vc = contracts.filter((c) => c.villageId === v.id)
-              const vr = scopeAllReports(d, v.id).filter((x) => !isClosed(x))
+            {villageRows.map(({ v, contracts: vc, openReports }) => {
               return (
                 <li key={v.id}>
                   <div>
@@ -89,7 +74,7 @@ export default function InspHome() {
                     </div>
                     <div>
                       <dt>Laporan</dt>
-                      <dd className={vr.length ? '[.app_&]:text-red [.app_em&]:text-[1.2rem] [.app_em&]:not-italic' : ''}>{vr.length}</dd>
+                      <dd className={openReports ? '[.app_&]:text-red [.app_em&]:text-[1.2rem] [.app_em&]:not-italic' : ''}>{openReports}</dd>
                     </div>
                     <div>
                       <dt>Terlambat</dt>

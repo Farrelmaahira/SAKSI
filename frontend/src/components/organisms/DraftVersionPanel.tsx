@@ -1,11 +1,9 @@
 import Btn from "@/components/atoms/Btn";
-import FormAlert from "@/components/atoms/FormAlert";
 import SourceBadge from "@/components/atoms/SourceBadge";
+import VersionSelect from "@/components/molecules/VersionSelect";
+import DraftEditBody from "@/components/organisms/DraftEditBody";
 import ClauseVersionList from "@/components/molecules/ClauseVersionList";
-import FormField from "@/components/molecules/FormField";
 import Panel from "@/components/molecules/Panel";
-import ClauseEditor from "@/components/organisms/ClauseEditorLazy";
-import { backendJenis } from "@/data/drafting";
 import type { useDraftEditor } from "@/hooks/use-draft-editor";
 import type { DContract } from "@/interfaces/db";
 import { downloadVersion } from "@/lib/dash/download-version";
@@ -41,22 +39,12 @@ export default function DraftVersionPanel({
           <div className="items-center flex flex-wrap gap-10">
             <SourceBadge source={ver.source} />
             {c.versions.length > 1 && (
-              <FormField label="Pilih versi" hideLabel>
-                <select
-                  value={ver.no}
-                  onChange={(ev) => e.setVerNo(Number(ev.target.value))}
-                >
-                  {c.versions.map((v) => (
-                    <option key={v.no} value={v.no}>
-                      Versi {v.no}
-                      {v.source
-                        ? ` · ${v.source === "ai" ? "AI" : "Manual"}`
-                        : ""}
-                      {v.no === latest.no ? " (terbaru)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
+              <VersionSelect
+                versions={c.versions}
+                value={ver.no}
+                latestNo={latest.no}
+                onChange={e.setVerNo}
+              />
             )}
             <Btn
               small
@@ -76,35 +64,7 @@ export default function DraftVersionPanel({
       }
     >
       {editing ? (
-        <>
-          <ClauseEditor
-            clauses={e.draft}
-            onChange={e.change}
-            jenis={backendJenis[c.template]}
-          />
-          {revising && (
-            <FormField label="Catatan perubahan untuk pihak kedua">
-              <input
-                value={e.note}
-                onChange={(ev) => e.setNote(ev.target.value)}
-                placeholder="Contoh: Tenggat termin 2 dimundurkan sesuai permintaan."
-              />
-            </FormField>
-          )}
-          {e.error && <FormAlert>{e.error}</FormAlert>}
-          <div className="items-center flex flex-wrap gap-10">
-            <Btn onClick={e.save} disabled={e.saving}>
-              {e.saving
-                ? "Menyimpan..."
-                : revising
-                  ? `Kirim versi ${latest.no + 1}`
-                  : "Simpan perubahan"}
-            </Btn>
-            <Btn variant="ghost" onClick={e.cancel}>
-              Batal
-            </Btn>
-          </div>
-        </>
+        <DraftEditBody c={c} editor={e} revising={revising} />
       ) : (
         <ClauseVersionList version={ver} previous={e.prev} />
       )}

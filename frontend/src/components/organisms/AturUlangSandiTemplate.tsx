@@ -1,12 +1,8 @@
-"use client";
-
-import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import AuthShell from "./AuthShell";
-import ResetForm from "./ResetForm";
+import ResetTokenForm from "./ResetTokenForm";
 
 export default function AturUlangSandiTemplate() {
-  const token = useSearchParams().get("token") ?? "";
-
   return (
     <AuthShell
       label="Atur ulang kata sandi"
@@ -19,7 +15,9 @@ export default function AturUlangSandiTemplate() {
         "Jangan pakai kata sandi yang sama dengan akun lain",
       ]}
     >
-      <ResetForm token={token} />
+      <Suspense>
+        <ResetTokenForm />
+      </Suspense>
     </AuthShell>
   );
 }

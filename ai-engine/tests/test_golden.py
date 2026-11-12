@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from app import llm, pii
+from app import contract_ai, llm, pii
 from app.gen import ai_pb2
 from evals import benchmark, golden, score
 from evals.score import Check
@@ -30,9 +30,18 @@ def test_every_contract_type_has_a_draft_case():
 @pytest.mark.parametrize("case", AUDIT, ids=lambda c: c.id)
 def test_audit_case_is_consistent(case):
     kodes = {c.kode_pasal for c in case.request.clauses}
-    assert set(case.kritis) | set(case.clean) <= kodes
-    assert not set(case.kritis) & set(case.clean)
+    assert set(case.kritis) | set(case.saran) | set(case.clean) <= kodes
+    assert not set(case.kritis) & set(case.clean) and not set(case.saran) & set(case.kritis)
     assert set(case.request.mandatory_kode_pasal) <= kodes
+
+
+@pytest.mark.parametrize("case", AUDIT, ids=lambda c: c.id)
+def test_audit_golden_kritis_is_decided_by_code_not_by_the_model(case, monkeypatch):
+    # LLM palsu yang menandai SEMUA pasal KRITIS: hasil KRITIS tetap persis sesuai golden.
+    answer = json.dumps({"findings": [{"kode_pasal": c.kode_pasal, "tingkat": "KRITIS", "pesan": "x"} for c in case.request.clauses]})
+    monkeypatch.setattr(llm, "call_provider", fake({"groq": answer}))
+    res = asyncio.run(contract_ai.audit_contract(case.request))
+    assert {f.kode_pasal for f in res.findings if f.tingkat == ai_pb2.KRITIS} == set(case.kritis)
 
 
 @pytest.mark.parametrize("case", DRAFT, ids=lambda c: c.id)
@@ -94,7 +103,7 @@ def test_benchmark_runner_with_fake_provider(monkeypatch):
     monkeypatch.setattr(llm, "call_provider", fake({"groq": answer}))
     monkeypatch.setenv("AI_PROVIDERS", "groq:test")
     summary = benchmark.summarize(benchmark.TASKS["audit"], asyncio.run(benchmark.run_task(benchmark.TASKS["audit"], [case])))
-    assert summary.answered == 1 and summary.metrics == {"kritis_terdeteksi": (1, 1), "tanpa_kritis_palsu": (1, 1)}
+    assert summary.answered == 1 and summary.metrics == {"kritis_terdeteksi": (1, 1), "tanpa_kritis_palsu": (1, 1), "saran_terdeteksi": (0, 0)}
 
 
 def test_benchmark_records_failure_reason_and_redact_llm_failure(monkeypatch):

@@ -11,6 +11,7 @@ import { fmtDate } from '@/lib/dates/fmt-date'
 import PageHead from '@/components/molecules/PageHead'
 import { greeting } from '@/lib/dash/greeting'
 import Stat from '@/components/molecules/Stat'
+import StatGrid from '@/components/molecules/StatGrid'
 import { rpShort } from '@/lib/dash/rp-short'
 import Panel from '@/components/molecules/Panel'
 import TodoList from '@/components/molecules/TodoList'
@@ -42,12 +43,12 @@ export default function PihakHome() {
   return (
     <>
       <PageHead label={`Beranda · ${cp?.name ?? 'Pihak kedua'}`} title={`${greeting()}, ${session.name.split(' ')[0]}.`} desc="Kontrak yang menunggu tinjauan dan tanda tangan Anda ada di sini." />
-      <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(4,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))] d-stats">
+      <StatGrid cols={4}>
         <Stat label="Menunggu tinjauan" value={toReview.length} icon="eye" tone={toReview.length ? 'red' : 'blue'} to="/dashboard/kontrak" />
         <Stat label="Menunggu tanda tangan" value={toSign.length} icon="sign" tone={toSign.length ? 'red' : 'blue'} />
         <Stat label="Kontrak berjalan" value={running.length} icon="file" />
         <Stat label="Termin akan cair" value={rpShort(upcoming.reduce((s, x) => s + x.t.amount, 0))} hint="30 hari ke depan" icon="wallet" tone="ink" to="/dashboard/termin" />
-      </div>
+      </StatGrid>
       <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
         <Panel title="Perlu tindakan">
           <TodoList items={todos} empty="Tidak ada undangan atau tanda tangan yang menunggu." />

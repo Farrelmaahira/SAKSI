@@ -1,42 +1,19 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import PillButton from '@/components/atoms/PillButton'
 import MailPreview from '@/components/molecules/MailPreview'
 import StepIndicator from '@/components/molecules/StepIndicator'
 import TextField from '@/components/molecules/TextField'
 import { resetSteps } from '@/data/auth'
-import { isEmail } from '@/lib/auth/is-email'
-import { forgotPassword } from '@/lib/api/forgot-password'
+import { useForgotForm } from '@/hooks/use-forgot-form'
 
 interface Props {
   initialEmail: string
 }
 
-interface Sent {
-  message: string
-  /* only development servers send it; never relied on in production */
-  token: string | null
-}
-
 export default function ForgotForm({ initialEmail }: Props) {
-  const [email, setEmail] = useState(initialEmail)
-  const [error, setError] = useState<string | undefined>()
-  const [sent, setSent] = useState<Sent | null>(null)
-  const [busy, setBusy] = useState(false)
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!isEmail(email)) return setError('Format email belum benar, contoh: nama@desa.id')
-    setError(undefined)
-    setBusy(true)
-    const r = await forgotPassword(email.trim())
-    setBusy(false)
-    if (!r.ok) return setError(r.error)
-    const dev = process.env.NODE_ENV !== 'production' && typeof r.data?.devToken === 'string' ? r.data.devToken : null
-    setSent({ message: r.data?.message || 'Jika email terdaftar, instruksi atur ulang sandi sudah dikirim.', token: dev })
-  }
+  const { email, setEmail, error, sent, busy, submit, reset } = useForgotForm(initialEmail)
 
   return (
     <>
@@ -91,7 +68,7 @@ export default function ForgotForm({ initialEmail }: Props) {
               Buka email dari SAKSI lalu ikuti tautannya dalam 30 menit. Pesan ini sama untuk setiap email, supaya orang lain tidak bisa menebak email yang terdaftar.
             </p>
           )}
-          <button type="button" className="items-center [background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] [color:inherit] inline-flex text-[1.4rem] gap-8 tracking-[0.02em] py-4 px-0 uppercase [transition:color_0.3s,_opacity_0.3s] [&:hover:not(:disabled)]:text-blue [&.light:hover:not(:disabled)]:[color:inherit] [&.light:hover:not(:disabled)]:opacity-[0.7] disabled:cursor-not-allowed disabled:opacity-[0.3] [.hash-actions_&:hover]:[color:inherit] [.hash-actions_&:hover]:opacity-[0.7] [.verify-samples_&]:mt-0 [.verify-samples_&]:mr-24 [.verify-samples_&]:mb-10 [.verify-samples_&]:ml-0 [.hash-status_&]:[grid-column:2] [.hash-status_&]:[justify-self:start] [.d-panel-ink_.verify-samples_&]:mt-0 [.d-panel-ink_.verify-samples_&]:mr-20 [.d-panel-ink_.verify-samples_&]:mb-10 [.d-panel-ink_.verify-samples_&]:ml-0" onClick={() => setSent(null)}>
+          <button type="button" className="items-center [background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] [color:inherit] inline-flex text-[1.4rem] gap-8 tracking-[0.02em] py-4 px-0 uppercase [transition:color_0.3s,_opacity_0.3s] [&:hover:not(:disabled)]:text-blue [&.light:hover:not(:disabled)]:[color:inherit] [&.light:hover:not(:disabled)]:opacity-[0.7] disabled:cursor-not-allowed disabled:opacity-[0.3] [.hash-actions_&:hover]:[color:inherit] [.hash-actions_&:hover]:opacity-[0.7] [.verify-samples_&]:mt-0 [.verify-samples_&]:mr-24 [.verify-samples_&]:mb-10 [.verify-samples_&]:ml-0 [.hash-status_&]:[grid-column:2] [.hash-status_&]:[justify-self:start] [.d-panel-ink_.verify-samples_&]:mt-0 [.d-panel-ink_.verify-samples_&]:mr-20 [.d-panel-ink_.verify-samples_&]:mb-10 [.d-panel-ink_.verify-samples_&]:ml-0" onClick={() => reset()}>
             Pakai email lain
           </button>
         </div>

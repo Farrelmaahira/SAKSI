@@ -1,6 +1,7 @@
 import Badge from '@/components/atoms/Badge'
 import Callout from '@/components/atoms/Callout'
 import StepTitle from '@/components/atoms/StepTitle'
+import ConfirmCritical from '@/components/molecules/ConfirmCritical'
 import SummaryList from '@/components/molecules/SummaryList'
 import BuatKontrakSurat from '@/components/organisms/BuatKontrakSurat'
 import type { Answers, Audit, Clause, TemplateInfo, TemplateKey } from '@/interfaces/drafting'
@@ -19,11 +20,13 @@ interface Props {
   clauses: Clause[]
   audit: Audit
   critical: number
+  confirmed: boolean
+  onConfirm: (checked: boolean) => void
   letter: ReturnType<typeof useLetterSigning>
 }
 
 /* Wizard step 5: summary of the answers, the audit score and the letter to sign */
-export default function BuatKontrakPeriksa({ info, template, partyName, partyId, villageId, signerName, answers, clauses, audit, critical, letter }: Props) {
+export default function BuatKontrakPeriksa({ info, template, partyName, partyId, villageId, signerName, answers, clauses, audit, critical, confirmed, onConfirm, letter }: Props) {
   return (
     <div>
       <StepTitle>Periksa lalu simpan</StepTitle>
@@ -41,9 +44,10 @@ export default function BuatKontrakPeriksa({ info, template, partyName, partyId,
       />
       {critical > 0 && (
         <Callout tone="red" icon="alert">
-          Masih ada temuan kritis. Draf bisa disimpan, tetapi baru bisa dikirim ke pihak kedua setelah temuan diperbaiki.
+          Masih ada temuan kritis. Draf bisa disimpan. Untuk mengirim ke pihak kedua, perbaiki temuannya atau konfirmasi di bawah.
         </Callout>
       )}
+      {critical > 0 && <ConfirmCritical count={critical} checked={confirmed} onChange={onConfirm} />}
       <BuatKontrakSurat template={template} answers={answers} clauses={clauses} villageId={villageId} partyId={partyId} signerName={signerName} letter={letter} />
     </div>
   )

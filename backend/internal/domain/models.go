@@ -93,6 +93,8 @@ type Counterparty struct {
 	Jenis  string `json:"jenis"`
 	NPWP   string `json:"npwp,omitempty"`
 	Alamat string `json:"alamat,omitempty"`
+	// Email akun pemilik (users.email); hanya terisi di daftar pihak kedua untuk desa.
+	Email string `json:"email,omitempty"`
 }
 
 type WizardQuestionOption struct {
@@ -131,7 +133,14 @@ type AuditFinding struct {
 	KodePasal *string `json:"kodePasal"`
 	Tingkat   string  `json:"tingkat"` // kritis | saran
 	Pesan     string  `json:"pesan"`
+	// Sumber: SumberAturan (dihitung SAKSI dari data, deterministik) atau SumberLLM (penilaian model AI, bisa bergeser antar audit).
+	Sumber string `json:"sumber,omitempty"`
 }
+
+const (
+	SumberAturan = "aturan"
+	SumberLLM    = "llm"
+)
 
 // AuditResult adalah hasil audit dari AI Engine atau rule auditor; Model mencatat siapa yang mengaudit.
 type AuditResult struct {
@@ -319,6 +328,16 @@ type DocumentSeal struct {
 	TxHash            string    `json:"txHash,omitempty"`
 }
 
+// StatusChange satu baris contract_status_history: perpindahan status kontrak beserta pelakunya.
+type StatusChange struct {
+	ID          int64     `json:"id"`
+	StatusDari  *string   `json:"statusDari"`
+	StatusKe    string    `json:"statusKe"`
+	AktorUserID *int64    `json:"aktorUserId"`
+	AktorNama   string    `json:"aktorNama"`
+	Waktu       time.Time `json:"waktu"`
+}
+
 type ContractLifecycleDetail struct {
 	Contract   ContractDetail    `json:"contract"`
 	Version    ContractVersion   `json:"currentVersion"`
@@ -326,6 +345,8 @@ type ContractLifecycleDetail struct {
 	Reviews    []ContractReview  `json:"reviews"`
 	Signatures []Signature       `json:"signatures"`
 	Seal       *DocumentSeal     `json:"seal,omitempty"`
+	// StatusHistory: dari yang terlama; sumber Riwayat kontrak di dashboard.
+	StatusHistory []StatusChange `json:"statusHistory"`
 }
 
 type Contract struct {

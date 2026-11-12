@@ -4,6 +4,9 @@ import { pubFields } from '@/data/db'
 
 export type ContractStatus = 'draf' | 'diaudit' | 'ditinjau' | 'ditandatangani' | 'dipublikasikan' | 'berjalan' | 'selesai' | 'dibatalkan'
 
+/* Surat Perintah Kerja: the number and dates that start the work. */
+export interface Spk { number: string; date: string; start: string; end: string }
+
 export interface Version { no: number; at: string; answers: Answers; clauses: Clause[]; audit: Audit; note?: string; source?: ClauseSource }
 
 export interface ReviewReply { author: string; role: RoleKey; text: string; at: string }
@@ -42,7 +45,7 @@ export interface DContract {
   reviews: Review[]
   signatures: ContractSignatures
   seals: Seal[]
-  spk?: { number: string; date: string; start: string; end: string }
+  spk?: Spk
   terms: Term[]
   progress: ProgressEntry[]
   publication?: { at: string; fields: PubField[] }

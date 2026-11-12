@@ -12,7 +12,7 @@ Rencana induk: `docs/superpowers/plans/2026-11-10-grpc-redis-ai-manual-drafting.
 | Bug daftar kontrak duplikat setelah audit ulang | Diperbaiki (LATERAL di `ListContracts`/`GetContractDetail`) + tes regresi. Azure BELUM |
 | Endpoint tahap B (termin, segel, notifikasi, jejak audit, LHP, admin daerah, profil, reset sandi, tindak lanjut laporan) | BE selesai, FE tersambung. Teruji API per peran, BELUM dilihat di browser |
 | Akun demo (6 akun, sandi `saksi123`) | Ada di Azure dan lokal (`backend/scripts/seed_demo.sql`) |
-| Kirim ke pihak kedua | BUG KRITIS (lihat bagian di bawah): pihak kedua tidak bisa menemukan/membuka kontrak. BELUM diperbaiki; butuh BE + FE |
+| Kirim ke pihak kedua | Alur BE sudah benar (diuji 2026-11-12: draf tersembunyi dari penyedia, kirim → ditinjau, penyedia melihat + notifikasi). Daftar pihak kedua di wizard kini HANYA usaha dari server (data contoh lokal dibuang, tombol "Undang pihak kedua baru" dihapus). Sisa: gerbang CRITICAL_FINDINGS (keputusan no. 5) dan panel audit wizard masih simulasi lokal |
 | Commit | Banyak perubahan BELUM di-commit |
 
 ## ATURAN UNTUK SEMUA TIM (keputusan user, 2026-11-11)
@@ -44,6 +44,7 @@ Kontrak perbaikan (disarankan; tim BE boleh menyesuaikan, dokumentasikan di plan
 - `GET /contracts/{id}` (atau `/lifecycle` + `/audit/latest`) harus cukup untuk menghidrasi halaman detail: judul, jenis, nilai, tenggat, status, desa, pihak kedua (id+nama), versi terbaru (`nomorVersi`, `sumber`, pasal[] `kodePasal/judul/isi/urutan/legalReferenceId`), audit terakhir, tinjauan, tanda tangan, riwayat status.
 
 ## Keputusan yang menunggu user (blokir sebagian tugas di bawah)
+5. **Gerbang kirim ke pihak kedua bergantung pada temuan KRITIS dari AI (LLM).** Server menolak `POST /contracts/{id}/send` dengan `CRITICAL_FINDINGS` bila audit terakhir punya temuan kritis. Diuji 2026-11-12: draf AI → audit server 2 kritis (P-04 termin tidak dirinci, P-06 garansi tanpa durasi); setelah keduanya diperbaiki, audit ulang menemukan kritis BARU (P-07, yang sebelumnya hanya saran). Tingkat keparahan LLM tidak stabil antar audit, jadi pengguna bisa berputar memperbaiki tanpa pernah lolos, dan kontrak tidak sampai ke pihak kedua. Gerbang ini awalnya spek PM (server menegakkan aturan yang sudah ada di UI), tetapi UI hanya memblokir temuan kritis LOKAL. Pilihan: (a) tetap blokir semua kritis (aman, tapi rapuh untuk demo); (b) blokir hanya temuan deterministik (pasal wajib hilang, dasar hukum tidak sah) dan temuan kritis dari LLM jadi peringatan + konfirmasi eksplisit "saya sudah membaca temuan kritis" yang dicatat di `audit_logs` (rekomendasi PM, selaras prinsip AI hanya penasihat); (c) izinkan kirim dengan persetujuan kades tanpa syarat.
 
 1. Sumber isi `clause_library`, `contract_templates`, `legal_references` (tim, atau ML menyusun draf dari peraturan di proposal lalu direview). Sekarang kosong; pasal baku pengganti dari rule engine (P-01..P-10).
 2. Tambah kolom `judul` di `contract_clauses`? (perlu migrasi manual di Azure)
@@ -110,8 +111,8 @@ URL: frontend `http://localhost:3000`, backend `http://localhost:8099/api/v1`.
 
 Nyalakan ulang bila mati:
 - Postgres 16: `/opt/homebrew/opt/postgresql@16/bin/pg_ctl -D <scratchpad>/pg -o "-p 5432 -k '' -c listen_addresses=localhost" start` (data dir `.../scratchpad/pg`; bila hilang: `initdb -A trust -U postgres`, `createdb saksi`, `cd backend && go run ./cmd/migrate`, lalu muat `scripts/seed_villages.sql` dan `scripts/seed_demo.sql`).
-- ai-engine: `cd ai-engine && set -a && . ./.env && set +a && unset AI_PROVIDERS && GRPC_PORT=50051 .venv/bin/python -m uvicorn app.main:app --port 8000` (`.env` lama berisi `AI_PROVIDERS=groq,gemini`; di-unset agar memakai rantai default).
-- Backend: `cd backend && go run ./cmd/api` dengan env `PORT=8099 APP_ENV=development SAKSI_SECRET=local-smoke-secret-123456 AI_ENGINE_GRPC_ADDR=localhost:50051 AI_ENGINE_URL=http://localhost:8000 AI_API_KEY=<dari ai-engine/.env> STORAGE_DIR=./data/files`.
+- ai-engine: `cd ai-engine && set -a && . ./.env && set +a && unset AI_PROVIDERS && GRPC_PORT=50051 .venv/bin/python -m uvicorn app.main:app --port 8001` (`.env` lama berisi `AI_PROVIDERS=groq,gemini`; di-unset agar memakai rantai default).
+- Backend: `cd backend && go run ./cmd/api` dengan env `PORT=8099 APP_ENV=development SAKSI_SECRET=local-smoke-secret-123456 AI_ENGINE_GRPC_ADDR=localhost:50051 AI_ENGINE_URL=http://localhost:8001 AI_API_KEY=<dari ai-engine/.env> STORAGE_DIR=./data/files`.
 - Frontend: `cd frontend && NEXT_PUBLIC_API_URL=http://localhost:8099/api/v1 npm run dev -- -p 3000`.
 
 A. Buat kontrak (login kades):

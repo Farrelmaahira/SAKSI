@@ -18,7 +18,6 @@ if not API_KEY:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # gRPC berjalan di samping REST. GRPC_PORT=0 mematikannya; gagal bind tidak boleh mematikan REST.
     server = None
     port = int(os.getenv("GRPC_PORT", "50051"))
     if port:

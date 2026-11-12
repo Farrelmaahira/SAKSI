@@ -146,9 +146,6 @@ func (s *Store) ReviseContract(ctx context.Context, p usecase.ReviseContractPara
 		p.ActorIP); err != nil {
 		return domain.ContractVersion{}, err
 	}
-	if err := notifyVendor(ctx, tx, contractID, p.KadesUserID, "kontrak_direvisi", fmt.Sprintf("direvisi menjadi versi %d", nextVersion)); err != nil {
-		return domain.ContractVersion{}, err
-	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return domain.ContractVersion{}, err
@@ -629,13 +626,34 @@ func (s *Store) GetContractLifecycleDetail(ctx context.Context, contractID int64
 		}
 	}
 
+	rowsH, err := s.db.Query(ctx, `
+		SELECT h.id, h.status_dari::text, h.status_ke::text, h.aktor_user_id, COALESCE(u.nama, ''), h.waktu
+		FROM contract_status_history h LEFT JOIN users u ON u.id = h.aktor_user_id
+		WHERE h.contract_id = $1 ORDER BY h.waktu ASC, h.id ASC`, contractID)
+	if err != nil {
+		return domain.ContractLifecycleDetail{}, err
+	}
+	defer rowsH.Close()
+	history := []domain.StatusChange{}
+	for rowsH.Next() {
+		var h domain.StatusChange
+		if err := rowsH.Scan(&h.ID, &h.StatusDari, &h.StatusKe, &h.AktorUserID, &h.AktorNama, &h.Waktu); err != nil {
+			return domain.ContractLifecycleDetail{}, err
+		}
+		history = append(history, h)
+	}
+	if err := rowsH.Err(); err != nil {
+		return domain.ContractLifecycleDetail{}, err
+	}
+
 	return domain.ContractLifecycleDetail{
-		Contract:   contractDetail,
-		Version:    currentVersion,
-		Versions:   versions,
-		Reviews:    reviews,
-		Signatures: signatures,
-		Seal:       seal,
+		Contract:      contractDetail,
+		Version:       currentVersion,
+		Versions:      versions,
+		Reviews:       reviews,
+		Signatures:    signatures,
+		Seal:          seal,
+		StatusHistory: history,
 	}, nil
 }
 

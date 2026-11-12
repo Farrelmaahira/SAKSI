@@ -11,6 +11,7 @@ import PageHead from '@/components/molecules/PageHead'
 import { wilayahLabel } from '@/lib/auth/wilayah-label'
 import { greeting } from '@/lib/dash/greeting'
 import Stat from '@/components/molecules/Stat'
+import StatGrid from '@/components/molecules/StatGrid'
 import Panel from '@/components/molecules/Panel'
 import Link from 'next/link'
 import Btn from '@/components/atoms/Btn'
@@ -31,12 +32,12 @@ export default function BpdHome() {
   return (
     <>
       <PageHead label={`Beranda · BPD ${wilayahLabel(r)}`} title={`${greeting()}, ${session.name.split(' ')[0]}.`} desc="Awasi kontrak desa dan tindak lanjuti laporan warga. Semua data kontrak hanya bisa dibaca." />
-      <div className="grid gap-12 grid-cols-[repeat(2,minmax(0,1fr))] md:grid-cols-[repeat(4,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))] d-stats">
+      <StatGrid cols={4}>
         <Stat label="Kontrak di desa" value={contracts.length} icon="file" to="/dashboard/kontrak" />
         <Stat label="Laporan warga baru" value={fresh.length} icon="flag" tone={fresh.length ? 'red' : 'blue'} to="/dashboard/laporan" />
         <Stat label="Kontrak terlambat" value={late.length} icon="clock" tone={late.length ? 'red' : 'blue'} />
         <Stat label="Menunggu klarifikasi desa" value={waitingDesa.length} icon="alert" tone="ink" />
-      </div>
+      </StatGrid>
       <div className="items-stretch grid gap-20 lg:grid-cols-[repeat(2,minmax(0,1fr))] [&>*]:min-w-0">
         <Panel title="Laporan warga baru" action={<Link className="[background:none] border-0 border-none border-b-[0.1rem] border-b-current [border-bottom-style:solid] text-blue text-[1.3rem] p-0 whitespace-nowrap [&:hover]:text-ink [.d-callout_&]:[color:inherit]! [.d-integrity_&]:inline-block [.d-integrity_&]:mt-6 [.d-integrity_&]:text-white! [.app-notif-panel_header_&:disabled]:text-dim [.app-notif-panel_header_&:disabled]:cursor-default" href="/dashboard/laporan">Buka laporan</Link>}>
           {fresh.length ? (

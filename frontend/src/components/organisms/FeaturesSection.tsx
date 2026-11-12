@@ -1,19 +1,16 @@
 "use client";
 
-import { useState, useRef, useLayoutEffect } from "react";
+import { useRef, useLayoutEffect } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import Arrow from "@/components/atoms/Arrow";
 import FeatureCard from "@/components/molecules/FeatureCard";
 import { features } from "@/data/home";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function FeaturesSection() {
-  const [active, setActive] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const stInstance = useRef<ScrollTrigger | null>(null);
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -28,7 +25,7 @@ export default function FeaturesSection() {
           return track.scrollWidth - window.innerWidth + 140;
         };
 
-        const tween = gsap.to(track, {
+        gsap.to(track, {
           x: () => -getDistance(),
           ease: "none",
           scrollTrigger: {
@@ -40,49 +37,13 @@ export default function FeaturesSection() {
             scrub: 1.2,
             anticipatePin: 1,
             invalidateOnRefresh: true,
-            onUpdate: (self) => {
-              const cardIdx = Math.min(
-                features.length - 1,
-                Math.max(
-                  0,
-                  Math.floor(self.progress * features.length * 0.999),
-                ),
-              );
-              setActive(cardIdx);
-            },
           },
         });
-
-        stInstance.current = tween.scrollTrigger ?? null;
       });
     }, wrapRef);
 
     return () => ctx.revert();
   }, []);
-
-  const goToCard = (index: number) => {
-    const clamped = Math.max(0, Math.min(features.length - 1, index));
-    setActive(clamped);
-
-    const st = stInstance.current;
-    if (st && window.innerWidth >= 992) {
-      const targetRatio = clamped / (features.length - 1);
-      const targetScroll = st.start + targetRatio * (st.end - st.start);
-      window.scrollTo({
-        top: targetScroll,
-        behavior: "smooth",
-      });
-    } else if (trackRef.current) {
-      const card = trackRef.current.children[clamped] as HTMLElement;
-      if (card) {
-        card.scrollIntoView({
-          behavior: "smooth",
-          inline: "center",
-          block: "nearest",
-        });
-      }
-    }
-  };
 
   return (
     <section className="bg-white overflow-hidden py-100 px-0 relative feat:h-screen feat:min-h-700 feat:p-0 feat:flex feat:flex-col feat:justify-center feat:relative feat:overflow-hidden" id="fitur" ref={wrapRef}>

@@ -323,8 +323,8 @@ func TestMonitoringScopeAndParams(t *testing.T) {
 		t.Fatalf("termin tidak diteruskan: %+v", m.lastTerms)
 	}
 
-	do(mux, "GET", "/api/v1/audit-logs?actorId=3&to=2026-11-10&limit=500", tok(t, 40, domain.RoleInspektorat, nil), "")
-	if m.lastLogs.Limit != 200 || m.lastLogs.ActorID == nil || *m.lastLogs.ActorID != 3 || m.lastLogs.To != "2026-11-10" {
+	do(mux, "GET", "/api/v1/audit-logs?actorId=3&to=2026-11-10&limit=500&aksi=contract.send", tok(t, 40, domain.RoleInspektorat, nil), "")
+	if m.lastLogs.Limit != 200 || m.lastLogs.ActorID == nil || *m.lastLogs.ActorID != 3 || m.lastLogs.To != "2026-11-10" || m.lastLogs.Aksi != "contract.send" {
 		t.Fatalf("filter audit log salah: %+v", m.lastLogs)
 	}
 
@@ -371,6 +371,7 @@ func TestMonitoringValidation(t *testing.T) {
 		{"realisasi negatif", "POST", "/api/v1/contracts/12/termin/3/bayar", kades, `{"realisasiNominal":-1}`},
 		{"tanggal audit log salah", "GET", "/api/v1/audit-logs?from=kemarin", kades, ""},
 		{"limit salah", "GET", "/api/v1/audit-logs?limit=-1", kades, ""},
+		{"aksi mengandung karakter terlarang", "GET", "/api/v1/audit-logs?aksi=contract.send%27%3B--", kades, ""},
 		{"jenis lhp salah", "POST", "/api/v1/audit-reports", insp, `{"contractId":12,"jenis":"x"}`},
 		{"objek temuan salah", "POST", "/api/v1/audit-reports", insp, `{"contractId":12,"jenis":"lhp","findings":[{"objek":"x","temuan":"a","tingkat":"kritis"}]}`},
 		{"tindakan laporan salah", "POST", "/api/v1/reports/5/actions", kades, `{"tindakan":"hapus"}`},
